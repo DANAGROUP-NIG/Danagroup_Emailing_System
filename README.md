@@ -140,4 +140,4 @@ All planning and architecture documents are in the root directory:
 - `frontend-blueprint.md` — Frontend engineering spec
 - `backend-blueprint.md` — Backend engineering spec
 - `infrastructure.md` — DevOps and deployment plan
-- `implementation-roadmap.md` — Sprint plan and milestones
+- `implementation-roadmap.md` — Sprint plan and milestones.
