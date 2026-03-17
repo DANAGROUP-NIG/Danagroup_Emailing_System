@@ -16,17 +16,13 @@ export class Message {
   @Column()
   threadId: string;
 
-  @ManyToOne(() => Thread)
-  @JoinColumn({ name: "threadId" })
-  thread: Thread;
-
   @Column()
   senderId: string;
 
   @Column()
   subject: string;
 
-  @Column({ type: "text" })
+  @Column({ type: "text"  })
   body: string;
 
   @Column({ type: "text", nullable: true })
@@ -40,4 +36,9 @@ export class Message {
 
   @CreateDateColumn({ type: "timestamptz" })
   createdAt: Date;
+
+  @ManyToOne(() => Thread)
+  @JoinColumn({ name: "threadId" })
+  thread: Thread;
+
 }

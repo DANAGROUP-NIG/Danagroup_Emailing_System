@@ -1,3 +1,5 @@
+import { Department } from "@modules/departments/entities/department.entity";
+import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -19,16 +21,16 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ unique: true })
+  @Column({length: 100, unique: true})
   email: string;
 
-  @Column()
+  @Column({length: 255, select: false})
   passwordHash: string;
 
-  @Column()
+  @Column({length: 100})
   firstName: string;
 
-  @Column()
+  @Column({length: 100})
   lastName: string;
 
   @Column({
@@ -38,17 +40,11 @@ export class User {
   })
   role: UserRole;
 
-  @Column({ nullable: true })
+  @Column({length: 150 })
   jobTitle: string;
 
-  @Column({ nullable: true })
+  @Column({length:255})
   avatarUrl: string;
-
-  @Column({ nullable: true })
-  departmentId: string;
-
-  @Column({ nullable: true })
-  subsidiaryId: string;
 
   @Column({ default: true })
   isActive: boolean;
@@ -56,9 +52,27 @@ export class User {
   @Column({ nullable: true, type: "timestamptz" })
   lastLoginAt: Date;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz" })
+  @UpdateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
-}
+
+  
+  //Expose the ID directly as a string for easier filtering/saving
+  @Column({ nullable: true })
+  department_id: string;
+
+  @Column({ nullable: true })
+  subsidiary_id: string;
+
+  // ---- RELATIONSHIPS ----
+  @ManyToOne(() => Subsidiary, (subsidiary) => subsidiary.users)
+  @JoinColumn({ name: "subsidiary_id" })
+  subsidiary: Subsidiary
+
+  @ManyToOne(() => Department, (department) => department.users)
+  @JoinColumn({ name: "department_id" })
+  department: Department
+} 
+
