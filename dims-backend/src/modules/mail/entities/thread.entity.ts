@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
+import { Message } from "./message.entity";
 
 @Entity("threads")
 export class Thread {
@@ -20,4 +21,7 @@ export class Thread {
 
   @UpdateDateColumn({ name: "updated_at", type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   updatedAt: Date;
+
+  @OneToMany(() => Message, (message) => message.thread)
+  messages: Message[]
 }

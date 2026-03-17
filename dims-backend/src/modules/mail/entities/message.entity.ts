@@ -5,8 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Thread } from "./thread.entity";
+import { User } from "@modules/users/entities/user.entity";
+import { MessageRecipient } from "./message-recipient.entity";
+import { Attachment } from "@modules/files/entities/attachment.entity";
 
 @Entity("messages")
 export class Message {
@@ -19,7 +23,7 @@ export class Message {
   @Column()
   senderId: string;
 
-  @Column()
+  @Column({length: 500})
   subject: string;
 
   @Column({ type: "text"  })
@@ -29,16 +33,32 @@ export class Message {
   bodyHtml: string;
 
   @Column({ default: false })
-  isDraft: boolean;
+  is_draft: boolean;
 
   @Column({ nullable: true, type: "timestamptz" })
   sentAt: Date;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 
-  @ManyToOne(() => Thread)
-  @JoinColumn({ name: "threadId" })
+  @ManyToOne(() => Thread, (thread) => thread.messages)
+  @JoinColumn({ name: "thread_id" })
   thread: Thread;
+
+  @Column({ type: 'uuid' })
+  thread_id: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "sender_id" })
+  sender: User;
+
+  @Column({ type: 'uuid' })
+  sender_id: string;
+
+  @OneToMany(() => MessageRecipient, (recipient) => recipient.message)
+  recipients: MessageRecipient[];
+
+  @OneToMany(() => Attachment, (attachment) => attachment.message )
+  attachments: Attachment[];
 
 }

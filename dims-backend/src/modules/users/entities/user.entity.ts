@@ -1,5 +1,9 @@
+import { Announcement } from "@modules/announcements/entities/announcement.entity";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
+import { MessageRecipient } from "@modules/mail/entities/message-recipient.entity";
+import { Message } from "@modules/mail/entities/message.entity";
+import { Notification } from "@modules/notifications/entities/notification.entity";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,6 +12,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 
 export type UserRole =
@@ -60,10 +65,10 @@ export class User {
 
   
   //Expose the ID directly as a string for easier filtering/saving
-  @Column({ nullable: true })
+  @Column()
   department_id: string;
 
-  @Column({ nullable: true })
+  @Column()
   subsidiary_id: string;
 
   // ---- RELATIONSHIPS ----
@@ -74,5 +79,20 @@ export class User {
   @ManyToOne(() => Department, (department) => department.users)
   @JoinColumn({ name: "department_id" })
   department: Department
-} 
+
+  // 1. Messages this user SENT
+  @OneToMany(() => Message, (message) => message.sender)
+  sent_messages: Message[];
+
+  // 2. Messages this user RECEIVED (via the recipient table)
+  @OneToMany(() => MessageRecipient, (messageRecipient) => messageRecipient.recipient)
+  received_messages: MessageRecipient[];
+
+  // 3. Announcements this user AUTHORED
+  @OneToMany(() => Announcement, (announcement) => announcement.author)
+  announcements: Announcement[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+  } 
 

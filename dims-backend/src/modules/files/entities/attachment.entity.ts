@@ -14,27 +14,29 @@ export class Attachment {
   id: string;
 
   @Column()
-  messageId: string;
+  uploader_id: string;
 
-  @ManyToOne(() => Message)
-  @JoinColumn({ name: "messageId" })
-  message: Message;
-
-  @Column()
-  uploaderId: string;
-
-  @Column()
+  @Column({ length: 255 })
   filename: string;
 
-  @Column()
-  mimeType: string;
+  @Column({ length: 100 })
+  mime_type: string;
 
   @Column({ type: "bigint" })
-  sizeBytes: number;
+  size_bytes: number;
 
-  @Column()
-  storageKey: string;
+  @Column({ length: 500 })
+  storage_key: string;
 
   @CreateDateColumn({ type: "timestamptz" })
-  createdAt: Date;
+  created_at: Date;
+
+  //---- RELATIONSHIPS ----
+  @ManyToOne(() => Message, (msg) => msg.attachments, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "message_id" })
+  message: Message;
+
+  @Column({ type: "uuid" })
+  message_id: string;
+
 }
