@@ -14,7 +14,7 @@ export default (config: ConfigService): TypeOrmModuleOptions => ({
 
   autoLoadEntities: true,
 
-  synchronize: false, // ❗ never true in prod
+  synchronize: false, // never true in prod
 
   logging:
     config.get("NODE_ENV") === "development"

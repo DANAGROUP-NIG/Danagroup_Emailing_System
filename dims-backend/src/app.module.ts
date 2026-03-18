@@ -15,6 +15,7 @@ import { DepartmentsModule } from "./modules/departments/departments.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { SearchModule } from "./modules/search/search.module";
 import { JobsModule } from "./jobs/jobs.module";
+import { HealthModule } from './health/health.module';
 
 // Config
 import databaseConfig from "./config/database.config";
@@ -97,6 +98,7 @@ import databaseConfig from "./config/database.config";
     NotificationsModule,
     SearchModule,
     JobsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
