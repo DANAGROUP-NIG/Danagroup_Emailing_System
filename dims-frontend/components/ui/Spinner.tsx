@@ -1,9 +1,16 @@
-// TODO: Implement Spinner Component
-// Props: size?: 'sm'|'md'|'lg', className?: string
-// - Animated SVG spinner using dana-blue color
-// - sm=4, md=6, lg=10 (Tailwind units)
+import { Loader2Icon } from 'lucide-react'
 
-export default function Spinner() {
-  // TODO: Implement
-  return null;
+import { cn } from '@/lib/utils'
+
+function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
+  return (
+    <Loader2Icon
+      role="status"
+      aria-label="Loading"
+      className={cn('size-4 animate-spin', className)}
+      {...props}
+    />
+  )
 }
+
+export { Spinner }

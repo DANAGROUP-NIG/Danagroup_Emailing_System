@@ -1,30 +1,50 @@
-import type { Metadata } from "next";
-import { Rubik } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
 
-const rubik = Rubik({
-  subsets: ["latin"],
-  variable: "--font-rubik",
-  display: "swap",
-});
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: {
-    default: "DIMS — Dana Internal Mail",
-    template: "%s | DIMS",
+  title: 'Gmail - Email Dashboard',
+  description: 'Professional email management dashboard with real-time updates, search, and admin controls',
+  keywords: ['email', 'gmail', 'dashboard', 'mail', 'communication'],
+  openGraph: {
+    title: 'Gmail - Email Dashboard',
+    description: 'Professional email management dashboard',
+    type: 'website',
   },
-  description: "Dana Internal Mail & Intranet System",
-  robots: { index: false, follow: false },
-};
+  icons: {
+    icon: [
+      {
+        url: '/icon-light-32x32.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/icon-dark-32x32.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+    apple: '/apple-icon.png',
+  },
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={rubik.variable}>
-      <body className="font-rubik antialiased">{children}</body>
+    <html lang="en">
+      <body className="font-sans antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
-  );
+  )
 }
