@@ -8,11 +8,14 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { ApiResponseDto } from "@common/dto/api-response.dto";
+import { Throttle } from "@nestjs/throttler";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -24,6 +27,7 @@ export class AuthController {
   // - Set httpOnly access_token cookie
   // - Set httpOnly refresh_token cookie
   // - Return user object
+  @Throttle(100, 60_000)
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Login with email and password" })
@@ -31,6 +35,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   async login(@Body() loginDto: LoginDto) {
     // TODO: Implement
+    const user = await this.authService.ValidateUser(loginDto.email, loginDto.password);
+
+    if (!user) throw new UnauthorizedException("Invalid credentials");
+
+    const result = await this.authService.Login(user);
+
+    return new ApiResponseDto(true, "Login successful", result)
   }
 
   // TODO: Implement POST /auth/logout
@@ -40,6 +51,7 @@ export class AuthController {
   @ApiOperation({ summary: "Logout current session" })
   async logout(@Res({ passthrough: true }) res: any) {
     // TODO: Implement
+     return this.authService.logout(req.user.sub, token);
   }
 
   // TODO: Implement POST /auth/refresh

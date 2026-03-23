@@ -71,6 +71,13 @@ export class User {
   @Column()
   subsidiary_id: string;
 
+  @Column("json", {nullable: true})
+  sessions?: {
+    refreshToken: string;
+    userAgent: string;
+    ip: string;
+  }[];
+
   // ---- RELATIONSHIPS ----
   @ManyToOne(() => Subsidiary, (subsidiary) => subsidiary.users)
   @JoinColumn({ name: "subsidiary_id" })
