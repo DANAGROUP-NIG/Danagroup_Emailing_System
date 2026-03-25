@@ -1,3 +1,9 @@
+import { Announcement } from "@modules/announcements/entities/announcement.entity";
+import { Department } from "@modules/departments/entities/department.entity";
+import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
+import { MessageRecipient } from "@modules/mail/entities/message-recipient.entity";
+import { Message } from "@modules/mail/entities/message.entity";
+import { Notification } from "@modules/notifications/entities/notification.entity";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,6 +12,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 
 export type UserRole =
@@ -19,16 +26,16 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ unique: true })
+  @Column({length: 100, unique: true})
   email: string;
 
-  @Column()
+  @Column({length: 255, select: false})
   passwordHash: string;
 
-  @Column()
+  @Column({length: 100})
   firstName: string;
 
-  @Column()
+  @Column({length: 100})
   lastName: string;
 
   @Column({
@@ -38,17 +45,11 @@ export class User {
   })
   role: UserRole;
 
-  @Column({ nullable: true })
+  @Column({length: 150 })
   jobTitle: string;
 
-  @Column({ nullable: true })
+  @Column({length:255})
   avatarUrl: string;
-
-  @Column({ nullable: true })
-  departmentId: string;
-
-  @Column({ nullable: true })
-  subsidiaryId: string;
 
   @Column({ default: true })
   isActive: boolean;
@@ -56,9 +57,49 @@ export class User {
   @Column({ nullable: true, type: "timestamptz" })
   lastLoginAt: Date;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz" })
+  @UpdateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
-}
+
+  
+  //Expose the ID directly as a string for easier filtering/saving
+  @Column()
+  department_id: string;
+
+  @Column()
+  subsidiary_id: string;
+
+  @Column("json", {nullable: true})
+  sessions?: {
+    refreshToken: string;
+    userAgent: string;
+    ip: string;
+  }[];
+
+  // ---- RELATIONSHIPS ----
+  @ManyToOne(() => Subsidiary, (subsidiary) => subsidiary.users)
+  @JoinColumn({ name: "subsidiary_id" })
+  subsidiary: Subsidiary
+
+  @ManyToOne(() => Department, (department) => department.users)
+  @JoinColumn({ name: "department_id" })
+  department: Department
+
+  // 1. Messages this user SENT
+  @OneToMany(() => Message, (message) => message.sender)
+  sent_messages: Message[];
+
+  // 2. Messages this user RECEIVED (via the recipient table)
+  @OneToMany(() => MessageRecipient, (messageRecipient) => messageRecipient.recipient)
+  received_messages: MessageRecipient[];
+
+  // 3. Announcements this user AUTHORED
+  @OneToMany(() => Announcement, (announcement) => announcement.author)
+  announcements: Announcement[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+  } 
+

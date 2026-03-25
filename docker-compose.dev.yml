@@ -36,7 +36,7 @@ services:
 
   postgres:
     ports:
-      - "5432:5432"  # Expose for local DB tools (e.g. TablePlus, pgAdmin)
+      - "5433:5432"  # Expose for local DB tools without colliding with local Postgres
 
   redis:
     ports:
