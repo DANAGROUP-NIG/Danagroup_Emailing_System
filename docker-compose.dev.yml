@@ -1,0 +1,56 @@
+
+# Development override — mounts source code for hot-reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+
+  frontend:
+    build:
+      context: ./dims-frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./dims-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+      - NEXT_PUBLIC_WS_URL=ws://localhost:3001
+      - NEXT_PUBLIC_APP_NAME=DIMS (Dev)
+    ports:
+      - "3000:3000"
+
+  api:
+    build:
+      context: ./dims-backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./dims-backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    ports:
+      - "3001:3000"
+      - "9229:9229"  # Node.js debugger
+
+  postgres:
+    ports:
+      - "5432:5432"  # Expose for local DB tools (e.g. TablePlus, pgAdmin)
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  elasticsearch:
+    ports:
+      - "9200:9200"
+
+  nginx:
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro

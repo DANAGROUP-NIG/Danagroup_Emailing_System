@@ -1,0 +1,225 @@
+@import url("https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Design Tokens ─────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Brand */
+    --color-dana-blue: 46 52 143;       /* #2e348f */
+    --color-dana-red: 233 33 46;        /* #e9212e */
+
+    /* Backgrounds */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary (Dana Blue) */
+    --primary: 234 51% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Destructive (Dana Red) */
+    --destructive: 356 80% 53%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 14% 45%;
+
+    /* Accent */
+    --accent: 234 70% 96%;
+    --accent-foreground: 234 51% 35%;
+
+    /* Border / Input / Ring */
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 234 51% 55%;
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-bg: 234 51% 20%;
+    --sidebar-text: 0 0% 100%;
+    --sidebar-text-muted: 234 30% 72%;
+    --sidebar-active-bg: 234 51% 30%;
+    --sidebar-active-text: 0 0% 100%;
+    --sidebar-hover-bg: 234 51% 26%;
+    --sidebar-border: 234 40% 25%;
+    --sidebar-width: 240px;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 20% 96%;
+    --card: 222 47% 10%;
+    --card-foreground: 210 20% 96%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 234 51% 60%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 356 80% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 222 30% 16%;
+    --muted-foreground: 215 14% 65%;
+    --accent: 222 30% 18%;
+    --accent-foreground: 234 51% 70%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 234 51% 60%;
+    --sidebar-bg: 222 47% 6%;
+    --sidebar-text: 210 20% 92%;
+    --sidebar-text-muted: 234 20% 60%;
+    --sidebar-active-bg: 234 51% 22%;
+    --sidebar-hover-bg: 222 47% 12%;
+    --sidebar-border: 222 40% 14%;
+  }
+}
+
+/* ─── Base Reset & Typography ───────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-rubik antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-rubik font-semibold tracking-tight;
+  }
+
+  h1 { @apply text-3xl; }
+  h2 { @apply text-2xl; }
+  h3 { @apply text-xl; }
+  h4 { @apply text-lg; }
+  h5 { @apply text-base; }
+  h6 { @apply text-sm; }
+}
+
+/* ─── Component Utilities ───────────────────────────────────────────────────── */
+@layer components {
+
+  /* Dana Primary Button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           bg-dana-blue text-white font-medium text-sm px-4 py-2
+           transition-colors duration-150
+           hover:bg-dana-blue-600 focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-dana-blue focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Dana Danger/Red Button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           bg-dana-red text-white font-medium text-sm px-4 py-2
+           transition-colors duration-150
+           hover:bg-dana-red-600 focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-dana-red focus-visible:ring-offset-2
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           bg-transparent text-foreground font-medium text-sm px-4 py-2
+           transition-colors duration-150
+           hover:bg-accent hover:text-accent-foreground
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Outline Button */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-md
+           border border-border bg-background text-foreground
+           font-medium text-sm px-4 py-2
+           transition-colors duration-150
+           hover:bg-accent hover:text-accent-foreground
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+           disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* App Sidebar */
+  .dims-sidebar {
+    background-color: rgb(var(--color-dana-blue));
+    @apply h-screen flex flex-col text-white;
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+  }
+
+  /* Mail list item */
+  .mail-list-item {
+    @apply flex gap-3 px-4 py-3 border-b border-border cursor-pointer
+           transition-colors duration-100
+           hover:bg-accent;
+  }
+
+  .mail-list-item.unread {
+    @apply bg-dana-blue-50 font-medium;
+  }
+
+  .mail-list-item.selected {
+    @apply bg-dana-blue-100;
+  }
+
+  /* Badge */
+  .badge-unread {
+    @apply inline-flex items-center justify-center rounded-full
+           bg-dana-red text-white text-2xs font-semibold
+           min-w-[1.25rem] h-5 px-1.5;
+  }
+
+  /* Input base */
+  .dims-input {
+    @apply w-full rounded-md border border-input bg-background
+           px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground
+           focus-visible:outline-none focus-visible:ring-2
+           focus-visible:ring-dana-blue focus-visible:border-dana-blue
+           disabled:cursor-not-allowed disabled:opacity-50
+           transition-shadow duration-150;
+  }
+
+  /* Card */
+  .dims-card {
+    @apply rounded-lg border border-border bg-card text-card-foreground
+           shadow-dana-sm;
+  }
+}
+
+/* ─── Scrollbar Styling ─────────────────────────────────────────────────────── */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-dana-blue) / 0.2) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--color-dana-blue) / 0.25);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-dana-blue) / 0.4);
+  }
+}
