@@ -65,6 +65,7 @@ export default function LoginPage() {
       rememberMe: typeof window !== 'undefined' ? !!localStorage.getItem('rememberedEmail') : false,
     },
     resolver: zodResolver(loginSchema), // 3. Connect Zod to Hook Form
+    shouldUnregister: false, 
   });
 
   const onSubmit = async (data: LoginSchema) => {
@@ -80,7 +81,7 @@ export default function LoginPage() {
         }else{
           localStorage.removeItem("rememberedEmail");
         }
-        router.push("/mail/inbox")
+         setTimeout(() => router.push("/mail/inbox"), 100);
       }
     } catch (error) {
       
@@ -117,6 +118,8 @@ export default function LoginPage() {
         {/* form */}
         <div className="shadow-md h-[85%] w-[70%] z-20 bg-white flex flex-col px-16 justify-center rounded">
           <form 
+          autoComplete="on"
+          method="POST"
           onSubmit={handleSubmit(onSubmit)}
           >
             <div className="flex flex-col gap-10">
@@ -126,11 +129,28 @@ export default function LoginPage() {
               </div>
 
               <div className=" flex flex-col gap-4 ">
-                <Input name="email" autoComplete="email" register={register("email")}  title="Your Email" placeholder="Enter your email" type="email"/>
+                <Input name="email" autoComplete="username" register={register("email")}  title="Your Email" placeholder="Enter your email" type="email"/>
                 {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
-                <div className=" relative">
-                  <Input name="password" autoComplete="current-password" register={register("password")} title="Password" placeholder="Enter your password" type={showPassword ? "text" : "password"}/>
+               
+                <div className="relative">
+                   {/* The REAL password input (Always type="password" for the browser) */}
+                  <div >
+                   <Input name="password" autoComplete="current-password" register={register("password")} title="Password" placeholder="Enter your password" type="password"/>
+                  </div>
+
+                  {/* The VISIBLE text input (Only for the user to see the characters) */}
+                  <div >
+                    <Input 
+                    name="password-visible"
+                      title="Password"
+                      placeholder="Enter your password"
+                      type={showPassword ? "text" : "password"}
+                      // We use the same register so the value stays synced
+                      register={register("password")} 
+                    />
+                  </div>
+
                   <button type="button" className="absolute top-0 pt-6 right-2 flex items-center h-[62px]"
                   onClick={() => setShowPassword(!showPassword)}
                   >
@@ -145,7 +165,7 @@ export default function LoginPage() {
 
                 <div>
                   <label className="flex items-center gap-[3px] text-gray-600 cursor-pointer">
-                    <input {...register("rememberMe")} className="border-gray-300 accent-dana-blue-600 w-[10px] h-[10px] cursor-pointer" type="checkbox" name="grocery-item" />
+                    <input {...register("rememberMe")} className="border-gray-300 accent-dana-blue-600 w-[10px] h-[10px] cursor-pointer" type="checkbox" />
                     Remember Me
                   </label>
                 </div>
