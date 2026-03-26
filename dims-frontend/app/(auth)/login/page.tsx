@@ -17,6 +17,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import Toast from "@/components/ui/Toast";
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from "react";
+
+import bg from "@/assets/Modern office with sleek lighting.jpg"
+import logoBg from "@/assets/Elegantly designed envelope with gradient swoosh.jpg"
+
 
 
 // export default function LoginPage() {
@@ -32,14 +38,17 @@ const loginSchema = z.object({
   .max(100)
   .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[0-9]/, "Password must contain at least one number"),
   // .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  rememberMe: z.boolean().optional(),
 })
 
 type LoginSchema = z.infer<typeof loginSchema>;
 
 
 export default function LoginPage() {
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const {login} = useAuthStore();;
 
@@ -50,6 +59,11 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginSchema>({
+    defaultValues:{
+      // Look for saved email, otherwise empty string
+      email: typeof window !== 'undefined' ? localStorage.getItem('rememberedEmail') || '' : '',
+      rememberMe: typeof window !== 'undefined' ? !!localStorage.getItem('rememberedEmail') : false,
+    },
     resolver: zodResolver(loginSchema), // 3. Connect Zod to Hook Form
   });
 
@@ -57,9 +71,17 @@ export default function LoginPage() {
     console.log("Form Data:", data);
     // Here you would call your Zustand 'login' or 'register' function
     try {
-      await login(data);
-      
-      router.push("/mail/inbox")
+      const success = await login(data);
+
+      if (success) {
+
+        if(data.rememberMe) {
+          localStorage.setItem("rememberedEmail", data.email);
+        }else{
+          localStorage.removeItem("rememberedEmail");
+        }
+        router.push("/mail/inbox")
+      }
     } catch (error) {
       
     }
@@ -73,8 +95,19 @@ export default function LoginPage() {
       <Toast />
       {/* Image */}
       <div className="h-screen w-full relative">
+        <Image  alt="background" src={bg} className="absolute object-cover h-full"/>
         {/* Logo */}
-        <Image src={Logo} alt="Logo" className="mt-4 ml-4 object-contain absolute w-32"/>
+        <div className=" z-20 absolute top-2 left-2">
+          <div className="relative max-h-16">
+
+            <Image src={logoBg} alt="logo-bg" className="w-24 object-cover"/>
+
+            <div className="absolute top-[4vh] left-[0.5vw] ]">
+              <div> <Image src={Logo} alt="Logo" className="object-contain  w-20"/> </div>
+            </div>
+          </div>
+          
+        </div>
       </div>
 
       
@@ -82,7 +115,7 @@ export default function LoginPage() {
       <div className="shadow-xl h-screen w-full flex justify-center items-center relative ">
         
         {/* form */}
-        <div className="shadow-md h-[80%] w-[70%] z-20 bg-white flex flex-col px-16 py-20 rounded">
+        <div className="shadow-md h-[85%] w-[70%] z-20 bg-white flex flex-col px-16 justify-center rounded">
           <form 
           onSubmit={handleSubmit(onSubmit)}
           >
@@ -93,11 +126,18 @@ export default function LoginPage() {
               </div>
 
               <div className=" flex flex-col gap-4 ">
-                <Input register={register("email")}  title="Your Email" placeholder="Enter your email"/>
+                <Input name="email" autoComplete="email" register={register("email")}  title="Your Email" placeholder="Enter your email" type="email"/>
                 {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
-                <Input register={register("password")} title="Password" placeholder="Enter your password"/>
-                {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+                <div className=" relative">
+                  <Input name="password" autoComplete="current-password" register={register("password")} title="Password" placeholder="Enter your password" type={showPassword ? "text" : "password"}/>
+                  <button type="button" className="absolute top-0 pt-6 right-2 flex items-center h-[62px]"
+                  onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff size={14} color="gray"/> : <Eye size={14} color="gray"/>}
+                  </button>
+                  {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
+                </div>
 
               </div>
               
@@ -105,7 +145,7 @@ export default function LoginPage() {
 
                 <div>
                   <label className="flex items-center gap-[3px] text-gray-600 cursor-pointer">
-                    <input className="border-gray-300 accent-dana-blue-600 w-[10px] h-[10px] cursor-pointer" type="checkbox" name="grocery-item" />
+                    <input {...register("rememberMe")} className="border-gray-300 accent-dana-blue-600 w-[10px] h-[10px] cursor-pointer" type="checkbox" name="grocery-item" />
                     Remember Me
                   </label>
                 </div>
