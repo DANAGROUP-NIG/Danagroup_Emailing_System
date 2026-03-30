@@ -1,7 +1,16 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { ILike, Repository } from "typeorm";
 import { User } from "./entities/user.entity";
+
+
+interface FindAllParams {
+  page?: number;
+  limit?: number;
+  email?: string;
+  role?: string;
+  is_active?: boolean;
+}
 
 @Injectable()
 export class UsersService {
@@ -11,10 +20,97 @@ export class UsersService {
   ) {}
 
   // TODO: Implement findAll(filters): paginated list of users
+  async findAll(params: FindAllParams) {
+    const {
+      page = 1,
+      limit = 10,
+      email,
+      role,
+      is_active,
+    } = params
+
+    const where: any = {};
+
+    if (email) where.email = ILike(`%${email}%`);
+    if (role) where.role = role;
+    if(is_active) where.is_active = is_active;
+
+    const [data, total] = await this.userRepo.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: "DESC"},
+    });
+
+    return {
+      data,
+      total,
+      page,
+      lastpage: Math.ceil(total/limit),
+    }
+
+  }
   // TODO: Implement findById(id): User
+  async findById(id: string): Promise<User> {
+    const user = await this.userRepo.findOne({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
+  }
+
   // TODO: Implement findByEmail(email): User | null (used by AuthService)
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepo.findOne({
+      where: { email },
+      select: [
+        "id",
+        "email",
+        "passwordHash",
+        "role",
+        "isActive",
+        "firstName",
+        "lastName",
+      ]
+    });
+  }
   // TODO: Implement search(query): User[] (for RecipientInput autocomplete)
+  async search(query: string): Promise<User[]> {
+    if (!query) return [];
+
+    return this.userRepo
+    .createQueryBuilder("user")
+    .where("user.email ILIKE :query", { query: `%${query}%` })
+    .orWhere("user.firstName ILIKE :query", { query: `%${query}%` })
+    .orWhere("user.lastName ILIKE :query", { query: `%${query}%` })
+    .orWhere(
+      "CONCAT(user.firstName, ' ', user.lastName) ILIKE :query",
+      { query: `%${query}%` }
+    )
+    .limit(10)
+    .getMany();
+  }
   // TODO: Implement create(dto): User (admin only)
+  async create(dto: Partial<User>): Promise<User> {
+    const user = this.userRepo.create(dto);
+    return this.userRepo.save(user);
+  }
   // TODO: Implement update(id, dto): User (admin or self)
+  async update(id: string, dto: Partial<User>): Promise<User> {
+    const user = await this.findById(id);
+
+    Object.assign(user, dto);
+    return this.userRepo.save(user);
+  }
   // TODO: Implement deactivate(id): void (admin only, sets is_active = false)
+  async deactivate(id: string): Promise<void> {
+    const user = await this.findById(id);
+
+    user.isActive = false;
+    await this.userRepo.save(user);
+  }
 }

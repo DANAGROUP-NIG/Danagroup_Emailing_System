@@ -1,8 +1,11 @@
+import { User } from "@modules/users/entities/user.entity";
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 
 export type NotificationType = "new_mail" | "announcement" | "system";
@@ -11,9 +14,6 @@ export type NotificationType = "new_mail" | "announcement" | "system";
 export class Notification {
   @PrimaryGeneratedColumn("uuid")
   id: string;
-
-  @Column()
-  userId: string;
 
   @Column({
     type: "enum",
@@ -29,11 +29,20 @@ export class Notification {
   body: string;
 
   @Column({ default: false })
-  isRead: boolean;
+  is_read: boolean;
 
-  @Column({ nullable: true })
-  referenceId: string;
+  @Column({ nullable: true, type: "uuid" })
+  reference_id: string;
 
   @CreateDateColumn({ type: "timestamptz" })
   createdAt: Date;
+
+  // ---- RELATIONSHIPS ----
+  @ManyToOne(() => User, (user) => user.notifications)
+  @JoinColumn({ name: "user_id" })
+  user: User;
+
+  @Column({ type: "uuid" })
+  user_id: string;
+
 }

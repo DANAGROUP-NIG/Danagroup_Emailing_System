@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from "typeorm";
 import { Message } from "./message.entity";
+import { User } from "@modules/users/entities/user.entity";
 
 export type RecipientType = "to" | "cc" | "bcc";
 
@@ -15,34 +16,41 @@ export class MessageRecipient {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column()
-  messageId: string;
-
-  @ManyToOne(() => Message)
-  @JoinColumn({ name: "messageId" })
-  message: Message;
-
-  @Column()
-  recipientId: string;
-
   @Column({ type: "enum", enum: ["to", "cc", "bcc"], default: "to" })
   type: RecipientType;
 
   @Column({ default: false })
-  isRead: boolean;
+  is_read: boolean;
 
   @Column({ default: false })
-  isStarred: boolean;
+  is_starred: boolean;
 
   @Column({ default: false })
-  isDeleted: boolean;
+  is_deleted: boolean;
 
   @Column({ default: false })
-  isArchived: boolean;
+  is_archived: boolean;
 
   @Column({ nullable: true, type: "timestamptz" })
-  readAt: Date;
+  read_at: Date;
 
   @CreateDateColumn({ type: "timestamptz" })
-  createdAt: Date;
+  created_at: Date;
+
+  // --- RELATIONSHIPS ---
+  @ManyToOne(() => Message, (message) => message.recipients, { onDelete: "CASCADE"})
+  @JoinColumn({ name: "message_id" })
+  message: Message;
+ 
+  @Column({ type: "uuid"})
+  message_id: string;
+
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "recipient_id" })
+  recipient: User
+
+  @Column()
+  recipient_id: string;
+
 }
