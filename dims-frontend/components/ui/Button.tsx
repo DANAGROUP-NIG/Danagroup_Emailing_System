@@ -12,12 +12,13 @@ interface btnProp {
   btnStyle: string;
   type?: "submit" | "button" | "reset"; 
   onClick?: () => void;
+  onMouseDown?: () => void;
   disabled?: boolean;
 }
-export default function Button({label, btnStyle, type, onClick, disabled}: btnProp) {
+export default function Button({label, btnStyle, type, onClick, onMouseDown, disabled}: btnProp) {
   // TODO: Implement
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={btnStyle}>
+    <button type={type} onClick={onClick} onMouseDown={onMouseDown} disabled={disabled} className={btnStyle}>
       {disabled ? "Loading..." : label }
     </button>
   )

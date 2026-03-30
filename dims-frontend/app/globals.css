@@ -222,4 +222,10 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgb(var(--color-dana-blue) / 0.4);
   }
+
+  /* This hides the "dots" in a password field */
+  .reveal-password {
+    -webkit-text-security: none !important;
+    text-security: none !important;
+  }
 }
