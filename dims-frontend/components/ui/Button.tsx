@@ -7,8 +7,18 @@
 // - Danger: dana-red background, white text
 // - Outline: transparent bg, dana-blue border + text
 // - Ghost: transparent bg, no border
-
-export default function Button() {
+interface btnProp {
+  label: string;
+  btnStyle: string;
+  type?: "submit" | "button" | "reset"; 
+  onClick?: () => void;
+  disabled?: boolean;
+}
+export default function Button({label, btnStyle, type, onClick, disabled}: btnProp) {
   // TODO: Implement
-  return null;
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} className={btnStyle}>
+      {disabled ? "Loading..." : label }
+    </button>
+  )
 }

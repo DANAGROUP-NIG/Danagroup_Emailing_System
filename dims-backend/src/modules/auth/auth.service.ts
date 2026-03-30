@@ -6,7 +6,33 @@ import * as bcrypt from "bcrypt";
 
 import { UsersService } from "../users/users.service";
 import Redis from "ioredis";
+import { UserRole } from "@modules/users/entities/user.entity";
+import { Department } from "@modules/departments/entities/department.entity";
+import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 
+export interface UserShape {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  jobTitle?: string;
+  avatarUrl?: string;
+  departmentId?: string;
+  department?: Department;
+  subsidiaryId?: string;
+  subsidiary?: Subsidiary;
+  isActive: boolean;
+  lastLoginAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  sessions?: {
+    refreshToken: string;
+    userAgent: string;
+    ip: string;
+  }[];
+  
+}
 @Injectable()
 export class AuthService {
   private redis: Redis;
@@ -67,8 +93,11 @@ export class AuthService {
   // - Sign JWT access token (payload: { sub: user.id, email, role })
   // - Sign refresh token with longer expiry (JWT_REFRESH_SECRET)
   // - Return both tokens + user object
-  async login(user: any, userAgent?: string, ip?: string) {
-    const tokens = await this.generateTokens(user);
+  async login(user: UserShape, userAgent?: string, ip?: string) {
+    //Fetch the complete user from the database to get all missing fields
+    const fullUser = await this.usersService.findById(user.id);
+
+    const tokens = await this.generateTokens(fullUser);
 
     //hash refreshToken before storing
     const hashedRefresh = await bcrypt.hash(tokens.refreshToken, 12);
@@ -86,7 +115,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user
+      user: fullUser
     };
   }
 

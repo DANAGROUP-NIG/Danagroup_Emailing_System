@@ -9,27 +9,134 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { User } from "@/types/user.types";
+import type { LoginProps, User } from "@/types/user.types";
+import api from "@/lib/api";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  checkingAuth: boolean;
   setUser: (user: User) => void;
   clearUser: () => void;
   setLoading: (loading: boolean) => void;
+  login: (data: LoginProps) => Promise<boolean>;
+  checkAuth: () => Promise<void>;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<void>;
+  errors: Record<string, string>;
+
 }
+
+// export const useAuthStore = create<AuthState>()(
+//   persist(
+//     (set) => ({
+//       user: null,
+//       isAuthenticated: false,
+//       isLoading: false,
+//       setUser: (user) => set({ user, isAuthenticated: true }),
+//       clearUser: () => set({ user: null, isAuthenticated: false }),
+//       setLoading: (isLoading) => set({ isLoading }),
+//     }),
+//     { name: "dims-auth" }
+//   )
+// );
+
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      setUser: (user) => set({ user, isAuthenticated: true }),
-      clearUser: () => set({ user: null, isAuthenticated: false }),
+      errors: {},
+      checkingAuth: false,
+  
+
+      login: async ({email, password}: LoginProps) => {
+        set({ isLoading: true});
+
+        try {
+          const response = await api.post("/auth/login", {email, password});
+          const { user, accessToken, refreshToken } = response.data;
+
+          set({
+            user: {...user, accessToken, refreshToken},
+            isAuthenticated: true,
+            isLoading: false
+          });
+          get().checkAuth();
+
+          toast.success("Login successful", {position: "top-right"});
+
+          console.log(response.data);
+          return true;
+
+          
+        } catch (error) {
+          set({isLoading: false})
+
+          if (axios.isAxiosError(error)) {
+            const message = (error.response?.data as { message?: string})?.message || "Invalid email or password";
+            toast.error(message, {position: "top-right"})
+          } else if (error instanceof Error) {
+            toast.error(error.message, {position: "top-right"});
+          } else {
+            toast.error("An unexpected error occurred.", {position: "top-right"});
+          }
+          
+          return false;
+        }
+      },
+
+      logout: async () => {
+      try {
+        await api.post("/auth/logout");
+        set({user: null});
+      } catch (error: any) {
+        toast.error(error.response?.data?.message, {position: "bottom-center"})
+      }
+    },
+
+    checkAuth: async () => {
+      set({checkingAuth: true})
+
+      try {
+        const res = await api.get("/auth/me", {
+          withCredentials: true,
+        });
+
+        set({user: res.data.data, checkingAuth:false});
+      } catch (error) {
+         set({checkingAuth: false, user: null});
+      }
+    },
+
+    refreshToken: async () => {
+      // Prevent multiple simultaneous refresh attempts
+      if (get().checkingAuth) return;
+
+      set({checkingAuth: true});
+
+      try {
+        const res = await api.post("auth/refresh", {}, {withCredentials: true});
+        set({ checkingAuth: false});
+        return res.data;
+      } catch (error) {
+        set({ user: null, checkingAuth: false});
+      }
+    },
+
+      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      clearUser: () => set({ user: null, isAuthenticated: false}),
       setLoading: (isLoading) => set({ isLoading }),
     }),
-    { name: "dims-auth" }
+    { 
+      name: "dims-auth",
+      // Optional: skips hydration during SSR to avoid mismatch errors
+      skipHydration: true, 
+    }
   )
 );

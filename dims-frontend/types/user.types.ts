@@ -32,4 +32,13 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  accessToken: string;
+  refreshToken: string;
+  
 }
+
+
+export type LoginProps = {
+    email: string;
+    password: string;
+};

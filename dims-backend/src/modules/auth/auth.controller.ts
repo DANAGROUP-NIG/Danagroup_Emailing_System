@@ -93,7 +93,9 @@ export class AuthController {
     });
 
     return new ApiResponseDto(true, "Login successful", {
-      user: result.user,
+        user: result.user,
+        accessToken: result.accessToken, // <--- ADD THIS so you can copy it to Swagger
+        refreshToken: result.refreshToken,
     });
 
     // return {
@@ -125,7 +127,7 @@ export class AuthController {
   ) {
     // TODO: Implement
     const accessToken = req.cookies?.access_token;
-    const refreshToken = req.cookies?.refresh_token;
+    const refreshToken = req.body.refreshToken || req.cookies?.refresh_token;
 
     await this.authService.logout(
       user.userId,
