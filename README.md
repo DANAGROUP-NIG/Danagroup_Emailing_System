@@ -135,8 +135,14 @@ npm run migration:run
 
 # Revert last migration
 npm run migration:revert
-```
 
+# Seed the database tables fist before the users table
+npm run seed:table
+
+#seed the users table
+npm run seed:test-user
+
+```
 ---
 
 ## Branch Strategy
