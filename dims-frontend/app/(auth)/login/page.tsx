@@ -12,7 +12,7 @@ import Image from "next/image";
 import Link from "next/link";
 import * as z from "zod";
 import Logo from "../login/logo.png"
-import { useForm } from 'react-hook-form';
+import { set, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
@@ -69,8 +69,8 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginSchema) => {
-    console.log("Form Data:", data);
-    // Here you would call your Zustand 'login' or 'register' function
+    // console.log("Form Data:", data);
+    // Call Zustand 'login' function
     try {
       const success = await login(data);
 
@@ -81,10 +81,10 @@ export default function LoginPage() {
         }else{
           localStorage.removeItem("rememberedEmail");
         }
-         setTimeout(() => router.push("/mail/inbox"), 100);
+         setTimeout(() => router.push("/mail/inbox"), 500);
       }
     } catch (error) {
-      
+      console.error("Login failed:", error);
     }
     
   };
@@ -129,29 +129,31 @@ export default function LoginPage() {
               </div>
 
               <div className=" flex flex-col gap-4 ">
-                <Input name="email" autoComplete="username" register={register("email")}  title="Your Email" placeholder="Enter your email" type="email"/>
+                <Input 
+                 register={register("email")}  
+                 name="email"
+                 label="Email address" 
+                 placeholder="Enter your email" 
+                 type="email"
+                 aria-hidden="true"
+                />
                 {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
                
                 <div className="relative">
-                   {/* The REAL password input (Always type="password" for the browser) */}
-                  <div >
-                   <Input name="password" autoComplete="current-password" register={register("password")} title="Password" placeholder="Enter your password" type="password"/>
-                  </div>
 
-                  {/* The VISIBLE text input (Only for the user to see the characters) */}
-                  <div >
-                    <Input 
-                    name="password-visible"
-                      title="Password"
-                      placeholder="Enter your password"
-                      type={showPassword ? "text" : "password"}
-                      // We use the same register so the value stays synced
-                      register={register("password")} 
-                    />
-                  </div>
+                  <Input 
+                    label="Password"
+                    placeholder="Enter your password"
+                    type={showPassword ? "text" : "password"}
+                    aria-hidden="true"
+                    // We use the same register so the value stays synced
+                    register={register("password")} 
+                    name="password"
+                  />
+                  
 
-                  <button type="button" className="absolute top-0 pt-6 right-2 flex items-center h-[62px]"
+                  <button type="button" className="absolute top-0 pt-6 right-2 flex items-center h-[62px] z-10"
                   onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff size={14} color="gray"/> : <Eye size={14} color="gray"/>}
@@ -174,7 +176,13 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <Button type="submit" label="Login"  disabled={isSubmitting} btnStyle="py-2 bg-black/95 w-full text-white rounded" />
+                <Button 
+                  type="submit" 
+                  label="Login"  
+                  disabled={isSubmitting} 
+                  btnStyle="py-2 bg-black/95 w-full text-white rounded" 
+                  onMouseDown={() => setShowPassword(false)} 
+                />
               </div>
             </div>
           </form>

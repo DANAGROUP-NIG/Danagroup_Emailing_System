@@ -38,6 +38,9 @@ export class Message {
   @Column({ nullable: true, type: "timestamptz" })
   sentAt: Date;
 
+  @Column({ nullable: true, type: "timestamptz" })
+  sender_deleted_at: Date;
+
   @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 

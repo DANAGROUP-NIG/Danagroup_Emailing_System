@@ -8,10 +8,18 @@ import { Message } from "./entities/message.entity";
 import { Thread } from "./entities/thread.entity";
 import { MessageRecipient } from "./entities/message-recipient.entity";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { User } from "../users/entities/user.entity";
+import { Attachment } from "../files/entities/attachment.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message, Thread, MessageRecipient]),
+    TypeOrmModule.forFeature([
+      Message,
+      Thread,
+      MessageRecipient,
+      User,
+      Attachment,
+    ]),
     BullModule.registerQueue({ name: "mail-delivery" }),
     NotificationsModule,
   ],

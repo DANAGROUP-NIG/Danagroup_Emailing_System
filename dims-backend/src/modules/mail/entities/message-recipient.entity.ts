@@ -29,6 +29,12 @@ export class MessageRecipient {
   is_deleted: boolean;
 
   @Column({ default: false })
+  is_permanently_deleted: boolean;
+
+  @Column({ nullable: true, type: "timestamptz" })
+  deleted_at: Date;
+
+  @Column({ default: false })
   is_archived: boolean;
 
   @Column({ nullable: true, type: "timestamptz" })
@@ -42,7 +48,7 @@ export class MessageRecipient {
   @JoinColumn({ name: "message_id" })
   message: Message;
  
-  @Column({ type: "uuid"})
+  @Column({ type: "uuid", name: "message_id" })
   message_id: string;
 
 
@@ -50,7 +56,7 @@ export class MessageRecipient {
   @JoinColumn({ name: "recipient_id" })
   recipient: User
 
-  @Column()
+  @Column({name: "recipient_id", type: "uuid"})
   recipient_id: string;
 
 }

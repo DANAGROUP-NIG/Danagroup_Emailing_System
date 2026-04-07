@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from "typeorm";
 import { Message } from "./message.entity";
 
@@ -15,6 +16,14 @@ export class Thread {
 
   @Column({length: 500})
   subject: string;
+
+  @Index() // important for inbox sorting
+  @Column({
+    name: "last_activity_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  lastActivityAt: Date;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;

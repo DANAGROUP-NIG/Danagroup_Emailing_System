@@ -1,49 +1,55 @@
 import {
-  IsString,
+  ApiPropertyOptional,
+} from "@nestjs/swagger";
+import {
+  ArrayUnique,
   IsArray,
-  IsUUID,
   IsOptional,
-  IsNotEmpty,
+  IsString,
+  IsUUID,
 } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-export class SendMailDto {
-  @ApiPropertyOptional({ description: "Thread ID for reply/forward" })
+export class SaveDraftDto {
+  @ApiPropertyOptional({ description: "Existing thread ID for replies" })
   @IsUUID()
   @IsOptional()
   threadId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: "Existing draft ID to update" })
   @IsUUID()
   @IsOptional()
   draftId?: string;
 
-  @ApiProperty({ type: [String] })
+  @ApiPropertyOptional({ type: [String] })
   @IsArray()
   @IsUUID("all", { each: true })
-  toIds: string[];
+  @ArrayUnique()
+  @IsOptional()
+  toIds?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
   @IsUUID("all", { each: true })
+  @ArrayUnique()
   @IsOptional()
   ccIds?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
   @IsUUID("all", { each: true })
+  @ArrayUnique()
   @IsOptional()
   bccIds?: string[];
 
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   subject?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
-  @IsNotEmpty()
-  body: string;
+  @IsOptional()
+  body?: string;
 
   @ApiPropertyOptional()
   @IsString()
@@ -53,6 +59,7 @@ export class SendMailDto {
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
   @IsUUID("all", { each: true })
+  @ArrayUnique()
   @IsOptional()
   attachmentIds?: string[];
 }
