@@ -2,7 +2,6 @@ import { User } from "@modules/users/entities/user.entity";
 import { Injectable, Logger } from "@nestjs/common";
 import { ElasticsearchService } from "@nestjs/elasticsearch";
 import { InjectRepository } from "@nestjs/typeorm";
-import { response } from "express";
 import { MessageSearchBody, UserSearchBody } from "src/types/types";
 import { Repository } from "typeorm";
 
@@ -232,7 +231,7 @@ export class SearchService {
       index: this.USER_INDEX,
       id: userId,
       refresh: 'wait_for', // Ensures the user is gone before the next search
-    }).catch(err => console.warn(`User ${userId} not found in ES for deletion`));
+    }).catch(() => console.warn(`User ${userId} not found in ES for deletion`));
   }
 
 
@@ -242,7 +241,7 @@ export class SearchService {
       index: this.MESSAGE_INDEX,
       id: messageId,
       refresh: 'wait_for',
-    }).catch(err => console.warn(`Message ${messageId} not found in ES`));
+    }).catch(() => console.warn(`Message ${messageId} not found in ES`));
   }
 
  

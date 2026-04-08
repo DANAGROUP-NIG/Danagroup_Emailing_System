@@ -18,7 +18,6 @@ import { Roles } from "@common/decorators/roles.decorator";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { QueryUserDto } from "./dto/query-user.dto";
-import { UsersSearchService } from "./users-search.service";
 import { SearchService } from "@modules/search/search.service";
 
 @ApiTags("users")

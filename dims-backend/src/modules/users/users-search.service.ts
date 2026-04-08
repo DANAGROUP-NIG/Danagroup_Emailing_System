@@ -1,7 +1,5 @@
 // src/users/users-search.service.ts
 import { Injectable } from '@nestjs/common';
-import { ElasticsearchService } from '@nestjs/elasticsearch';
-import { User } from './entities/user.entity';
 import { MailService } from '@modules/mail/mail.service';
 import { SearchService } from '@modules/search/search.service';
 
@@ -64,7 +62,7 @@ export class UsersSearchService {
             }));
             results.push(...mailResults);
         }
-        return { results, total };
+        return { results, total, page };
     }
 
     async remove(id: string) {

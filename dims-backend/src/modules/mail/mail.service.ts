@@ -334,7 +334,7 @@ export class MailService {
           await this.updateThreadSubject(manager, thread, dto.subject.trim());
         }
 
-        const recipientIds = [...new Set(recipients.map((recipient) => recipient.recipient_id))];
+        //const recipientIds = [...new Set(recipients.map((recipient) => recipient.recipient_id))];
         // if (process.env.NODE_ENV !== "test" && recipientIds.length) {
         //   await this.mailQueue.add("deliver", {
         //     messageId: savedMessage.id,

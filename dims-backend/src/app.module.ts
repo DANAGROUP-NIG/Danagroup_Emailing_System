@@ -21,10 +21,8 @@ import { HealthModule } from './health/health.module';
 import databaseConfig from "./config/database.config";
 import { TerminusModule } from "@nestjs/terminus";
 import { APP_GUARD } from "@nestjs/core";
-import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "@common/guards/roles.guards";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
-import Redis from "ioredis";
 
 @Module({
   imports: [

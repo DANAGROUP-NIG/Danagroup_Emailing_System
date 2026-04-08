@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
-import { User, UserRole } from "./entities/user.entity";
+import { User } from "./entities/user.entity";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -11,14 +11,6 @@ import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import * as bcrypt from 'bcrypt';
 
-
-interface FindAllParams {
-  page?: number;
-  limit?: number;
-  email?: string;
-  role?: string;
-  is_active?: boolean;
-}
 
 @Injectable()
 export class UsersService {
