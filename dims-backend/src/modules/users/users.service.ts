@@ -7,6 +7,9 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UsersSearchService } from "./users-search.service";
 import { SearchService } from "@modules/search/search.service";
+import { Department } from "@modules/departments/entities/department.entity";
+import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
+import * as bcrypt from 'bcrypt';
 
 
 interface FindAllParams {
@@ -22,6 +25,13 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+
+    @InjectRepository(Department)
+    private readonly departRepo: Repository<Department>,
+
+    @InjectRepository(Subsidiary)
+    private readonly subsidiaryRepo: Repository<Subsidiary>,
+
     private readonly searchUser: SearchService,
     private readonly usersSearch: UsersSearchService,
   ) {}
@@ -129,15 +139,41 @@ export class UsersService {
 
   // TODO: Implement create(dto): User (admin only)
   async create(dto: CreateUserDto) {
+     // Find the existing department and subsidiary by name
+    const department = await this.departRepo.findOneBy({ name: dto.department });
+    const subsidiary = await this.subsidiaryRepo.findOneBy({ name: dto.subsidiary });
+
+    if (!department || !subsidiary) {
+      throw new NotFoundException('Department or Subsidiary not found');
+    }
+
     try {
+
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(dto.password, salt);
+
+
       const newUser = this.userRepo.create({
         ...dto,
+        passwordHash: passwordHash,
         role: dto.role as any,
-        subsidiary: dto.subsidiary ? { id: dto.subsidiary } : undefined,
-        department: dto.department ? { id: dto.department } : undefined,
+        subsidiary: subsidiary,
+        department: department,
       });
       const saved = await this.userRepo.save(newUser);
-      await this.searchUser.indexUser(saved);
+
+      // We fetch a fresh copy of the user that includes the full 
+      // Department and Subsidiary objects (so we have the .name property)
+      const userWithNames = await this.userRepo.findOne({
+        where: { id: saved.id },
+        relations: ['department', 'subsidiary']
+      });
+
+      // send the version WITH names to Elasticsearch for better search results
+      if (userWithNames) {
+        await this.searchUser.indexUser(userWithNames);
+      }
+
       return saved;
       
     } catch (error) {
@@ -167,8 +203,16 @@ export class UsersService {
     try {
       const user = await this.findById(id);
 
+      if (!user) throw new NotFoundException('User not found');
       user.isActive = false;
-      await this.userRepo.save(user);
+
+      const updatedUser = await this.userRepo.save(user);
+      await this.searchUser.deleteUser(id);
+      
+      // SYNC TO ES: This updates the 'isActive' flag in the search index
+      await this.searchUser.indexUser(updatedUser);
+
+      console.log(`User ${user.firstName} ${user.lastName} deactivated successfully`);
     } catch (error) {
       this.handleError("deactivate", error);
     }

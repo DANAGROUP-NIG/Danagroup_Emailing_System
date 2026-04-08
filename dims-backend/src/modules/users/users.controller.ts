@@ -47,14 +47,17 @@ export class UsersController {
   @ApiOperation({ summary: "Search users by name or email" })
   async search(@Query() queryDto: QueryUserDto) {
     // TODO: Implement
-    const searchTerm = queryDto.search || ''; 
 
-    console.log('Search query received:', searchTerm);
-    return this.searchService.searchUsers(searchTerm, queryDto.limit, {
-      department: queryDto.department,
-      subsidiary: queryDto.subsidiary,
-      role: queryDto.role,
-    });
+    console.log('Search query received:', queryDto);
+    return await this.searchService.searchUsers(
+      queryDto.search || '',
+      queryDto.limit, 
+      {
+        department: queryDto.department,
+        subsidiary: queryDto.subsidiary,
+        role: queryDto.role,
+      }
+    );
   }
 
   // TODO: Implement GET /users/:id — get user by ID
@@ -67,7 +70,7 @@ export class UsersController {
 
   // TODO: Implement POST /users — create new user (admin only)
   @Post()
-  @Roles("admin")
+  @Roles("group_admin")
   @ApiOperation({ summary: "Create a new user (admin only)" })
   async create(@Body() body: CreateUserDto) {
     // TODO: Implement
@@ -76,7 +79,7 @@ export class UsersController {
 
   // TODO: Implement PATCH /users/:id — update user (admin or self)
   @Patch(":id")
-  @Roles("admin")
+  @Roles("group_admin")
   @ApiOperation({ summary: "Update user profile" })
   async update(@Param("id") id: string, @Body() body: UpdateUserDto) {
     // TODO: Implement

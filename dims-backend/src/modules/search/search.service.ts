@@ -32,63 +32,142 @@ export class SearchService {
     this.logger.log('Elasticsearch is ready and synced.');
   }
 
+  // private async ensureIndexExists(index: string) {
+  //   const exists = await this.es.indices.exists({ index });
+  //   if (!exists) {
+  //     await this.es.indices.create({ index });
+  //     this.logger.log(`Created missing index: ${index}`);
+  //   }
+  // }
+
   private async ensureIndexExists(index: string) {
     const exists = await this.es.indices.exists({ index });
     if (!exists) {
-      await this.es.indices.create({ index });
-      this.logger.log(`Created missing index: ${index}`);
+      await this.es.indices.create({
+        index,
+        body: {
+          settings: {
+            analysis: {
+              // 1. Define a filter that turns underscores into spaces
+              char_filter: {
+                underscore_filter: {
+                  type: 'mapping',
+                  mappings: ['_ => \\u0020'], 
+                },
+              },
+              analyzer: {
+                // 2. Use the filter in your autocomplete (for names)
+                autocomplete_analyzer: {
+                  type: 'custom',
+                  char_filter: ['underscore_filter'],
+                  tokenizer: 'autocomplete_tokenizer',
+                  filter: ['lowercase'],
+                },
+                // 3. Create a clean analyzer for roles/departments
+                text_cleaner: {
+                  type: 'custom',
+                  char_filter: ['underscore_filter'],
+                  tokenizer: 'standard',
+                  filter: ['lowercase'],
+                },
+              },
+              tokenizer: {
+                autocomplete_tokenizer: {
+                  type: 'edge_ngram',
+                  min_gram: 1,
+                  max_gram: 20,
+                  token_chars: ['letter', 'digit'],
+                },
+              },
+            },
+          },
+          mappings: {
+            properties: {
+              firstName: { 
+                type: 'text', 
+                analyzer: 'autocomplete_analyzer', 
+                search_analyzer: 'standard' 
+              },
+              lastName: { 
+                type: 'text', 
+                analyzer: 'autocomplete_analyzer', 
+                search_analyzer: 'standard' 
+              },
+              email: { type: 'keyword' },
+              // 4. Assign the 'text_cleaner' to these fields
+              role: { type: 'text', analyzer: 'text_cleaner' },
+              department: { type: 'text', analyzer: 'text_cleaner' },
+              subsidiary: { type: 'text', analyzer: 'text_cleaner' },
+            },
+          },
+        },
+      });
+      this.logger.log(`Created index with Autocomplete and Role-Mapping: ${index}`);
     }
   }
 
+
+
   async syncUsersToIndex() {
-    const users = await this.userRepo.find();
-    if (users.length === 0) return;
+  // 1. Fetch users WITH their department and subsidiary objects
+  const users = await this.userRepo.find({
+    relations: ['department', 'subsidiary']
+  });
+  
+  if (users.length === 0) return;
 
-    // Use bulk indexing for better performance for many users
-    const operations = users.flatMap(user => [
-      { index: { _index: this.USER_INDEX, _id: user.id } },
-      {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        department: user.department_id,
-        subsidiary: user.subsidiary_id
-      }
-    ]);
+  const operations = users.flatMap(user => [
+    { index: { _index: this.USER_INDEX, _id: user.id } },
+    {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      // 2. Store the actual names (e.g. "Finance") instead of the IDs
+      // Use optional chaining because these might be null in the DB
+      department: user.department?.name || null, 
+      subsidiary: user.subsidiary?.name || null,
+      department_id: user.department_id, // Keep IDs too, just in case
+      subsidiary_id: user.subsidiary_id
+    }
+  ]);
 
-    await this.es.bulk({ refresh: true, operations });
-  }
+  await this.es.bulk({ refresh: true, operations });
+}
 
   // Low-level ES User Search
   async searchUsers(
     query: string, 
-    limit = 10, 
-    filters?: { department?: string; subsidiary?: string; role?: string }
+  limit = 10, 
+  filters?: { department?: string; subsidiary?: string; role?: string }
   ) {
+    // If query is empty, we want to see ALL users that match the filters
+    const mustQuery = query
+      ? {
+          multi_match: {
+            query,
+            fields: ['firstName^3', 'lastName^3', 'email'],
+            type: "bool_prefix" as const, // Allows partial word matches for autocomplete
+            operator: 'and' as const,
+            fuzziness: 'AUTO' as const,
+          },
+        }
+      : { match_all: {} }; // Return everything if no text is typed
+
     try {
       const response = await this.es.search<UserSearchBody>({
-        index: this.USER_INDEX, // Make sure this is 'dims-users'
+        index: this.USER_INDEX,
         size: limit,
-        // 'body' is no longer required in modern ES clients; 
-        // 'query' goes directly in the request object.
         query: {
           bool: {
-            must: [
-              {
-                multi_match: {
-                  query,
-                  fields: ['firstName^3', 'lastName^3', 'email'],
-                  fuzziness: 'AUTO',
-                },
-              },
-            ],
+            must: [mustQuery], // Use our 'smart' query
             filter: [
               { term: { isActive: true } },
-              ...(filters?.department ? [{ term: { 'department': filters.department } }] : []),
-              ...(filters?.subsidiary ? [{ term: { 'subsidiary': filters.subsidiary } }] : []),
-              ...(filters?.role ? [{ term: { 'role': filters.role } }] : []),
+              // 2. Use 'match' for text filters to ignore case sensitivity
+              ...(filters?.department ? [{ match: { department: filters.department } }] : []),
+              ...(filters?.subsidiary ? [{ match: { subsidiary: filters.subsidiary } }] : []),
+              ...(filters?.role ? [{ match: { role: filters.role } }] : []),
             ],
           },
         },
@@ -133,8 +212,12 @@ export class SearchService {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        department: user.department?.name,
-        subsidiary: user.subsidiary?.name,
+        department: user.department?.name || null,
+        subsidiary: user.subsidiary?.name || null,
+
+        // Store the IDs for filtering/exact matches
+        department_id: user.department_id || user.department?.id,
+        subsidiary_id: user.subsidiary_id || user.subsidiary?.id,
         role: user.role,
         isActive: user.isActive,
         avatarUrl: user.avatarUrl,

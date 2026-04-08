@@ -16,6 +16,8 @@ export interface UserSearchBody {
   role: string;
   department?: string;
   subsidiary?: string;
+  department_id?: string;
+  subsidiary_id?: string;
   isActive: boolean;
   avatarUrl: string;
   createdAt: Date;
