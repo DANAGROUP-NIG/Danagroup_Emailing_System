@@ -7,7 +7,20 @@
 // - Bulk action toolbar: Mark as read, Delete, Archive (appears on selection)
 // - Filter tabs: All, Unread, Starred (for inbox mode)
 
-export default function MailList() {
+import { MailFolder } from "@/types/mail.types";
+import { Suspense } from "react";
+
+export default function MailList(viewMode: MailFolder , searchParams: { page?: number; filter?: string }) {
   // TODO: Implement
-  return null;
+  return (
+    <div className="flex flex-col h-full">
+      <Suspense fallback={<MailListSkeleton />}>
+        <MailListClient 
+          viewMode={viewMode} 
+          currentPage={searchParams.page || 1}
+          filter={searchParams.filter || 'all'}
+        />
+      </Suspense>
+    </div>
+  );
 }

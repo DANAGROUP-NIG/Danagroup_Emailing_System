@@ -8,5 +8,9 @@
 
 export default function TopBar() {
   // TODO: Implement
-  return null;
+  return (
+    <nav>
+      <div className="bg-dana-red-600 h-12"> Top Bar</div>
+    </nav>
+  );
 }

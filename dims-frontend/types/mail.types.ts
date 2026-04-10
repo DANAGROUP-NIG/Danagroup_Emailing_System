@@ -77,3 +77,8 @@ export interface Announcement {
   publishedAt?: string;
   createdAt: string;
 }
+
+
+export type MailFolder = 'inbox' | 'sent' | 'drafts' | 'starred' | 'spam' | 'trash' | 'all';
+
+export type MailLabel = 'important' | 'work' | 'personal';
