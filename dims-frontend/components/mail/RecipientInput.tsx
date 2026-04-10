@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce"; // Assume standard debounce hook
-import { Avatar } from "@/components/ui/Avatar";
+import Avatar from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
+import { User } from "@/types/user.types";
 
 // TODO: Implement RecipientInput Component
 // Props: value: User[], onChange: (users: User[]) => void, placeholder?: string
@@ -15,12 +16,6 @@ import { cn } from "@/lib/utils";
 // - Supports keyboard navigation (arrow keys, Enter to select, Backspace to remove)
 // - Validates that all recipients are @*.internal domain users
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
 
 interface RecipientInputProps {
   value: User[];
@@ -89,7 +84,7 @@ export default function RecipientInput({ value, onChange, placeholder }: Recipie
           key={user.id}
           className="flex items-center gap-1 bg-dana-blue/10 text-dana-blue text-xs font-medium px-2 py-1 rounded-full border border-dana-blue/20"
         >
-          {user.name}
+          {user.firstName} {user.lastName}
           <button onClick={() => removeRecipient(user.id)} className="hover:text-dana-blue-dark">
             <X className="h-3 w-3" />
           </button>
@@ -118,9 +113,9 @@ export default function RecipientInput({ value, onChange, placeholder }: Recipie
                 index === selectedIndex ? "bg-slate-50" : "hover:bg-slate-50"
               )}
             >
-              <Avatar src={user.avatarUrl} name={user.name} size="sm" />
+              <Avatar src={user.avatarUrl} name={user.firstName} size="sm" />
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium truncate">{user.name}</span>
+                <span className="text-sm font-medium truncate">{user.firstName} {user.lastName}</span>
                 <span className="text-xs text-muted-foreground truncate">{user.email}</span>
               </div>
             </div>

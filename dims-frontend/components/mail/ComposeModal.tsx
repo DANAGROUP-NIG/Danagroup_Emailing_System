@@ -7,6 +7,7 @@ import RecipientInput from "./RecipientInput";
 import AttachmentUploader from "./AttachmentUploader";
 import AttachmentList from "./AttachmentList";
 import Button from "../ui/Button";
+import { User } from "@/types/user.types";
 
 // TODO: Implement ComposeModal Component
 // - Floating compose modal (Gmail-style, bottom-right)
@@ -19,15 +20,20 @@ import Button from "../ui/Button";
 // - Reply mode: pre-fills threadId, recipient, subject with "Re:"
 // - Forward mode: pre-fills subject with "Fwd:", body with original message
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
+interface ComposeModalProps {
+  inline?: boolean;
+  mode?: "compose" | "reply" | "forward";
+  threadId?: string;
+  parentMessage?: any;
 }
 
-
-export default function ComposeModal({ inline = false }: { inline?: boolean }) {
+export default function ComposeModal({ 
+  inline = false, 
+  mode = "compose", 
+  threadId, 
+  parentMessage 
+  }: ComposeModalProps
+) {
   const { isComposeOpen, composeDefaults, closeCompose } = useMailStore();
   
   const [to, setTo] = useState<User[]>([]);
@@ -41,12 +47,20 @@ export default function ComposeModal({ inline = false }: { inline?: boolean }) {
 
   // Handle Reply/Forward Mode Pre-fills
   useEffect(() => {
-    if (composeDefaults) {
-      if (composeDefaults.to) setTo([composeDefaults.to]);
+    // 1. If we are in "inline reply" mode (passed via props)
+    if (mode === "reply" && parentMessage) {
+      setTo([parentMessage.sender]);
+      setSubject(`Re: ${parentMessage.subject}`);
+    } 
+    // 2. If we are using the "floating compose" (passed via store)
+    else if (composeDefaults) {
+      if (composeDefaults.to) {
+        setTo(Array.isArray(composeDefaults.to) ? composeDefaults.to : [composeDefaults.to]);
+      }
       setSubject(composeDefaults.subject || "");
-      setBody(composeDefaults.body || "");
+      setBody(composeDefaults.bodyHtml || composeDefaults.body || "");
     }
-  }, [composeDefaults]);
+  }, [composeDefaults, mode, parentMessage]);
 
   const handleSend = async () => {
     setIsSending(true);
@@ -131,21 +145,21 @@ export default function ComposeModal({ inline = false }: { inline?: boolean }) {
           onChange={(e) => setBody(e.target.value)}
         />
 
-        <AttachmentList attachments={attachments} onRemove={(id) => setAttachments(a => a.filter(f => f.id !== id))} />
+        {/* <AttachmentList attachments={attachments} onRemove={(id) => setAttachments(a => a.filter(f => f.id !== id))} /> */}
       </div>
 
       {/* Footer / Actions */}
       <div className="flex items-center justify-between p-4 border-t bg-slate-50/50">
         <div className="flex items-center gap-2">
-          <Button onClick={handleSend} disabled={isSending} className="bg-dana-blue hover:bg-dana-blue-dark">
+          <Button onClick={handleSend} disabled={isSending} btnStyle="bg-dana-blue hover:bg-dana-blue-dark">
             <Send className="h-4 w-4 mr-2" />
             {isSending ? "Sending..." : "Send"}
           </Button>
-          <AttachmentUploader onUpload={(files) => setAttachments([...attachments, ...files])}>
+          {/* <AttachmentUploader onUpload={(files) => setAttachments([...attachments, ...files])}>
             <button className="p-2 hover:bg-muted rounded-full">
               <Paperclip className="h-5 w-5 text-muted-foreground" />
             </button>
-          </AttachmentUploader>
+          </AttachmentUploader> */}
         </div>
 
         <div className="flex items-center gap-2">

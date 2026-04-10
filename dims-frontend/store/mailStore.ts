@@ -7,7 +7,7 @@ import type { ComposeData } from "@/types/mail.types";
 interface MailState {
   selectedThreadId: string | null;
   isComposeOpen: boolean;
-  composeDefaults: Partial<ComposeData>;
+  composeDefaults: Partial<ComposeData> | null;
   setSelectedThread: (id: string | null) => void;
   openCompose: (defaults?: Partial<ComposeData>) => void;
   closeCompose: () => void;
