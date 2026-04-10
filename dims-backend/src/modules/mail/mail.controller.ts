@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
 import { MailService } from "./mail.service";
@@ -54,7 +64,7 @@ export class MailController {
   async send(
     @CurrentUser() user: { userId: string },
     @Body() dto: SendMailDto,
-    @Req() req
+    @Req() req,
   ) {
     return this.mailService.send(dto, user.userId);
   }
@@ -81,26 +91,40 @@ export class MailController {
 
   @Get("messages/:messageId")
   @ApiOperation({ summary: "Mark a message as read and return its details" })
-  readMessage(@Param("messageId") messageId: string, @CurrentUser() user: { userId: string }) {
+  readMessage(
+    @Param("messageId") messageId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
     return this.mailService.readMessage(messageId, user.userId);
   }
 
   @Patch("messages/read")
   @ApiOperation({ summary: "Mark many messages as read or unread" })
-  markManyAsRead(@Body("messageIds") messageIds: string[], @CurrentUser() user: { userId: string },) {
+  markManyAsRead(
+    @Body("messageIds") messageIds: string[],
+    @CurrentUser() user: { userId: string },
+  ) {
     return this.mailService.markManyAsRead(messageIds, user.userId);
   }
 
   @Get("threads/:threadId")
-  @ApiOperation({ summary: "Mark all messages in a thread as read and return thread details" })
-  readThread(@Param("threadId") threadId: string, @CurrentUser() user: { userId: string }) {
+  @ApiOperation({
+    summary: "Mark all messages in a thread as read and return thread details",
+  })
+  readThread(
+    @Param("threadId") threadId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
     return this.mailService.readThread(threadId, user.userId);
   }
 
   // Manual trigger
   @Patch("threads/:threadId/read")
-    @ApiOperation({ summary: "Mark thread as read or unread" })
-  markThreadAsRead(@Param("threadId") threadId: string, @CurrentUser() user: { userId: string }) {
+  @ApiOperation({ summary: "Mark thread as read or unread" })
+  markThreadAsRead(
+    @Param("threadId") threadId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
     return this.mailService.markThreadAsRead(threadId, user.userId);
   }
 
@@ -116,19 +140,28 @@ export class MailController {
 
   @Delete(":id")
   @ApiOperation({ summary: "Move a message to trash" })
-  async delete(@CurrentUser() user: { userId: string }, @Param("id") id: string) {
+  async delete(
+    @CurrentUser() user: { userId: string },
+    @Param("id") id: string,
+  ) {
     return this.mailService.moveToTrash(id, user.userId);
   }
 
   @Get("trash")
   @ApiOperation({ summary: "Get trashed messages" })
-  async getTrash(@CurrentUser() user: { userId: string }, @Query() query: MailQueryDto) {
+  async getTrash(
+    @CurrentUser() user: { userId: string },
+    @Query() query: MailQueryDto,
+  ) {
     return this.mailService.getTrash(user.userId, query);
   }
 
   @Patch(":id/restore")
   @ApiOperation({ summary: "Restore message from trash" })
-  async restore(@CurrentUser() user: { userId: string }, @Param("id") id: string) {
+  async restore(
+    @CurrentUser() user: { userId: string },
+    @Param("id") id: string,
+  ) {
     return this.mailService.restoreFromTrash(id, user.userId);
   }
 
@@ -141,8 +174,8 @@ export class MailController {
   @Delete("messages/:id/permanent")
   @ApiOperation({ summary: "Permanently delete a specific message" })
   async deletePermanent(
-    @CurrentUser() user: { userId: string }, 
-    @Param("id") id: string
+    @CurrentUser() user: { userId: string },
+    @Param("id") id: string,
   ) {
     return this.mailService.permanentlyDelete(id, user.userId);
   }

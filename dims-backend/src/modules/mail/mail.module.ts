@@ -10,9 +10,11 @@ import { MessageRecipient } from "./entities/message-recipient.entity";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { User } from "../users/entities/user.entity";
 import { Attachment } from "../files/entities/attachment.entity";
+import { SearchModule } from "@modules/search/search.module";
 
 @Module({
   imports: [
+    SearchModule,
     TypeOrmModule.forFeature([
       Message,
       Thread,
@@ -25,6 +27,6 @@ import { Attachment } from "../files/entities/attachment.entity";
   ],
   controllers: [MailController],
   providers: [MailService, MailGateway],
-  exports: [MailService],
+  exports: [MailService, TypeOrmModule],
 })
 export class MailModule {}

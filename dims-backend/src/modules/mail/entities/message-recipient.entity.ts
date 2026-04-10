@@ -44,19 +44,19 @@ export class MessageRecipient {
   created_at: Date;
 
   // --- RELATIONSHIPS ---
-  @ManyToOne(() => Message, (message) => message.recipients, { onDelete: "CASCADE"})
+  @ManyToOne(() => Message, (message) => message.recipients, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "message_id" })
   message: Message;
- 
+
   @Column({ type: "uuid", name: "message_id" })
   message_id: string;
 
-
   @ManyToOne(() => User)
   @JoinColumn({ name: "recipient_id" })
-  recipient: User
+  recipient: User;
 
-  @Column({name: "recipient_id", type: "uuid"})
+  @Column({ name: "recipient_id", type: "uuid" })
   recipient_id: string;
-
 }

@@ -1,16 +1,16 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get } from "@nestjs/common";
 import {
   HealthCheckService,
   HealthCheck,
   TypeOrmHealthIndicator,
-} from '@nestjs/terminus';
-import { Public } from '@common/decorators/public.decorator';
+} from "@nestjs/terminus";
+import { Public } from "@common/decorators/public.decorator";
 
-import { RedisHealthIndicator } from './redis.health';
-import { MinioHealthIndicator } from './minio.health';
-import { ElasticsearchHealthIndicator } from './elasticsearch.health';
+import { RedisHealthIndicator } from "./redis.health";
+import { MinioHealthIndicator } from "./minio.health";
+import { ElasticsearchHealthIndicator } from "./elasticsearch.health";
 
-@Controller('health')
+@Controller("health")
 @Public()
 export class HealthController {
   constructor(
@@ -26,10 +26,10 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([
-      () => this.db.pingCheck('postgres'),
-      () => this.redis.isHealthy('redis'),
-      () => this.minio.isHealthy('minio'),
-      () => this.es.isHealthy('elasticsearch'),
+      () => this.db.pingCheck("postgres"),
+      () => this.redis.isHealthy("redis"),
+      () => this.minio.isHealthy("minio"),
+      () => this.es.isHealthy("elasticsearch"),
     ]);
   }
 }

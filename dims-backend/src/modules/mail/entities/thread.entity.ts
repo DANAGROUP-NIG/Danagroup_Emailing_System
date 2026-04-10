@@ -14,7 +14,7 @@ export class Thread {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({length: 500})
+  @Column({ length: 500 })
   subject: string;
 
   @Index() // important for inbox sorting
@@ -25,12 +25,20 @@ export class Thread {
   })
   lastActivityAt: Date;
 
-  @CreateDateColumn({ name: "created_at", type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
+  @CreateDateColumn({
+    name: "created_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at", type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
+  @UpdateDateColumn({
+    name: "updated_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
   updatedAt: Date;
 
   @OneToMany(() => Message, (message) => message.thread)
-  messages: Message[]
+  messages: Message[];
 }

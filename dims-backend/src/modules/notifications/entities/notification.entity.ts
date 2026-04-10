@@ -44,5 +44,4 @@ export class Notification {
 
   @Column({ type: "uuid" })
   user_id: string;
-
 }

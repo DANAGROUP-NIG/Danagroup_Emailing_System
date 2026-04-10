@@ -15,13 +15,12 @@ import { DepartmentsModule } from "./modules/departments/departments.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { SearchModule } from "./modules/search/search.module";
 import { JobsModule } from "./jobs/jobs.module";
-import { HealthModule } from './health/health.module';
+import { HealthModule } from "./health/health.module";
 
 // Config
 import databaseConfig from "./config/database.config";
 import { TerminusModule } from "@nestjs/terminus";
 import { APP_GUARD } from "@nestjs/core";
-import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "@common/guards/roles.guards";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 
@@ -52,9 +51,7 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.get<string>("REDIS_HOST", "localhost"),
-          port: config.get<number>("REDIS_PORT", 6379),
-          password: config.get<string>("REDIS_PASSWORD") || undefined,
+          url: config.get<string>("REDIS_URL"),
         },
         defaultJobOptions: {
           attempts: 3,
@@ -73,10 +70,7 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
     ElasticsearchModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        node: config.get<string>(
-          "ELASTICSEARCH_NODE",
-          "http://localhost:9200"
-        ),
+        node: config.get<string>("ELASTICSEARCH_NODE", "http://localhost:9200"),
         maxRetries: 5,
         requestTimeout: 60000,
       }),
@@ -109,14 +103,13 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 
   providers: [
     {
-    provide: APP_GUARD,
-    useClass: JwtAuthGuard,
-  },
-  {
-    provide: APP_GUARD,
-    useClass: RolesGuard,
-  },
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
-
 })
 export class AppModule {}

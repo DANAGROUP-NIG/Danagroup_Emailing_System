@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddSenderDeleteToMessages1774857600000
-  implements MigrationInterface
-{
+export class AddSenderDeleteToMessages1774857600000 implements MigrationInterface {
   name = "AddSenderDeleteToMessages1774857600000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -1,30 +1,35 @@
-import { Injectable } from '@nestjs/common';
-import { HealthIndicatorService } from '@nestjs/terminus';
-import Redis from 'ioredis';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { HealthIndicatorService } from "@nestjs/terminus";
+import Redis from "ioredis";
 
 @Injectable()
 export class RedisHealthIndicator {
-  private client = new Redis({
-    host: 'redis',
-    port: 6379,
-  });
+  // ✅ Correct: Define the type, don't assign the class itself
+  private client: Redis;
 
-  constructor(private healthIndicatorService: HealthIndicatorService) {}
+  constructor(
+    private healthIndicatorService: HealthIndicatorService,
+    private configService: ConfigService,
+  ) {
+    const redisUrl = this.configService.get<string>("REDIS_URL");
+    // ✅ This now correctly assigns the instance to the client property
+    this.client = new Redis(redisUrl || "redis://localhost:6379");
+  }
 
   async isHealthy(key: string) {
+    // Use the service to create the indicator
     const indicator = this.healthIndicatorService.check(key);
 
     try {
       const res = await this.client.ping();
-
-      if (res === 'PONG') {
-        return indicator.up();
+      if (res === "PONG") {
+        return indicator.up(); // Returns { [key]: { status: 'up' } }
       }
-
       return indicator.down();
     } catch (error) {
       return indicator.down({
-        message: 'Redis not responding',
+        message: error instanceof Error ? error.message : "Unknown error",
       });
     }
   }

@@ -1,13 +1,44 @@
 import { NestFactory } from "@nestjs/core";
+import session from "express-session";
+import { RedisStore } from "connect-redis";
+import Redis from "ioredis";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import * as dotenv from "dotenv";
+dotenv.config();
 
-import cookieParser = require('cookie-parser');
+import cookieParser = require("cookie-parser");
 
 async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
+
+    // Initialize ioredis client
+    // const redisClient = new Redis({
+    //   host: process.env.REDIS_HOST || 'localhost',
+    //   port: parseInt(process.env.REDIS_PORT) || 6379,
+    // });
+
+    const redisClient = new Redis(
+      process.env.REDIS_URL || "redis://localhost:6379",
+    );
+
+    app.use(
+      session({
+        store: new RedisStore({ client: redisClient, prefix: "sess:" }),
+        secret: process.env.SESSION_SECRET || "super-secret",
+        resave: false,
+        saveUninitialized: false,
+        name: "dims_sid", // Custom cookie name
+        cookie: {
+          httpOnly: true, // Prevents XSS
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 1000 * 60 * 60 * 24, // 24 hours
+          sameSite: "lax", // Helps with CSRF
+        },
+      }),
+    );
 
     app.use(cookieParser());
 
@@ -18,6 +49,9 @@ async function bootstrap() {
         whitelist: true,
         forbidNonWhitelisted: true,
         transform: true,
+        transformOptions: {
+          enableImplicitConversion: true, // Helps with converting strings to numbers automatically
+        },
       }),
     );
 
@@ -42,7 +76,6 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup("api/docs", app, document);
-
 
     const port = process.env.PORT ?? 3000;
     await app.listen(port, "0.0.0.0");

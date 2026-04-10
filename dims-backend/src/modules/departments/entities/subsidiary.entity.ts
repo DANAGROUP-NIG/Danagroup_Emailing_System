@@ -4,7 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany
+  OneToMany,
 } from "typeorm";
 import { Department } from "./department.entity";
 import { User } from "@modules/users/entities/user.entity";
@@ -17,16 +17,24 @@ export class Subsidiary {
   @Column({ length: 100, unique: true })
   name: string;
 
-  @Column({length: 50, unique: true })
+  @Column({ length: 50, unique: true })
   domain: string;
 
   @Column({ nullable: true, type: "text" })
   description: string;
 
-  @CreateDateColumn({name: "created_at", type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({
+    name: "created_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
   created_at: Date;
 
-  @UpdateDateColumn({name: "updated_at", type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({
+    name: "updated_at",
+    type: "timestamptz",
+    default: () => "CURRENT_TIMESTAMP",
+  })
   updated_at: Date;
 
   // Relationships
@@ -35,5 +43,4 @@ export class Subsidiary {
 
   @OneToMany(() => User, (user) => user.subsidiary)
   users: User[];
-  
 }
