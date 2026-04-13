@@ -150,6 +150,7 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
           <button
             type="button"
             onClick={() => {
+              console.log("Compose button clicked");
               openCompose();
               onNavigate?.();
             }}

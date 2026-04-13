@@ -11,6 +11,7 @@ import TopBar from "@/components/layout/TopBar";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/hooks/useSocket";
+import ComposeModal from '@/components/mail/ComposeModal';
 
 export default function AppLayout({
   children,
@@ -55,6 +56,8 @@ export default function AppLayout({
         <TopBar />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+      <ComposeModal />
+
     </div>
   );
 }

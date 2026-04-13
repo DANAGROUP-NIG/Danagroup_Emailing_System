@@ -4,9 +4,13 @@
 // - Center: Global SearchBar component
 // - Right: Notification bell (with unread count badge from notificationStore)
 // - Right: Current user Avatar + dropdown (profile, logout)
+
+import { useMailStore } from "@/store/mailStore";
+
 // - Logout calls POST /api/auth/logout then clears authStore
 
 export default function TopBar() {
+
   // TODO: Implement
   return (
     <nav>

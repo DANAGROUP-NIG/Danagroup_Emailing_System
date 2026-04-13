@@ -63,15 +63,17 @@ export interface InboxMessage {
 }
 
 export interface ComposeData {
-  to: User[];
-  cc?: User[];
-  bcc?: User[];
   subject: string;
   body: string;
   bodyHtml?: string;
   attachmentIds?: string[];
   threadId?: string;
   draftId?: string;
+  isDraft?: boolean;
+  recipients: {
+    recipient_id: string;
+    type: 'to' | 'cc' | 'bcc';
+  } [];
 }
 
 export interface Announcement {
