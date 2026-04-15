@@ -150,13 +150,7 @@ export default function LoginPage() {
                     label="Password"
                     placeholder="Enter your password"
                     type={showPassword ? "text" : "password"}
-<<<<<<< HEAD
                     register={register("password")}
-=======
-                    aria-hidden="true"
-                    // We use the same register so the value stays synced
-                    register={register("password")} 
->>>>>>> 8045b4cf3581f0a6ff75922a130e940434e330cf
                     name="password"
                   />
                   <button
