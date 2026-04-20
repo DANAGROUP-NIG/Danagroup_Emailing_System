@@ -1,15 +1,17 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "esModuleInterop": true,                // Required for modern imports
+    "allowSyntheticDefaultImports": true,   // Required for express-session
+    "moduleResolution": "bundler",   
+    "module": "esnext",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
+    "rootDir": "./",
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
@@ -18,10 +20,11 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@modules/*": ["src/modules/*"],
-      "@config/*": ["src/config/*"],
-      "@common/*": ["src/common/*"],
-      "@jobs/*": ["src/jobs/*"]
+      "@modules/*": ["./src/modules/*"],
+      "@config/*": ["./src/config/*"],
+      "@common/*": ["./src/common/*"],
+      "@jobs/*": ["./src/jobs/*"]
     }
-  }
+  },
+  "include": ["src/**/*"]
 }

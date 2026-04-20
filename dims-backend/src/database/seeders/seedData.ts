@@ -1,7 +1,5 @@
 // src/database/seeders/test-data.ts
 import { AppDataSource } from "../../typeorm.config"; // Adjust path to your config
-import { Subsidiary } from "../../modules/departments/entities/subsidiary.entity";
-import { Department } from "../../modules/departments/entities/department.entity";
 
 async function run() {
   try {

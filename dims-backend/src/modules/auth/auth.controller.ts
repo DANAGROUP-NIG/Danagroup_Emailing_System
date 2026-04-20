@@ -38,8 +38,8 @@ import {
 @Controller("auth")
 export class AuthController {
   constructor(
-    private readonly authService: AuthService, 
-    private readonly usersService: UsersService
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
   ) {}
 
   // TODO: Implement POST /auth/login
@@ -64,8 +64,8 @@ export class AuthController {
   ) {
     // TODO: Implement
     const user = await this.authService.validateUser(
-      loginDto.email, 
-      loginDto.password
+      loginDto.email,
+      loginDto.password,
     );
 
     if (!user) throw new UnauthorizedException("Invalid credentials");
@@ -75,7 +75,6 @@ export class AuthController {
       req.headers["user-agent"],
       req.ip,
     );
-    
 
     // Set Cookies
     res.cookie("access_token", result.accessToken, {
@@ -83,7 +82,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 15 * 60 * 1000, // 15 min
-    })
+    });
 
     res.cookie("refresh_token", result.refreshToken, {
       httpOnly: true,
@@ -93,9 +92,9 @@ export class AuthController {
     });
 
     return new ApiResponseDto(true, "Login successful", {
-        user: result.user,
-        accessToken: result.accessToken, // <--- ADD THIS so you can copy it to Swagger
-        refreshToken: result.refreshToken,
+      user: result.user,
+      accessToken: result.accessToken, // <--- ADD THIS so you can copy it to Swagger
+      refreshToken: result.refreshToken,
     });
 
     // return {
@@ -123,22 +122,17 @@ export class AuthController {
   async logout(
     @CurrentUser() user: any,
     @Req() req: any,
-    @Res({ passthrough: true }) res: Response
+    @Res({ passthrough: true }) res: Response,
   ) {
     // TODO: Implement
     const accessToken = req.cookies?.access_token;
     const refreshToken = req.body.refreshToken || req.cookies?.refresh_token;
 
-    await this.authService.logout(
-      user.userId,
-      accessToken,
-      refreshToken
-    );
+    await this.authService.logout(user.userId, accessToken, refreshToken);
 
     // clear cookies
     res.clearCookie("access_token");
     res.clearCookie("refresh_token");
-
 
     return new ApiResponseDto(true, "Logged out successfully");
   }
@@ -162,7 +156,8 @@ export class AuthController {
   ) {
     // TODO: Implement
 
-    const refreshToken = refreshTokenDto.refreshToken || req.cookies?.refresh_token;
+    const refreshToken =
+      refreshTokenDto.refreshToken || req.cookies?.refresh_token;
 
     if (!refreshToken) {
       throw new UnauthorizedException("No refresh token provided");
@@ -177,7 +172,6 @@ export class AuthController {
     });
 
     return new ApiResponseDto(true, "Token refreshed");
-
   }
 
   // TODO: Implement GET /auth/me

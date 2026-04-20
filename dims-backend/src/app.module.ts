@@ -4,26 +4,27 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { BullModule } from "@nestjs/bullmq";
 import { ElasticsearchModule } from "@nestjs/elasticsearch";
 import { ThrottlerModule } from "@nestjs/throttler";
+import KeyvRedis from "@keyv/redis";
 
 // Core Modules
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
-import { MailModule } from "./modules/mail/mail.module";
 import { FilesModule } from "./modules/files/files.module";
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { DepartmentsModule } from "./modules/departments/departments.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { SearchModule } from "./modules/search/search.module";
 import { JobsModule } from "./jobs/jobs.module";
-import { HealthModule } from './health/health.module';
+import { HealthModule } from "./health/health.module";
 
 // Config
 import databaseConfig from "./config/database.config";
 import { TerminusModule } from "@nestjs/terminus";
 import { APP_GUARD } from "@nestjs/core";
-import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "@common/guards/roles.guards";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
+import { MailModule } from "@modules/mail/mail.module";
+import { CacheModule } from "@nestjs/cache-manager";
 
 @Module({
   imports: [
@@ -44,6 +45,18 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
       useFactory: databaseConfig,
     }),
 
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const redisUrl = config.get<string>("REDIS_URL");
+
+        return {
+          stores: [new KeyvRedis(redisUrl)],
+          ttl: 600000, // 10 minutes
+        };
+      },
+    }),
     /**
      * Queue System (BullMQ - Redis)
      * Used for async jobs like sending emails, notifications, indexing
@@ -52,9 +65,7 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.get<string>("REDIS_HOST", "localhost"),
-          port: config.get<number>("REDIS_PORT", 6379),
-          password: config.get<string>("REDIS_PASSWORD") || undefined,
+          url: config.get<string>("REDIS_URL"),
         },
         defaultJobOptions: {
           attempts: 3,
@@ -73,10 +84,7 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
     ElasticsearchModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        node: config.get<string>(
-          "ELASTICSEARCH_NODE",
-          "http://localhost:9200"
-        ),
+        node: config.get<string>("ELASTICSEARCH_NODE", "http://localhost:9200"),
         maxRetries: 5,
         requestTimeout: 60000,
       }),
@@ -109,14 +117,13 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 
   providers: [
     {
-    provide: APP_GUARD,
-    useClass: JwtAuthGuard,
-  },
-  {
-    provide: APP_GUARD,
-    useClass: RolesGuard,
-  },
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
-
 })
 export class AppModule {}

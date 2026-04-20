@@ -38,5 +38,4 @@ export class Attachment {
 
   @Column({ type: "uuid" })
   message_id: string;
-
 }

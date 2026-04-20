@@ -26,16 +26,16 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({length: 100, unique: true})
+  @Column({ length: 100, unique: true })
   email: string;
 
-  @Column({length: 255, select: false})
+  @Column({ length: 255, select: false })
   passwordHash: string;
 
-  @Column({length: 100})
+  @Column({ length: 100 })
   firstName: string;
 
-  @Column({length: 100})
+  @Column({ length: 100 })
   lastName: string;
 
   @Column({
@@ -45,10 +45,10 @@ export class User {
   })
   role: UserRole;
 
-  @Column({length: 150 })
+  @Column({ length: 150 })
   jobTitle: string;
 
-  @Column({length:255})
+  @Column({ length: 255 })
   avatarUrl: string;
 
   @Column({ default: true })
@@ -57,13 +57,12 @@ export class User {
   @Column({ nullable: true, type: "timestamptz" })
   lastLoginAt: Date;
 
-  @CreateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz", default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   updatedAt: Date;
 
-  
   //Expose the ID directly as a string for easier filtering/saving
   @Column()
   department_id: string;
@@ -71,7 +70,7 @@ export class User {
   @Column()
   subsidiary_id: string;
 
-  @Column("json", {nullable: true})
+  @Column("json", { nullable: true })
   sessions?: {
     refreshToken: string;
     userAgent: string;
@@ -81,18 +80,21 @@ export class User {
   // ---- RELATIONSHIPS ----
   @ManyToOne(() => Subsidiary, (subsidiary) => subsidiary.users)
   @JoinColumn({ name: "subsidiary_id" })
-  subsidiary: Subsidiary
+  subsidiary: Subsidiary;
 
   @ManyToOne(() => Department, (department) => department.users)
   @JoinColumn({ name: "department_id" })
-  department: Department
+  department: Department;
 
   // 1. Messages this user SENT
   @OneToMany(() => Message, (message) => message.sender)
   sent_messages: Message[];
 
   // 2. Messages this user RECEIVED (via the recipient table)
-  @OneToMany(() => MessageRecipient, (messageRecipient) => messageRecipient.recipient)
+  @OneToMany(
+    () => MessageRecipient,
+    (messageRecipient) => messageRecipient.recipient,
+  )
   received_messages: MessageRecipient[];
 
   // 3. Announcements this user AUTHORED
@@ -101,5 +103,4 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
-  } 
-
+}

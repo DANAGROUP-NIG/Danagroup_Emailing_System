@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 
 // TODO: Process 'search-indexer' queue jobs
@@ -9,7 +9,7 @@ import { Job } from "bullmq";
 //   delete-message → SearchService.deleteMessage(job.data.messageId)
 //   delete-user   → SearchService.deleteUser(job.data.userId)
 
-@Processor("search-indexer")
+// @Processor("search-indexer")
 export class SearchIndexerProcessor extends WorkerHost {
   async process(job: Job): Promise<void> {
     // TODO: Implement switch on job.name

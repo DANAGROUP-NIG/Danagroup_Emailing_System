@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class FixDepartmentsUniqueConstraint1774442000000
-  implements MigrationInterface
-{
+export class FixDepartmentsUniqueConstraint1774442000000 implements MigrationInterface {
   name = "FixDepartmentsUniqueConstraint1774442000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {

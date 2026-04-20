@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/provider";
 
 const rubik = Rubik({
   subsets: ["latin"],
@@ -24,7 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={rubik.variable}>
-      <body className="font-rubik antialiased">{children}</body>
+      <body className="font-rubik antialiased">
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }

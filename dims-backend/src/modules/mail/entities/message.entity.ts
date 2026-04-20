@@ -23,10 +23,10 @@ export class Message {
   @Column()
   senderId: string;
 
-  @Column({length: 500})
+  @Column({ length: 500 })
   subject: string;
 
-  @Column({ type: "text"  })
+  @Column({ type: "text" })
   body: string;
 
   @Column({ type: "text", nullable: true })
@@ -37,6 +37,9 @@ export class Message {
 
   @Column({ nullable: true, type: "timestamptz" })
   sentAt: Date;
+
+  @Column({ nullable: true, type: "timestamptz" })
+  sender_deleted_at: Date;
 
   @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
@@ -52,7 +55,6 @@ export class Message {
   @OneToMany(() => MessageRecipient, (recipient) => recipient.message)
   recipients: MessageRecipient[];
 
-  @OneToMany(() => Attachment, (attachment) => attachment.message )
+  @OneToMany(() => Attachment, (attachment) => attachment.message)
   attachments: Attachment[];
-
 }

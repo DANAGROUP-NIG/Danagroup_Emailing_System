@@ -4,6 +4,7 @@ import {
   IsUUID,
   IsOptional,
   IsNotEmpty,
+  IsEmail,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
@@ -18,27 +19,27 @@ export class SendMailDto {
   @IsOptional()
   draftId?: string;
 
-  @ApiProperty({ type: [String] })
+  @ApiProperty({ type: [String], example: ["user@example.com"] })
   @IsArray()
-  @IsUUID("all", { each: true })
-  toIds: string[];
+  @IsEmail({}, { each: true })
+  toEmails: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
-  @IsUUID("all", { each: true })
+  @IsEmail({}, { each: true })
   @IsOptional()
-  ccIds?: string[];
+  ccEmails?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
-  @IsUUID("all", { each: true })
+  @IsEmail({}, { each: true })
   @IsOptional()
-  bccIds?: string[];
+  bccEmails?: string[];
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  subject: string;
+  subject?: string;
 
   @ApiProperty()
   @IsString()

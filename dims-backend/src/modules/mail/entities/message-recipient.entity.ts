@@ -29,6 +29,12 @@ export class MessageRecipient {
   is_deleted: boolean;
 
   @Column({ default: false })
+  is_permanently_deleted: boolean;
+
+  @Column({ nullable: true, type: "timestamptz" })
+  deleted_at: Date;
+
+  @Column({ default: false })
   is_archived: boolean;
 
   @Column({ nullable: true, type: "timestamptz" })
@@ -38,19 +44,19 @@ export class MessageRecipient {
   created_at: Date;
 
   // --- RELATIONSHIPS ---
-  @ManyToOne(() => Message, (message) => message.recipients, { onDelete: "CASCADE"})
+  @ManyToOne(() => Message, (message) => message.recipients, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "message_id" })
   message: Message;
- 
-  @Column({ type: "uuid"})
-  message_id: string;
 
+  @Column({ type: "uuid", name: "message_id" })
+  message_id: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: "recipient_id" })
-  recipient: User
+  recipient: User;
 
-  @Column()
+  @Column({ name: "recipient_id", type: "uuid" })
   recipient_id: string;
-
 }

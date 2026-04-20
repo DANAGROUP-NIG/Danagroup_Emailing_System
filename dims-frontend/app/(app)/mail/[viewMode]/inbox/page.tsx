@@ -6,6 +6,14 @@
 // - Bulk actions: Mark as read, Delete, Archive
 // - Uses useQuery(['mail', 'inbox']) via useMail hook
 
+import MailList from "@/components/mail/MailList";
+
 export default function InboxPage() {
-  return null;
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-bold">Inbox</h1>
+      {/* Pass a "folder" prop to filter the data inside the component */}
+      <MailList viewMode="inbox" />
+    </div>
+  );
 }

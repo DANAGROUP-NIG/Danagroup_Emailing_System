@@ -17,9 +17,7 @@ export default (config: ConfigService): TypeOrmModuleOptions => ({
   synchronize: false, // never true in prod
 
   logging:
-    config.get("NODE_ENV") === "development"
-      ? ["query", "error"]
-      : ["error"],
+    config.get("NODE_ENV") === "development" ? ["query", "error"] : ["error"],
 
   migrations: ["dist/migrations/*.js"],
   migrationsTableName: "migrations",

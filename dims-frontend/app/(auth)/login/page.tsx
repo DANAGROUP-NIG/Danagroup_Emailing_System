@@ -145,7 +145,7 @@ export default function LoginPage() {
                   <Input 
                     label="Password"
                     placeholder="Enter your password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     aria-hidden="true"
                     // We use the same register so the value stays synced
                     register={register("password")} 
