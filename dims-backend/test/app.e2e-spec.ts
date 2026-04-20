@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, Module } from "@nestjs/common";
-import * as request from "supertest";
+import request from "supertest";
 
 // TODO: Replace with full AppModule + service mocks when implementing real e2e tests.
 // Using a minimal module here to avoid flaky BullMQ/Redis/Elasticsearch teardown
