@@ -51,8 +51,6 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   const deleteMail = mailApi.useDeleteMail(""); // We'll pass IDs dynamically
 
 
-
-
   // Filtering Logic
   const threads = useMemo(() => {
   // Check if data.data exists (the array), otherwise check if data is the array
@@ -115,32 +113,36 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
       <div className="flex-1 overflow-y-auto">
         {threads.length > 0 ? (
           threads.map((item: any) => {
-          // Resolve whether we are looking at a Thread or a direct Message (Draft)
-          const isThread = !!item.latestMessage;
-          const messageData = isThread ? item.latestMessage : item;
+          //  Determine the data shape
+          // Drafts: item is the message. Inbox/Sent: item is a thread with latestMessage.
+          const isDraft = viewMode === 'drafts';
+          const displayMessage = isDraft ? item : item.latestMessage;
+
+          // 2. Safely resolve variables
+          const id = item.id;
+          const threadId = isDraft ? item.threadId : item.latestMessage?.threadId;
+          const subject = item.subject || "(No Subject)";
           
-          
-          // Resolve IDs and display data
-          const threadId = isThread ? messageData.threadId : item.threadId;
-          const sender = messageData.sender || { firstName: "Draft", lastName: "" };
-          const bodyPreview = htmlToText(messageData.bodyHtml) || messageData.body || "(No content)";
-          const date = messageData.createdAt || item.createdAt;
-          
+          // Resolve sender name
+          const senderName = isDraft 
+            ? "Draft" 
+            : `${displayMessage?.sender?.firstName ?? 'Unknown'} ${displayMessage?.sender?.lastName ?? ''}`;
+
+          const date = displayMessage?.createdAt || item.createdAt;
+          const bodyPreview = htmlToText(displayMessage?.bodyHtml) || displayMessage?.body || "(No content)";
 
           return (
             <button
-              key={item.id}
+              key={id}
               onClick={() => {
-                if (viewMode === 'drafts') {
-                  openCompose(messageData.id); // This sets composeDraftId in store
-                  return; // Stop here so we don't route to the thread view
+                if (isDraft) {
+                  openCompose(id); // item.id is the message id
+                  return;
                 }
-
-                markAsRead(messageData.id)
                 
-                if (threadId) {
-                  router.push(`/mail/${viewMode}/${threadId}`);
-                }
+                // For non-drafts, mark read and navigate
+                if (displayMessage?.id) markAsRead(displayMessage.id);
+                if (threadId) router.push(`/mail/${viewMode}/${threadId}`);
               }}
               className={`mail-list-item w-full flex items-start text-left p-4 border-b hover:bg-slate-50 transition-colors ${
                 currentThreadId === threadId ? "bg-slate-100" : ""
@@ -149,22 +151,22 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
               <div className="flex items-center gap-3 w-full">
                 <input
                   type="checkbox"
-                  checked={selectedMessageIds.includes(item.id)}
-                  onChange={() => toggleMessageSelection(item.id)}
+                  checked={selectedMessageIds.includes(id)}
+                  onChange={() => toggleMessageSelection(id)}
                   onClick={(e) => e.stopPropagation()}
                   className="h-4 w-4 rounded"
                 />
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="truncate text-sm font-semibold">
-                      {isThread ? `${sender.firstName} ${sender.lastName}` : <span className="text-dana-red-600 font-bold">Draft</span>}
+                    <div className={`truncate text-sm font-semibold ${isDraft ? "text-dana-red-600" : "text-gray-900"}`}>
+                      {senderName}
                     </div>
-                    <div className="text-[10px] text-muted-foreground">
+                    <div className="text-[10px] text-muted-foreground whitespace-nowrap">
                       {date ? formatDistanceToNow(new Date(date), { addSuffix: true }) : "No date"}
                     </div>
                   </div>
-                  <p className="truncate text-sm font-medium">{item.subject || "(No Subject)"}</p>
+                  <p className="truncate text-sm font-medium text-gray-800">{subject}</p>
                   <p className="truncate text-xs text-muted-foreground">{bodyPreview}</p>
                 </div>
               </div>

@@ -39,23 +39,34 @@ export default function MailMessage({
 }) {
   const { user } = useAuthStore();
   const { useMarkRead } = useMail();
-  const markRead = useMarkRead(message.id); 
+  const markRead = useMarkRead(); 
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
 
+  const myRecipient = message.recipients.find(
+  (r) => r.recipient.email === user?.email
+);
   // Marks message as read on expand (PATCH /api/mail/:id/read)
   useEffect(() => {
-    const myRecipient = message.recipients.find(
-      (r) => r.recipientId === user?.id
-    );
-    if (!isCollapsed && myRecipient && myRecipient.isRead === false && message.id !== "undefined") {
-      markRead.mutate();
+    const canMarkRead = 
+      !isCollapsed && 
+      message.id && 
+      !message.is_draft && 
+      message.senderId !== user?.id && 
+      myRecipient && 
+      myRecipient.is_read === false;
+
+    if (canMarkRead) {
+      // Pass the message.id to the mutation
+      markRead.mutate(message.id);
     }
-  }, [isCollapsed, message.id]);
+  }, [isCollapsed, message.id, myRecipient?.is_read]);
+
+  //console.log(message)
+
+  const isUnread = myRecipient?.is_read === false;
 
   const sanitizedBody = DOMPurify.sanitize(message.bodyHtml || message.body);
-  const myRecipient = message.recipients.find(
-    (r) => r.recipientId === user?.id
-  );
+  
 
   const fullName = message.sender.firstName + " " + message.sender.lastName
 
@@ -63,14 +74,16 @@ export default function MailMessage({
     <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
       {/* Header / Collapsed View */}
       <div 
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="flex cursor-pointer items-center justify-between p-4 hover:bg-muted/30"
+        
+        className="flex items-center justify-between p-4 hover:bg-muted/30"
       >
-        <div className="flex min-w-0 items-center gap-3">
+        <div 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex cursor-pointer  min-w-0 items-center gap-3">
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           
           <div className="flex flex-col min-w-0">
-            <span className={`truncate text-sm ${myRecipient?.isRead === false ? "font-bold" : "font-medium"}`}>
+            <span className={`truncate text-sm ${isUnread ? "font-bold" : "font-medium"}`}>
               {fullName}
             </span>
             {isCollapsed && (
@@ -89,11 +102,11 @@ export default function MailMessage({
           </span>
           
           {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[]">
             <button className="p-1.5 hover:bg-muted rounded" title="Reply"><Reply className="h-4 w-4" /></button>
             <button className="p-1.5 hover:bg-muted rounded" title="Forward"><Forward className="h-4 w-4" /></button>
-            <button className={`p-1.5 hover:bg-muted rounded ${myRecipient?.isStarred === true ? "text-amber-400" : ""}`} title="Star">
-              <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} />
+            <button className={`p-1.5 hover:bg-muted rounded ${myRecipient?.is_starred === true ? "text-amber-400" : ""}`} title="Star">
+              <Star className={`h-4 w-4 ${myRecipient?.is_starred === true ? "fill-current" : ""}`} />
             </button>
             <button className="p-1.5 hover:bg-muted rounded text-destructive" title="Delete"><Trash2 className="h-4 w-4" /></button>
           </div>

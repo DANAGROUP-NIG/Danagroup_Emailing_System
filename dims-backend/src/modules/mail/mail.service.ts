@@ -567,6 +567,9 @@ export class MailService {
       
       if (!message) throw new NotFoundException("Message not found");
 
+      if (message.senderId === userId) {
+        return { success: true }; 
+      }
       // Return early if it's a draft to avoid the recipient check below.
       if (message.is_draft) {
         return { 

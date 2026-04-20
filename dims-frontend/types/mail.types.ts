@@ -46,18 +46,25 @@ export interface Message {
   subject: string;
   body: string;
   bodyHtml?: string;
-  isDraft: boolean;
+  is_draft: boolean; // Matches your DB snake_case
   sentAt?: string;
   createdAt: string;
-   recipients: {
+  recipients: {
     type: 'to' | 'cc' | 'bcc';
+    is_read: boolean; 
+    is_starred: boolean;
+    recipient_id: string; // The UUID of the recipient
     recipient: {
+      id: string;
       email: string;
     };
   }[];
   attachments?: Attachment[];
-  latestMessage: Message;
+  // Note: latestMessage is usually part of a Thread, 
+  // but if it's on Message, it's recursive
+  // latestMessage?: Message; 
 }
+
 
 export interface InboxMessage {
   id: string;
