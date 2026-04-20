@@ -46,7 +46,7 @@ export default function Input({label, placeholder, register, type, name, disable
 
 
 
-export const ComposeInput = forwardRef<HTMLInputElement, ComposeInputProp>(({ label, errors, ...props }, ref) => {
+export const ComposeInput = forwardRef<HTMLInputElement, ComposeInputProp>(function ComposeInput({ label, placeholder, errors, ...props }, ref) {
   // const autocompleteValue = getAutoCompleteValue(name, type);
 
   // TODO: Implement
@@ -56,7 +56,8 @@ export const ComposeInput = forwardRef<HTMLInputElement, ComposeInputProp>(({ la
       <input
         {...props} 
         ref={ref}
-        className={`w-full border-b py-3 text-sm border-gray-100 outline-none}  placeholder={placeholder ${errors ? 'border-red-500' : 'border-gray-100'}`}
+        placeholder={placeholder}
+        className={`w-full border-b py-3 text-sm border-gray-100 outline-none ${errors ? 'border-red-500' : 'border-gray-100'}`}
       />
       {errors && <span className="text-xs text-red-500 px-1">{errors.message}</span>}
 
