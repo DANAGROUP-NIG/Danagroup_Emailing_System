@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsEmail,
 } from "class-validator";
 
 export class SaveDraftDto {
@@ -20,24 +21,24 @@ export class SaveDraftDto {
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
-  @IsUUID("all", { each: true })
+  @IsEmail({}, { each: true })
   @ArrayUnique()
   @IsOptional()
-  toIds?: string[];
+  toEmails?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
-  @IsUUID("all", { each: true })
+  @IsEmail({}, { each: true })
   @ArrayUnique()
   @IsOptional()
-  ccIds?: string[];
+  ccEmails?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
-  @IsUUID("all", { each: true })
+  @IsEmail({}, { each: true })
   @ArrayUnique()
   @IsOptional()
-  bccIds?: string[];
+  bccEmails?: string[];
 
   @ApiPropertyOptional()
   @IsString()

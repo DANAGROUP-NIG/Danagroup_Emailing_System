@@ -6,16 +6,20 @@
 // - Primary: dana-blue background, white text
 // - Danger: dana-red background, white text
 // - Outline: transparent bg, dana-blue border + text
+
+import React from "react";
+
 // - Ghost: transparent bg, no border
 interface btnProp {
-  label: string;
+  label?: string;
   btnStyle: string;
   type?: "submit" | "button" | "reset"; 
   onClick?: () => void;
   onMouseDown?: () => void;
   disabled?: boolean;
+  children?: React.ReactNode;
 }
-export default function Button({label, btnStyle, type, onClick, onMouseDown, disabled}: btnProp) {
+export default function Button({ children, label, btnStyle, type, onClick, onMouseDown, disabled}: btnProp) {
   // TODO: Implement
   return (
     <button type={type} onClick={onClick} onMouseDown={onMouseDown} disabled={disabled} className={btnStyle}>

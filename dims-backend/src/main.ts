@@ -12,17 +12,25 @@ import cookieParser = require("cookie-parser");
 
 async function bootstrap() {
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+      abortOnError: true, // This will force the app to crash and show the error
+      logger: ["error", "warn", "log", "debug"], // Enable debug logs
+    });
 
-    // Initialize ioredis client
+    //Initialize ioredis client
     // const redisClient = new Redis({
     //   host: process.env.REDIS_HOST || 'localhost',
     //   port: parseInt(process.env.REDIS_PORT) || 6379,
     // });
 
-    const redisClient = new Redis(
-      process.env.REDIS_URL || "redis://localhost:6379",
-    );
+    const redisClient = new Redis(process.env.REDIS_URL, {
+      tls: {
+        // Upstash requires TLS for connections
+        rejectUnauthorized: false,
+      },
+      // Upstash often works better with family: 4 or 6 depending on your local network
+      // family: 4
+    });
 
     app.use(
       session({

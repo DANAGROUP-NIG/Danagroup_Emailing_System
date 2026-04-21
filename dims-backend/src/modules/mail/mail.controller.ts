@@ -4,10 +4,12 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Req,
+  UseInterceptors,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
@@ -16,9 +18,11 @@ import { MailQueryDto } from "./dto/mail-query.dto";
 import { SendMailDto } from "./dto/send-mail.dto";
 import { SaveDraftDto } from "./dto/save-draft.dto";
 import { UpdateMessageStatusDto } from "./dto/update-message-status.dto";
+import { CacheInterceptor } from "@nestjs/cache-manager";
 
 @ApiTags("mail")
 @ApiBearerAuth()
+@UseInterceptors(CacheInterceptor)
 @Controller("mail")
 export class MailController {
   constructor(private readonly mailService: MailService) {}
@@ -26,19 +30,19 @@ export class MailController {
   @Get("inbox")
   @ApiOperation({ summary: "Get inbox threads for the current user" })
   async getInbox(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { email: string },
     @Query() query: MailQueryDto,
   ) {
-    return this.mailService.getInbox(user.userId, query);
+    return this.mailService.getFolder(user.email, "inbox", query);
   }
 
   @Get("sent")
   @ApiOperation({ summary: "Get sent messages for the current user" })
   async getSent(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { email: string },
     @Query() query: MailQueryDto,
   ) {
-    return this.mailService.getSent(user.userId, query);
+    return this.mailService.getFolder(user.email, "sent", query);
   }
 
   @Get("drafts")
@@ -53,20 +57,19 @@ export class MailController {
   @Get("thread/:threadId")
   @ApiOperation({ summary: "Get all visible messages in a thread" })
   async getThread(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { email: string },
     @Param("threadId") threadId: string,
   ) {
-    return this.mailService.getThread(threadId, user.userId);
+    return this.mailService.getThread(threadId, user.email);
   }
 
   @Post("send")
   @ApiOperation({ summary: "Send a new message or send an existing draft" })
   async send(
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user: { userId: string; email: string },
     @Body() dto: SendMailDto,
-    @Req() req,
   ) {
-    return this.mailService.send(dto, user.userId);
+    return this.mailService.send(dto, user.email);
   }
 
   @Post("draft")
@@ -112,7 +115,7 @@ export class MailController {
     summary: "Mark all messages in a thread as read and return thread details",
   })
   readThread(
-    @Param("threadId") threadId: string,
+    @Param("threadId", new ParseUUIDPipe()) threadId: string,
     @CurrentUser() user: { userId: string },
   ) {
     return this.mailService.readThread(threadId, user.userId);
@@ -153,7 +156,7 @@ export class MailController {
     @CurrentUser() user: { userId: string },
     @Query() query: MailQueryDto,
   ) {
-    return this.mailService.getTrash(user.userId, query);
+    return this.mailService.getFolder(user.userId, "trash", query);
   }
 
   @Patch(":id/restore")
@@ -169,6 +172,14 @@ export class MailController {
   @ApiOperation({ summary: "Permanently delete all messages in trash" })
   async emptyAll(@CurrentUser() user: { userId: string }) {
     return this.mailService.emptyAllTrash(user.userId);
+  }
+
+  @Get("messages/:id")
+  @ApiOperation({
+    summary: " return a single message by ID, including its recipients.",
+  })
+  async getMessage(@Param("id") id: string, @Req() req) {
+    return this.mailService.getMessageById(id, req.user.id);
   }
 
   @Delete("messages/:id/permanent")

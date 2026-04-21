@@ -4,11 +4,11 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { BullModule } from "@nestjs/bullmq";
 import { ElasticsearchModule } from "@nestjs/elasticsearch";
 import { ThrottlerModule } from "@nestjs/throttler";
+import KeyvRedis from "@keyv/redis";
 
 // Core Modules
 import { AuthModule } from "./modules/auth/auth.module";
 import { UsersModule } from "./modules/users/users.module";
-import { MailModule } from "./modules/mail/mail.module";
 import { FilesModule } from "./modules/files/files.module";
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { DepartmentsModule } from "./modules/departments/departments.module";
@@ -23,6 +23,8 @@ import { TerminusModule } from "@nestjs/terminus";
 import { APP_GUARD } from "@nestjs/core";
 import { RolesGuard } from "@common/guards/roles.guards";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
+import { MailModule } from "@modules/mail/mail.module";
+import { CacheModule } from "@nestjs/cache-manager";
 
 @Module({
   imports: [
@@ -43,6 +45,18 @@ import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
       useFactory: databaseConfig,
     }),
 
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const redisUrl = config.get<string>("REDIS_URL");
+
+        return {
+          stores: [new KeyvRedis(redisUrl)],
+          ttl: 600000, // 10 minutes
+        };
+      },
+    }),
     /**
      * Queue System (BullMQ - Redis)
      * Used for async jobs like sending emails, notifications, indexing

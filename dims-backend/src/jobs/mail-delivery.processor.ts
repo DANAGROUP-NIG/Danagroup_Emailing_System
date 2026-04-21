@@ -1,4 +1,4 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { WorkerHost } from "@nestjs/bullmq";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Job } from "bullmq";
 import { Repository } from "typeorm";
@@ -6,7 +6,7 @@ import { MessageRecipient } from "../modules/mail/entities/message-recipient.ent
 import { Message } from "../modules/mail/entities/message.entity";
 import { NotificationsService } from "../modules/notifications/notifications.service";
 
-@Processor("mail-delivery")
+// @Processor("mail-delivery")
 export class MailDeliveryProcessor extends WorkerHost {
   constructor(
     @InjectRepository(Message)

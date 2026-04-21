@@ -1,23 +1,70 @@
 // TODO: Implement Mail UI Store (Zustand)
 // Ref: frontend-blueprint.md §4.2
 
-import { create } from "zustand";
-import type { ComposeData } from "@/types/mail.types";
+import { create } from 'zustand';
 
-interface MailState {
+type MailFolder = "inbox" | "sent" | "drafts" | "trash";
+
+interface MailStore {
+  // Navigation & View State
+  activeFolder: MailFolder;
   selectedThreadId: string | null;
+  
+  // Selection State (for Bulk Actions)
+  selectedMessageIds: string[];
+  
+  // Compose Modal State
   isComposeOpen: boolean;
-  composeDefaults: Partial<ComposeData>;
+  composeDraftId: string | null; // If editing an existing draft
+
+  // Actions
+  setFolder: (folder: MailFolder) => void;
   setSelectedThread: (id: string | null) => void;
-  openCompose: (defaults?: Partial<ComposeData>) => void;
+  
+  // Multi-select Actions
+  toggleMessageSelection: (id: string) => void;
+  resetSelection: () => void;
+  
+  // Compose Actions
+  openCompose: (draftId?: string) => void;
   closeCompose: () => void;
 }
 
-export const useMailStore = create<MailState>()((set) => ({
+export const useMailStore = create<MailStore>((set) => ({
+  activeFolder: "inbox",
   selectedThreadId: null,
+  selectedMessageIds: [],
   isComposeOpen: false,
-  composeDefaults: {},
-  setSelectedThread: (id) => set({ selectedThreadId: id }),
-  openCompose: (defaults = {}) => set({ isComposeOpen: true, composeDefaults: defaults }),
-  closeCompose: () => set({ isComposeOpen: false, composeDefaults: {} }),
+  composeDraftId: null,
+
+  // Change folder and reset dependent states
+  setFolder: (folder) => set({ 
+    activeFolder: folder, 
+    selectedThreadId: null, 
+    selectedMessageIds: [] 
+  }),
+
+  setSelectedThread: (id) => set({ 
+    selectedThreadId: id 
+  }),
+
+  // Selection logic for bulk "Mark as Read" or "Delete"
+  toggleMessageSelection: (id) => set((state) => ({
+    selectedMessageIds: state.selectedMessageIds.includes(id)
+      ? state.selectedMessageIds.filter((mId) => mId !== id)
+      : [...state.selectedMessageIds, id],
+  })),
+
+  resetSelection: () => set({ selectedMessageIds: [] }),
+
+  // Compose management
+  openCompose: (draftId?: string | null) => set({ 
+    isComposeOpen: true, 
+    composeDraftId: draftId || null
+  }),
+  
+  closeCompose: () => set({ 
+    isComposeOpen: false, 
+    composeDraftId: null 
+  }),
 }));

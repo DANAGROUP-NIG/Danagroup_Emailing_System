@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Logger, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { BullModule } from "@nestjs/bullmq";
 import { MailController } from "./mail.controller";
@@ -11,6 +11,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { User } from "../users/entities/user.entity";
 import { Attachment } from "../files/entities/attachment.entity";
 import { SearchModule } from "@modules/search/search.module";
+import { UsersModule } from "@modules/users/users.module";
 
 @Module({
   imports: [
@@ -24,9 +25,11 @@ import { SearchModule } from "@modules/search/search.module";
     ]),
     BullModule.registerQueue({ name: "mail-delivery" }),
     NotificationsModule,
+    SearchModule,
+    forwardRef(() => UsersModule),
   ],
   controllers: [MailController],
-  providers: [MailService, MailGateway],
+  providers: [MailService, MailGateway, Logger],
   exports: [MailService, TypeOrmModule],
 })
 export class MailModule {}

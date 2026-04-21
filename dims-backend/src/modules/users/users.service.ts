@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
 import { User } from "./entities/user.entity";
@@ -10,6 +15,7 @@ import { SearchService } from "@modules/search/search.service";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import * as bcrypt from "bcrypt";
+import { MailService } from "@modules/mail/mail.service";
 
 @Injectable()
 export class UsersService {
@@ -25,6 +31,9 @@ export class UsersService {
 
     private readonly searchUser: SearchService,
     private readonly usersSearch: UsersSearchService,
+
+    @Inject(forwardRef(() => MailService))
+    private readonly mailService: MailService,
   ) {}
 
   private handleError(method: string, error: any) {
