@@ -25,6 +25,7 @@ import {
   Megaphone,
   Send,
   Shield,
+  Star,
   Trash2,
   Users,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ const primaryNav = (unreadCount: number): NavItem[] => [
   { href: '/mail/inbox', label: 'Inbox', icon: Inbox, badge: unreadCount },
   { href: '/mail/sent', label: 'Sent', icon: Send },
   { href: '/mail/drafts', label: 'Drafts', icon: FolderOpen },
+  { href: '/mail/starred', label: 'Starred', icon: Star },
   { href: '/mail/trash', label: 'Trash', icon: Trash2 },
 ];
 

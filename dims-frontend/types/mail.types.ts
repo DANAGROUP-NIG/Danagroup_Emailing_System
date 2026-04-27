@@ -150,6 +150,7 @@ export type MailFolder =
   | "inbox"
   | "sent"
   | "drafts"
+  | "starred"
   | "trash";
 
 export type MailLabel = "important" | "work" | "personal";

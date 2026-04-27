@@ -1294,18 +1294,6 @@ export class MailService {
       return thread;
     }
 
-    if (subject) {
-      const normalizedSubject = subject.toLowerCase().trim();
-      const existingThread = await manager.findOne(Thread, {
-        where: { subject: normalizedSubject },
-        order: { lastActivityAt: "DESC" },
-      });
-
-      if (existingThread) {
-        return existingThread;
-      }
-    }
-
     const newThread = manager.create(Thread, {
       subject: subject?.toLowerCase().trim() || "No Subject",
       lastActivityAt: new Date(),
@@ -1504,14 +1492,20 @@ export class MailService {
       .leftJoin(
         "message.recipients",
         "accessRecipient",
-        "accessRecipient.messageId = message.id AND accessRecipient.recipientId = :userId AND accessRecipient.isDeleted = false",
+        `
+        accessRecipient.recipientId = :userId
+        AND accessRecipient.isDeleted = false
+        `,
         { userId },
       )
       .where("message.threadId = :threadId", { threadId })
       .andWhere(
         new Brackets((qb) => {
           qb.where(
-            "message.senderId = :userId AND message.senderDeletedAt IS NULL",
+            `
+            message.senderId = :userId
+            AND message.senderDeletedAt IS NULL
+            `,
             { userId },
           ).orWhere("accessRecipient.id IS NOT NULL");
         }),

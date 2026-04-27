@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { Upload, AlertCircle } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import { AlertCircle, Loader2, Upload } from 'lucide-react';
+import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const ALLOWED_TYPES = [
@@ -16,241 +17,262 @@ const ALLOWED_TYPES = [
   'image/webp',
 ];
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024;
 
-export interface UploadedFile {
+export interface UploadedAttachment {
   id: string;
-  file: File;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
   progress: number;
+  isUploading: boolean;
   error?: string;
 }
 
 interface AttachmentUploaderProps {
-  onFilesAdded?: (files: UploadedFile[]) => void;
+  onChange?: (files: UploadedAttachment[]) => void;
   onError?: (error: string) => void;
 }
 
 export default function AttachmentUploader({
-  onFilesAdded,
+  onChange,
   onError,
 }: AttachmentUploaderProps) {
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedAttachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [totalSize, setTotalSize] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const validateFile = (file: File): { valid: boolean; error?: string } => {
+  const totalSize = uploadedFiles.reduce((sum, file) => sum + file.sizeBytes, 0);
+
+  const syncFiles = useCallback(
+    (files: UploadedAttachment[]) => {
+      onChange?.(files.filter((file) => !file.isUploading && !file.error));
+    },
+    [onChange],
+  );
+
+  const validateFile = (file: File) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return {
-        valid: false,
-        error: `File type not allowed: ${file.name}`,
-      };
+      return `File type not allowed: ${file.name}`;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return {
-        valid: false,
-        error: `File too large: ${file.name} (max 20MB)`,
-      };
+      return `File too large: ${file.name} (max 20MB)`;
     }
 
-    return { valid: true };
+    if (totalSize + file.size > MAX_TOTAL_SIZE) {
+      return 'Total attachment size exceeds 50MB limit';
+    }
+
+    return null;
   };
 
-  const addFiles = useCallback(
-    (files: FileList | File[]) => {
-      const fileArray = Array.from(files);
-      let newTotalSize = totalSize;
-      const newUploadedFiles: UploadedFile[] = [];
-      let hasError = false;
+  const uploadFile = useCallback(
+    async (file: File) => {
+      const tempId = `${Date.now()}-${Math.random()}`;
+      const optimisticFile: UploadedAttachment = {
+        id: tempId,
+        filename: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        storageKey: '',
+        progress: 0,
+        isUploading: true,
+      };
 
-      fileArray.forEach((file) => {
-        const validation = validateFile(file);
+      setUploadedFiles((prev) => [...prev, optimisticFile]);
 
-        if (!validation.valid) {
-          setErrorMessage(validation.error || 'File validation failed');
-          onError?.(validation.error || 'File validation failed');
-          hasError = true;
-          return;
-        }
-
-        if (newTotalSize + file.size > MAX_TOTAL_SIZE) {
-          const error = `Total attachment size exceeds 50MB limit`;
-          setErrorMessage(error);
-          onError?.(error);
-          hasError = true;
-          return;
-        }
-
-        newTotalSize += file.size;
-        const id = `${Date.now()}-${Math.random()}`;
-
-        newUploadedFiles.push({
-          id,
-          file,
-          progress: 0,
+      try {
+        const uploaded = await filesApi.uploadAttachment(file, (progress) => {
+          setUploadedFiles((prev) =>
+            prev.map((current) =>
+              current.id === tempId ? { ...current, progress } : current,
+            ),
+          );
         });
 
-        // Simulate progress
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 30;
-          if (progress > 90) progress = 90;
-
-          setUploadedFiles((prev) =>
-            prev.map((f) =>
-              f.id === id ? { ...f, progress: Math.min(progress, 90) } : f
-            )
+        setUploadedFiles((prev) => {
+          const next = prev.map((current) =>
+            current.id === tempId
+              ? {
+                  id: uploaded.id,
+                  filename: uploaded.filename,
+                  mimeType: uploaded.mimeType,
+                  sizeBytes: uploaded.sizeBytes,
+                  storageKey: uploaded.storageKey,
+                  progress: 100,
+                  isUploading: false,
+                }
+              : current,
           );
 
-          if (progress >= 90) {
-            clearInterval(interval);
-            setUploadedFiles((prev) =>
-              prev.map((f) => (f.id === id ? { ...f, progress: 100 } : f))
-            );
-          }
-        }, 300);
-      });
+          syncFiles(next);
+          return next;
+        });
+      } catch (error: any) {
+        const message =
+          error?.response?.data?.message || `Failed to upload ${file.name}`;
+        setErrorMessage(Array.isArray(message) ? message[0] : message);
+        onError?.(Array.isArray(message) ? message[0] : message);
 
-      if (!hasError) {
-        setErrorMessage('');
-        setTotalSize(newTotalSize);
-        setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
-        onFilesAdded?.([...uploadedFiles, ...newUploadedFiles]);
+        setUploadedFiles((prev) =>
+          prev.filter((current) => current.id !== tempId),
+        );
       }
     },
-    [totalSize, uploadedFiles, onFilesAdded, onError]
+    [onError, syncFiles, totalSize],
   );
 
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
+  const addFiles = useCallback(
+    async (files: FileList | File[]) => {
+      const fileArray = Array.from(files);
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    addFiles(e.dataTransfer.files);
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      addFiles(e.target.files);
-    }
-  };
-
-  const removeFile = (id: string) => {
-    setUploadedFiles((prev) => {
-      const file = prev.find((f) => f.id === id);
-      if (file) {
-        setTotalSize((s) => s - file.file.size);
+      for (const file of fileArray) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          setErrorMessage(validationError);
+          onError?.(validationError);
+          return;
+        }
       }
-      return prev.filter((f) => f.id !== id);
-    });
-  };
+
+      setErrorMessage('');
+      for (const file of fileArray) {
+        await uploadFile(file);
+      }
+    },
+    [onError, uploadFile],
+  );
+
+  const removeFile = useCallback(
+    async (id: string) => {
+      const target = uploadedFiles.find((file) => file.id === id);
+      if (!target) {
+        return;
+      }
+
+      if (!target.isUploading) {
+        await filesApi.deleteAttachment(id);
+      }
+
+      setUploadedFiles((prev) => {
+        const next = prev.filter((file) => file.id !== id);
+        syncFiles(next);
+        return next;
+      });
+    },
+    [syncFiles, uploadedFiles],
+  );
 
   return (
     <div className="w-full space-y-4">
       <div
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(false);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(false);
+          void addFiles(e.dataTransfer.files);
+        }}
         className={cn(
-          'relative rounded-lg border-2 border-dashed p-8 transition-colors',
+          'relative rounded-lg border-2 border-dashed p-5 transition-colors',
           isDragging
             ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+            : 'border-gray-300 bg-gray-50 hover:border-gray-400',
         )}
       >
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          onChange={handleFileInput}
+          onChange={(e) => {
+            if (e.target.files) {
+              void addFiles(e.target.files);
+            }
+          }}
           className="hidden"
           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
         />
 
-        <div className="flex flex-col items-center gap-3">
-          <Upload className="h-8 w-8 text-gray-400" />
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="font-semibold text-blue-600 hover:underline"
-            >
-              Click to upload
-            </button>
-            <p className="text-sm text-gray-600">or drag and drop</p>
-          </div>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Upload className="h-7 w-7 text-gray-400" />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="font-semibold text-blue-600 hover:underline"
+          >
+            Upload attachments
+          </button>
           <p className="text-xs text-gray-500">
             PDF, DOC, XLS, images up to 20MB each (50MB total)
           </p>
         </div>
       </div>
 
-      {errorMessage && (
+      {errorMessage ? (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
           <AlertCircle className="h-4 w-4" />
-          {errorMessage}
+          <span>{errorMessage}</span>
         </div>
-      )}
+      ) : null}
 
-      {uploadedFiles.length > 0 && (
+      {uploadedFiles.length > 0 ? (
         <div className="space-y-2">
           {uploadedFiles.map((file) => (
             <div
               key={file.id}
               className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
             >
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900">
-                  {file.file.name}
+                  {file.filename}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {(file.file.size / 1024).toFixed(0)} KB
+                  {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
+
               <div className="w-24">
-                <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all',
-                      file.progress === 100
-                        ? 'bg-green-500'
-                        : 'bg-blue-500'
+                      file.error ? 'bg-red-500' : file.progress === 100 ? 'bg-green-500' : 'bg-blue-500',
                     )}
                     style={{ width: `${file.progress}%` }}
                   />
                 </div>
               </div>
+
+              {file.isUploading ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : null}
+
               <button
                 type="button"
-                onClick={() => removeFile(file.id)}
-                className="text-gray-400 hover:text-red-600 transition-colors"
+                onClick={() => void removeFile(file.id)}
+                className="text-gray-400 transition-colors hover:text-red-600"
               >
-                ✕
+                ×
               </button>
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       <p className="text-xs text-gray-500">
         Total: {(totalSize / 1024 / 1024).toFixed(1)}MB / 50MB

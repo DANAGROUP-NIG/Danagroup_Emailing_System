@@ -49,6 +49,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
     inbox: mailApi.useInbox,
     sent: mailApi.useSent,
     drafts: mailApi.useDrafts,
+    starred: mailApi.useStarred,
     trash: mailApi.useTrash,
   };
   const { mutate: markAsRead } = mailApi.useMarkRead();

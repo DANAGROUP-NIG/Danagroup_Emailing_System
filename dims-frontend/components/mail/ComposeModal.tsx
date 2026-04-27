@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { X, Send, Loader2 } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import { useMail } from '@/hooks/useMail';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import AttachmentUploader, { UploadedAttachment } from "./AttachmentUploader";
 import { ComposeInput } from "../ui/Input";
 import { Message } from "@/types/mail.types";
 import type { ComposeData } from "@/types/mail.types";
@@ -94,6 +95,7 @@ const mapComposeValuesToPayload = (
 export default function ComposeModal() {
   const { isComposeOpen, closeCompose, composeDraftId } = useMailStore();
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
+  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
 
   const { data } = useGetMessage(composeDraftId || "");
 
@@ -147,6 +149,7 @@ export default function ComposeModal() {
     // If we are opening a FRESH compose modal
     if (isComposeOpen && !composeDraftId) {
       reset({ to: '', cc: '', bcc: '', subject: '', body: '' });
+      setUploadedAttachments([]);
     }
     
   }, [draftData, isComposeOpen, composeDraftId, reset]);
@@ -170,6 +173,7 @@ export default function ComposeModal() {
         subject: values.subject || "(No Subject)",
         body: values.body || "",
         bodyHtml: buildBodyHtml(values.body || ""),
+        attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
         isDraft: true,
       };
 
@@ -185,18 +189,23 @@ export default function ComposeModal() {
 
     // Close the modal regardless of whether a draft was saved or failed
     reset();
+    setUploadedAttachments([]);
     closeCompose();
   };
 
   // Transformation Logic
   // Change 'data: ComposeFormValues' to 'data: any'
   const onSubmit = (data: ComposeFormValues) => {
-    const payload = mapComposeValuesToPayload(data, composeDraftId);
+    const payload = {
+      ...mapComposeValuesToPayload(data, composeDraftId),
+      attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
+    };
 
     sendEmail(payload, {
       onSuccess: () => {
         toast.success('Message sent!');
         reset();
+        setUploadedAttachments([]);
         closeCompose();
       },
       onError: (err: any) => {
@@ -274,9 +283,14 @@ export default function ComposeModal() {
             <textarea
               {...register("body")}
               placeholder="Write your message..."
-              className="w-full flex-1 resize-none p-4 text-sm text-gray-700 outline-none"
+              className="min-h-[220px] w-full flex-1 resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none"
             />
             {errors.body && <span className="text-xs text-red-500 px-1">{errors.body.message}</span>}
+
+            <AttachmentUploader
+              onChange={setUploadedAttachments}
+              onError={(message) => toast.error(message)}
+            />
               
           </div>
           

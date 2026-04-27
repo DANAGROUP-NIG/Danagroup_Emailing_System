@@ -2,7 +2,7 @@ import MailList from "@/components/mail/MailList";
 import { MailFolder } from "@/types/mail.types";
 import { notFound } from "next/navigation";
 
-const supportedMailFolders: MailFolder[] = ["inbox", "sent", "drafts", "trash"];
+const supportedMailFolders: MailFolder[] = ["inbox", "sent", "drafts", "starred", "trash"];
 
 export default function MailSplitLayout({
   children,

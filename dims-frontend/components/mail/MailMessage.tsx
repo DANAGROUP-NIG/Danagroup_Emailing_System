@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
 import { useMail } from "@/hooks/useMail";
+import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
 
 import { useAuthStore } from "@/store/authStore";
@@ -31,8 +32,9 @@ export default function MailMessage({
   isConsecutive?: boolean
 }) {
   const { user } = useAuthStore();
-  const { useMarkRead } = useMail();
+  const { useMarkRead, useStarMail } = useMail();
   const markRead = useMarkRead(); 
+  const starMail = useStarMail();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
 
   const myRecipient = message.recipients.find(
@@ -98,7 +100,20 @@ export default function MailMessage({
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[]">
             <button className="p-1.5 hover:bg-muted rounded" title="Reply"><Reply className="h-4 w-4" /></button>
             <button className="p-1.5 hover:bg-muted rounded" title="Forward"><Forward className="h-4 w-4" /></button>
-            <button className={`p-1.5 hover:bg-muted rounded ${myRecipient?.isStarred === true ? "text-amber-400" : ""}`} title="Star">
+            <button
+              type="button"
+              disabled={!myRecipient || starMail.isPending}
+              onClick={() => {
+                if (!myRecipient) return;
+
+                starMail.mutate({
+                  id: message.id,
+                  isStarred: !myRecipient.isStarred,
+                });
+              }}
+              className={`p-1.5 hover:bg-muted rounded disabled:cursor-not-allowed disabled:opacity-50 ${myRecipient?.isStarred === true ? "text-amber-400" : ""}`}
+              title={myRecipient ? (myRecipient.isStarred ? "Unstar" : "Star") : "Only recipient messages can be starred"}
+            >
               <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} />
             </button>
             <button className="p-1.5 hover:bg-muted rounded text-destructive" title="Delete"><Trash2 className="h-4 w-4" /></button>
@@ -126,10 +141,20 @@ export default function MailMessage({
               <p className="text-xs font-semibold mb-2">Attachments ({message.attachments.length})</p>
               <div className="flex flex-wrap gap-2">
                 {message.attachments.map((file) => (
-                  <div key={file.id} className="flex items-center gap-2 rounded-md border p-2 text-xs hover:bg-muted cursor-pointer">
+                  <button
+                    key={file.id}
+                    type="button"
+                    onClick={async () => {
+                      const response = await filesApi.getDownloadUrl(file.id);
+                      if (response?.url) {
+                        window.open(response.url, "_blank", "noopener,noreferrer");
+                      }
+                    }}
+                    className="flex items-center gap-2 rounded-md border p-2 text-left text-xs hover:bg-muted"
+                  >
                     <span className="font-medium truncate max-w-[150px]">{file.filename}</span>
                     <span className="text-muted-foreground">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

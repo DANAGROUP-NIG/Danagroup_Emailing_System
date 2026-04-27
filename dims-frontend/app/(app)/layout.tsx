@@ -25,7 +25,7 @@ export default function AppLayout({
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const [hydrated, setHydrated] = useState(false);
 
-  // useSocket();
+  useSocket(user?.id);
 
   useEffect(() => {
     Promise.resolve(useAuthStore.persist.rehydrate())

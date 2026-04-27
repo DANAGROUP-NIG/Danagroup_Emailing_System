@@ -33,6 +33,7 @@ export const supportedMailFolders: MailFolder[] = [
   "inbox",
   "sent",
   "drafts",
+  "starred",
   "trash",
 ];
 
@@ -84,6 +85,13 @@ export function useMail() {
       useQuery({
         queryKey: ["mail", "drafts", page],
         queryFn: () => getMailPage("drafts", page),
+        staleTime: MAIL_STALE_TIME,
+      }),
+
+    useStarred: (page = 1) =>
+      useQuery({
+        queryKey: ["mail", "starred", page],
+        queryFn: () => getMailPage("starred", page),
         staleTime: MAIL_STALE_TIME,
       }),
 

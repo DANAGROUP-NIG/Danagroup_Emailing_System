@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { FilesController } from "./files.controller";
 import { FilesService } from "./files.service";
 import { Attachment } from "./entities/attachment.entity";
+import { MessageRecipient } from "../mail/entities/message-recipient.entity";
+import { Message } from "../mail/entities/message.entity";
 import {
   createMinioClient,
   MINIO_CLIENT,
@@ -11,7 +13,10 @@ import {
 } from "../../config/storage.config";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Attachment]), ConfigModule],
+  imports: [
+    TypeOrmModule.forFeature([Attachment, Message, MessageRecipient]),
+    ConfigModule,
+  ],
   controllers: [FilesController],
   providers: [
     FilesService,

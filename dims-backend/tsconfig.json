@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node", "multer"],
     "esModuleInterop": true,                // Required for modern imports
     "allowSyntheticDefaultImports": true,   // Required for express-session
     "moduleResolution": "node",   

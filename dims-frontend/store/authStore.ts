@@ -60,7 +60,8 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const response = await api.post("/auth/login", {email, password});
-          const { user, accessToken, refreshToken } = response.data;
+          const payload = response.data?.data ?? response.data;
+          const { user, accessToken, refreshToken } = payload;
 
           set({
             user: {...user, accessToken, refreshToken},
@@ -94,7 +95,7 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
       try {
         await api.post("/auth/logout");
-        set({user: null});
+        set({ user: null, isAuthenticated: false });
       } catch (error: any) {
         toast.error(error.response?.data?.message, {position: "bottom-center"})
       }
@@ -108,9 +109,20 @@ export const useAuthStore = create<AuthState>()(
           withCredentials: true,
         });
 
-        set({user: res.data.data, checkingAuth:false});
+        const previousUser = get().user;
+        set({
+          user: res.data.data
+            ? {
+                ...res.data.data,
+                accessToken: previousUser?.accessToken,
+                refreshToken: previousUser?.refreshToken,
+              }
+            : null,
+          isAuthenticated: !!res.data.data,
+          checkingAuth: false,
+        });
       } catch (error) {
-         set({checkingAuth: false, user: null});
+         set({ checkingAuth: false, user: null, isAuthenticated: false });
       }
     },
 
@@ -121,11 +133,22 @@ export const useAuthStore = create<AuthState>()(
       set({checkingAuth: true});
 
       try {
-        const res = await api.post("auth/refresh", {}, {withCredentials: true});
-        set({ checkingAuth: false});
+        const res = await api.post("/auth/refresh", {}, {withCredentials: true});
+        const currentUser = get().user;
+        const data = res.data?.data;
+        set({
+          user: currentUser && data
+            ? {
+                ...currentUser,
+                accessToken: data.accessToken ?? currentUser.accessToken,
+                refreshToken: data.refreshToken ?? currentUser.refreshToken,
+              }
+            : currentUser,
+          checkingAuth: false,
+        });
         return res.data;
       } catch (error) {
-        set({ user: null, checkingAuth: false});
+        set({ user: null, checkingAuth: false, isAuthenticated: false });
       }
     },
 
