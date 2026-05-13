@@ -45,11 +45,11 @@ export class User {
   })
   role: UserRole;
 
-  @Column({ length: 150 })
-  jobTitle: string;
+  @Column({ length: 150, nullable: true })
+  jobTitle?: string;
 
-  @Column({ length: 255 })
-  avatarUrl: string;
+  @Column({ length: 255, nullable: true })
+  avatarUrl?: string;
 
   @Column({ default: true })
   isActive: boolean;

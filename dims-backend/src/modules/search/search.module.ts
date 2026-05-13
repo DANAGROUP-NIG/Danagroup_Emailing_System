@@ -1,9 +1,12 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ElasticsearchModule } from "@nestjs/elasticsearch";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { SearchService } from "./search.service";
+import { SearchController } from "./search.controller";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "@modules/users/entities/user.entity";
+import { UsersSearchService } from "@modules/users/users-search.service";
+import { MailModule } from "@modules/mail/mail.module";
 
 @Module({
   imports: [
@@ -22,8 +25,10 @@ import { User } from "@modules/users/entities/user.entity";
       }),
       inject: [ConfigService],
     }),
+    forwardRef(() => MailModule),
   ],
-  providers: [SearchService],
-  exports: [SearchService],
+  controllers: [SearchController],
+  providers: [SearchService, UsersSearchService],
+  exports: [SearchService, UsersSearchService],
 })
 export class SearchModule {}

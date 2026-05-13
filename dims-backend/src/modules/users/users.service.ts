@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   forwardRef,
+  ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -36,12 +39,14 @@ export class UsersService {
     private readonly mailService: MailService,
   ) {}
 
+  private readonly logger = new Logger(UsersService.name);
+
   private handleError(method: string, error: any) {
     // Do not mask NestJS known exceptions (BadRequestException, etc.)
-    console.error(`❌ UsersService.${method} failed:`, {
-      message: error.message,
-      stack: error.stack,
-    });
+    this.logger.error(
+      `UsersService.${method} failed: ${error.message}`,
+      error.stack,
+    );
     throw error;
   }
 
@@ -176,6 +181,13 @@ export class UsersService {
       throw new NotFoundException("Department or Subsidiary not found");
     }
 
+    const emailDomain = dto.email.split("@")[1];
+    if (subsidiary.domain && emailDomain !== subsidiary.domain) {
+      throw new BadRequestException(
+        `Email must use domain: ${subsidiary.domain}`,
+      );
+    }
+
     try {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(dto.password, salt);
@@ -206,7 +218,19 @@ export class UsersService {
     }
   }
   // TODO: Implement update(id, dto): User (admin or self)
-  async update(id: string, dto: UpdateUserDto) {
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    requesterId: string,
+    requesterRole: string,
+  ) {
+    if (
+      requesterId !== id &&
+      requesterRole !== "group_admin" &&
+      requesterRole !== "subsidiary_admin"
+    ) {
+      throw new ForbiddenException("You can only update your own profile");
+    }
     try {
       const existingUser = await this.findById(id);
       const updatedUser = await this.userRepo.save({
@@ -235,7 +259,7 @@ export class UsersService {
 
       await this.jobsService.enqueueUserIndex({ userId: updatedUser.id });
 
-      console.log(
+      this.logger.log(
         `User ${user.firstName} ${user.lastName} deactivated successfully`,
       );
     } catch (error) {

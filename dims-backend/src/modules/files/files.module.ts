@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { FilesController } from "./files.controller";
@@ -11,11 +11,13 @@ import {
   MINIO_CLIENT,
   MINIO_BUCKET,
 } from "../../config/storage.config";
+import { UsersModule } from "@modules/users/users.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Attachment, Message, MessageRecipient]),
     ConfigModule,
+    forwardRef(() => UsersModule),
   ],
   controllers: [FilesController],
   providers: [

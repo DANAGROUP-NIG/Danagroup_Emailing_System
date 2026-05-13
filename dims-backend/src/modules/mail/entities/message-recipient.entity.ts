@@ -5,12 +5,16 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from "typeorm";
 import { Message } from "./message.entity";
 import { User } from "@modules/users/entities/user.entity";
 
 export type RecipientType = "to" | "cc" | "bcc";
 
+@Index(["recipientId", "isDeleted"])
+@Index(["recipientId", "isRead"])
+@Index(["messageId"])
 @Entity("message_recipients")
 export class MessageRecipient {
   @PrimaryGeneratedColumn("uuid")

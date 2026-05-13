@@ -21,7 +21,7 @@ import { QUEUES } from "@jobs/queue.constants";
   imports: [
     forwardRef(() => AuthModule),
     forwardRef(() => JobsModule),
-    SearchModule,
+    forwardRef(() => SearchModule),
     TypeOrmModule.forFeature([
       Message,
       Thread,

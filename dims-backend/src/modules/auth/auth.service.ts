@@ -162,7 +162,7 @@ export class AuthService {
 
     const hashedRefresh = await bcrypt.hash(tokens.refreshToken, 12);
     const currentSessions = fullUser.sessions ?? [];
-    const nextSessions = [
+    const allSessions = [
       ...currentSessions,
       {
         refreshToken: hashedRefresh,
@@ -171,6 +171,8 @@ export class AuthService {
         createdAt: new Date().toISOString(),
       },
     ];
+    const nextSessions =
+      allSessions.length > 5 ? allSessions.slice(-5) : allSessions;
 
     await this.usersService.updateAuthState(fullUser.id, {
       sessions: nextSessions,

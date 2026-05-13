@@ -25,6 +25,7 @@ import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { ApiResponseDto } from "@common/dto/api-response.dto";
 import { AuthGuard } from "@nestjs/passport";
+import { Throttle } from "@nestjs/throttler";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
 import { Public } from "@common/decorators/public.decorator";
 import { Roles } from "@common/decorators/roles.decorator";
@@ -68,6 +69,7 @@ export class AuthController {
   // - Set httpOnly refresh_token cookie
   // - Return user object
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseGuards(AuthGuard("local"))
   @Post("login")
   @HttpCode(HttpStatus.OK)

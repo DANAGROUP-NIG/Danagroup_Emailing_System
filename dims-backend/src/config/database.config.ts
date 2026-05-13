@@ -19,7 +19,7 @@ export default (config: ConfigService): TypeOrmModuleOptions => ({
   logging:
     config.get("NODE_ENV") === "development" ? ["query", "error"] : ["error"],
 
-  migrations: ["dist/migrations/*.js"],
+  migrations: ["dist/database/migrations/*.js"],
   migrationsTableName: "migrations",
 
   namingStrategy: new SnakeNamingStrategy(),

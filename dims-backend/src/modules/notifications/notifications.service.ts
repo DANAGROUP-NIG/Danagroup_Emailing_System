@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Notification, NotificationType } from "./entities/notification.entity";
+import { QueryNotificationsDto } from "./dto/query-notifications.dto";
 
 @Injectable()
 export class NotificationsService {
@@ -26,6 +27,40 @@ export class NotificationsService {
     });
 
     return this.notificationRepo.save(notification);
+  }
+
+  async findAllForUser(userId: string, query: QueryNotificationsDto) {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 20, 50);
+
+    const [data, total] = await this.notificationRepo.findAndCount({
+      where: { userId },
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, total, page, limit };
+  }
+
+  async markAllRead(userId: string) {
+    const result = await this.notificationRepo
+      .createQueryBuilder()
+      .update()
+      .set({ isRead: true })
+      .where("userId = :userId", { userId })
+      .andWhere("isRead = false")
+      .execute();
+
+    return { updated: result.affected ?? 0 };
+  }
+
+  async getUnreadCount(userId: string) {
+    const count = await this.notificationRepo.count({
+      where: { userId, isRead: false },
+    });
+
+    return { count };
   }
 
   async markRead(notificationId: string, userId: string): Promise<void> {

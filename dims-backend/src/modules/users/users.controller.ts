@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Logger,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
@@ -19,12 +20,15 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { SearchService } from "@modules/search/search.service";
+import { CurrentUser } from "@common/decorators/current-user.decorator";
 
 @ApiTags("users")
 @ApiBearerAuth()
 @Controller("users")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly searchService: SearchService,
@@ -47,7 +51,7 @@ export class UsersController {
   async search(@Query() queryDto: QueryUserDto) {
     // TODO: Implement
 
-    console.log("Search query received:", queryDto);
+    this.logger.log(`Search query received: ${JSON.stringify(queryDto)}`);
     return await this.searchService.searchUsers(
       queryDto.search || "",
       queryDto.limit,
@@ -78,15 +82,24 @@ export class UsersController {
 
   // TODO: Implement PATCH /users/:id — update user (admin or self)
   @Patch(":id")
-  @Roles("group_admin")
   @ApiOperation({ summary: "Update user profile" })
-  async update(@Param("id") id: string, @Body() body: UpdateUserDto) {
+  async update(
+    @Param("id") id: string,
+    @Body() body: UpdateUserDto,
+    @CurrentUser() currentUser: { userId: string; role: string },
+  ) {
     // TODO: Implement
-    return this.usersService.update(id, body);
+    return this.usersService.update(
+      id,
+      body,
+      currentUser.userId,
+      currentUser.role,
+    );
   }
 
   // TODO: Implement DELETE /users/:id — deactivate user (admin only)
   @Delete(":id")
+  @Roles("subsidiary_admin", "group_admin")
   @ApiOperation({ summary: "Deactivate a user (admin only)" })
   async deactivate(@Param("id") id: string) {
     // TODO: Implement

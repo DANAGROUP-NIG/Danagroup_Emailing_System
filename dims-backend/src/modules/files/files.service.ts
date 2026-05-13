@@ -26,7 +26,14 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/webp",
 ]);
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024;
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const AVATAR_ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 
 @Injectable()
 export class FilesService {
@@ -121,6 +128,37 @@ export class FilesService {
     };
   }
 
+  async uploadAvatar(file: Express.Multer.File, uploaderId: string) {
+    if (!file) {
+      throw new BadRequestException("File is required");
+    }
+    if (!AVATAR_ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException("Avatar must be jpeg, png, gif, or webp");
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      throw new BadRequestException("Avatar exceeds 5MB limit");
+    }
+
+    await this.ensureBucket();
+
+    const ext =
+      file.originalname
+        .split(".")
+        .pop()
+        ?.replace(/[^a-z0-9]/gi, "") || "jpg";
+    const storageKey = `avatars/${uploaderId}/${uuid()}.${ext}`;
+
+    await this.minioClient.putObject(
+      this.bucket,
+      storageKey,
+      file.buffer,
+      file.size,
+      { "Content-Type": file.mimetype },
+    );
+
+    return { storageKey };
+  }
+
   private validateUpload(file?: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("File is required");
@@ -131,7 +169,7 @@ export class FilesService {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException("File exceeds 25MB limit");
+      throw new BadRequestException("File exceeds 20MB limit");
     }
   }
 

@@ -45,10 +45,7 @@ export type MailboxChangedPayload = {
 
 @WebSocketGateway({
   cors: {
-    origin: (process.env.FRONTEND_URL || "http://localhost:3000")
-      .split(",")
-      .map((origin) => origin.trim().replace(/\/$/, ""))
-      .filter(Boolean),
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   },
   namespace: "/notifications",
