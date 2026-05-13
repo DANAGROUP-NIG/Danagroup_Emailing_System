@@ -66,13 +66,20 @@ async function bootstrap() {
     await redisClient.connect();
 
     const isProduction = process.env.NODE_ENV === "production";
+    const sessionSecret = process.env.SESSION_SECRET;
+
+    if (isProduction && !sessionSecret) {
+      throw new Error("SESSION_SECRET must be configured in production");
+    }
+
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
 
     app.use(cookieParser());
 
     app.use(
       session({
         store: new RedisStore({ client: redisClient, prefix: "sess:" }),
-        secret: process.env.SESSION_SECRET || "super-secret",
+        secret: sessionSecret || "dev-session-secret",
         resave: false,
         saveUninitialized: false,
         name: "dims_sid",

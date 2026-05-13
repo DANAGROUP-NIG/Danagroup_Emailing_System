@@ -10,7 +10,7 @@ import {
   HttpStatus,
   UnauthorizedException,
 } from "@nestjs/common";
-import { Response, Request } from "express";
+import { CookieOptions, Response, Request } from "express";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -38,6 +38,21 @@ import { UserShape } from "./auth.service";
 type AuthenticatedRequest = Request & {
   user: UserShape;
 };
+
+const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
+const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function authCookieOptions(maxAge?: number): CookieOptions {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    ...(maxAge ? { maxAge } : {}),
+  };
+}
 
 @ApiTags("auth")
 @Controller("auth")
@@ -75,38 +90,21 @@ export class AuthController {
       req,
     );
 
-    // Set Cookies
-    res.cookie("access_token", result.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 15 * 60 * 1000, // 15 min
-    });
+    res.cookie(
+      "access_token",
+      result.accessToken,
+      authCookieOptions(ACCESS_TOKEN_MAX_AGE_MS),
+    );
 
-    res.cookie("refresh_token", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie(
+      "refresh_token",
+      result.refreshToken,
+      authCookieOptions(REFRESH_TOKEN_MAX_AGE_MS),
+    );
 
     return new ApiResponseDto(true, "Login successful", {
       user: result.user,
-      accessToken: result.accessToken, // <--- ADD THIS so you can copy it to Swagger
-      refreshToken: result.refreshToken,
     });
-
-    // return {
-    //   success: true,
-    //   message: "Login successful",
-    //   data: {
-    //     user: result.user,
-    //     accessToken: result.accessToken, // <--- ADD THIS so you can copy it to Swagger
-    //     refreshToken: result.refreshToken,
-    //   }
-    // };
   }
 
   // TODO: Implement POST /auth/logout
@@ -133,8 +131,8 @@ export class AuthController {
     await this.authService.logout(user.userId, accessToken, refreshToken, req);
 
     // clear cookies
-    res.clearCookie("access_token", { path: "/" });
-    res.clearCookie("refresh_token", { path: "/" });
+    res.clearCookie("access_token", authCookieOptions());
+    res.clearCookie("refresh_token", authCookieOptions());
 
     return new ApiResponseDto(true, "Logged out successfully");
   }
@@ -166,23 +164,19 @@ export class AuthController {
     }
 
     const tokens = await this.authService.refresh(refreshToken);
-    res.cookie("access_token", tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 15 * 60 * 1000,
-    });
+    res.cookie(
+      "access_token",
+      tokens.accessToken,
+      authCookieOptions(ACCESS_TOKEN_MAX_AGE_MS),
+    );
 
-    res.cookie("refresh_token", tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      "refresh_token",
+      tokens.refreshToken,
+      authCookieOptions(REFRESH_TOKEN_MAX_AGE_MS),
+    );
 
-    return new ApiResponseDto(true, "Token refreshed", tokens);
+    return new ApiResponseDto(true, "Token refreshed");
   }
 
   // TODO: Implement GET /auth/me
@@ -199,7 +193,11 @@ export class AuthController {
   async me(@CurrentUser() user: any) {
     // TODO: Implement
     const fullUser = await this.usersService.findById(user.userId);
-    return new ApiResponseDto(true, "User fetched", fullUser);
+    return new ApiResponseDto(
+      true,
+      "User fetched",
+      this.authService.toAuthenticatedUser(fullUser),
+    );
   }
 
   @Roles("group_admin")

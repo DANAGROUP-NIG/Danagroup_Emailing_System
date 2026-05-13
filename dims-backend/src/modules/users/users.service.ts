@@ -93,10 +93,19 @@ export class UsersService {
     }
   }
   // TODO: Implement findById(id): User
-  async findById(id: string): Promise<User> {
-    const user = await this.userRepo.findOne({
-      where: { id },
-    });
+  async findById(
+    id: string,
+    options: { includeAuthState?: boolean } = {},
+  ): Promise<User> {
+    const user = options.includeAuthState
+      ? await this.userRepo
+          .createQueryBuilder("user")
+          .addSelect("user.sessions")
+          .where("user.id = :id", { id })
+          .getOne()
+      : await this.userRepo.findOne({
+          where: { id },
+        });
 
     if (!user) {
       throw new NotFoundException("User not found");

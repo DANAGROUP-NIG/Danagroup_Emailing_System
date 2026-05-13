@@ -8,7 +8,7 @@
 //   setLoading: (loading: boolean) => void
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { LoginProps, User } from "@/types/user.types";
 import api from "@/lib/api";
 import axios from "axios";
@@ -61,14 +61,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const response = await api.post("/auth/login", {email, password});
           const payload = response.data?.data ?? response.data;
-          const { user, accessToken, refreshToken } = payload;
+          const { user } = payload;
 
-          if (!user || !accessToken || !refreshToken) {
-            throw new Error("Login response is missing authentication data");
+          if (!user) {
+            throw new Error("Login response is missing user data");
           }
 
           set({
-            user: {...user, accessToken, refreshToken},
+            user,
             isAuthenticated: true,
             isLoading: false
           });
@@ -115,15 +115,8 @@ export const useAuthStore = create<AuthState>()(
           withCredentials: true,
         });
 
-        const previousUser = get().user;
         set({
-          user: res.data.data
-            ? {
-                ...res.data.data,
-                accessToken: previousUser?.accessToken,
-                refreshToken: previousUser?.refreshToken,
-              }
-            : null,
+          user: res.data.data ?? null,
           isAuthenticated: !!res.data.data,
           checkingAuth: false,
         });
@@ -140,16 +133,7 @@ export const useAuthStore = create<AuthState>()(
 
       try {
         const res = await api.post("/auth/refresh", {}, {withCredentials: true});
-        const currentUser = get().user;
-        const data = res.data?.data;
         set({
-          user: currentUser && data
-            ? {
-                ...currentUser,
-                accessToken: data.accessToken ?? currentUser.accessToken,
-                refreshToken: data.refreshToken ?? currentUser.refreshToken,
-              }
-            : currentUser,
           checkingAuth: false,
         });
         return res.data;
@@ -164,6 +148,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     { 
       name: "dims-auth",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
       // Optional: skips hydration during SSR to avoid mismatch errors
       skipHydration: true, 
     }

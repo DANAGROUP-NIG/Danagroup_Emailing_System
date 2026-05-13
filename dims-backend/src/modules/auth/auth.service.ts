@@ -10,6 +10,7 @@ import { UserRole } from "@modules/users/entities/user.entity";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import { Request } from "express";
+import { User } from "@modules/users/entities/user.entity";
 
 export interface UserShape {
   id: string;
@@ -33,6 +34,17 @@ export interface UserShape {
     ip: string;
   }[];
 }
+
+export type AuthenticatedUser = Omit<
+  User,
+  | "passwordHash"
+  | "sessions"
+  | "sentMessages"
+  | "receivedMessages"
+  | "announcements"
+  | "notifications"
+>;
+
 @Injectable()
 export class AuthService {
   private redis: Redis;
@@ -50,6 +62,9 @@ export class AuthService {
         : `redis://${this.config.get("REDIS_HOST", "localhost")}:${this.config.get("REDIS_PORT", "6379")}`);
 
     this.redis = new Redis(redisUrl);
+    this.redis.on("error", (error) => {
+      console.error("Redis auth client error:", error);
+    });
   }
 
   private async establishSession(req: Request | undefined, user: UserShape) {
@@ -99,7 +114,21 @@ export class AuthService {
     return result;
   }
 
-  private async generateTokens(user: any) {
+  toAuthenticatedUser(user: User): AuthenticatedUser {
+    const {
+      passwordHash: _passwordHash,
+      sessions: _sessions,
+      sentMessages: _sentMessages,
+      receivedMessages: _receivedMessages,
+      announcements: _announcements,
+      notifications: _notifications,
+      ...safeUser
+    } = user as User & { passwordHash?: string };
+
+    return safeUser;
+  }
+
+  private async generateTokens(user: Pick<User, "id" | "email" | "role">) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -125,7 +154,9 @@ export class AuthService {
   // - Return both tokens + user object
   async login(user: UserShape, userAgent?: string, ip?: string, req?: Request) {
     //Fetch the complete user from the database to get all missing fields
-    const fullUser = await this.usersService.findById(user.id);
+    const fullUser = await this.usersService.findById(user.id, {
+      includeAuthState: true,
+    });
 
     const tokens = await this.generateTokens(fullUser);
 
@@ -137,6 +168,7 @@ export class AuthService {
         refreshToken: hashedRefresh,
         userAgent: userAgent || "unknown",
         ip: ip || "unknown",
+        createdAt: new Date().toISOString(),
       },
     ];
 
@@ -149,13 +181,7 @@ export class AuthService {
 
     return {
       ...tokens,
-      user: {
-        id: fullUser.id,
-        email: fullUser.email,
-        firstName: fullUser.firstName,
-        lastName: fullUser.lastName,
-        role: fullUser.role,
-      },
+      user: this.toAuthenticatedUser(fullUser),
     };
   }
 
@@ -168,7 +194,9 @@ export class AuthService {
         secret: this.config.get<string>("JWT_REFRESH_SECRET"),
       });
 
-      const user = await this.usersService.findById(payload.sub);
+      const user = await this.usersService.findById(payload.sub, {
+        includeAuthState: true,
+      });
 
       if (!user || !user.isActive || !user.sessions?.length) {
         throw new UnauthorizedException();
@@ -214,8 +242,8 @@ export class AuthService {
   // - Optionally blacklist refresh token in Redis (for full invalidation)
   async logout(
     userId: string,
-    accessToken: string,
-    refreshToken: string,
+    accessToken?: string,
+    refreshToken?: string,
     req?: Request,
   ) {
     if (accessToken) {
@@ -248,7 +276,9 @@ export class AuthService {
     }
 
     //remove refresh token from DB
-    const user = await this.usersService.findById(userId);
+    const user = await this.usersService.findById(userId, {
+      includeAuthState: true,
+    });
 
     if (user?.sessions && refreshToken) {
       const filteredSessions = [];

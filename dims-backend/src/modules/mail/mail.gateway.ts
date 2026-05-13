@@ -44,7 +44,13 @@ export type MailboxChangedPayload = {
 };
 
 @WebSocketGateway({
-  cors: { origin: "*" },
+  cors: {
+    origin: (process.env.FRONTEND_URL || "http://localhost:3000")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/$/, ""))
+      .filter(Boolean),
+    credentials: true,
+  },
   namespace: "/notifications",
   pingInterval: 25000,
   pingTimeout: 20000,
@@ -197,12 +203,12 @@ export class MailGateway implements OnGatewayConnection, OnGatewayDisconnect {
       secret: this.configService.get<string>("JWT_SECRET"),
     });
 
-    if (!payload?.userId) {
+    if (!payload?.sub) {
       throw new WsException("Invalid authentication token");
     }
 
     return {
-      userId: payload.userId,
+      userId: payload.sub,
       email: payload.email,
       role: payload.role,
     };
@@ -221,6 +227,21 @@ export class MailGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const header = client.handshake.headers.authorization;
     if (typeof header === "string" && header.trim()) {
       return header.replace(/^Bearer\s+/i, "");
+    }
+
+    const cookieHeader = client.handshake.headers.cookie;
+    if (typeof cookieHeader === "string" && cookieHeader.trim()) {
+      const token = cookieHeader
+        .split(";")
+        .map((part) => part.trim())
+        .find((part) => part.startsWith("access_token="))
+        ?.split("=")
+        .slice(1)
+        .join("=");
+
+      if (token) {
+        return decodeURIComponent(token);
+      }
     }
 
     return null;

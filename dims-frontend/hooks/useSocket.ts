@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import toast from "react-hot-toast";
 import { getSocketBaseUrl } from "@/lib/api";
-import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import type { MailFolder } from "@/types/mail.types";
 
@@ -38,13 +37,12 @@ const mailFolders: MailFolder[] = [
 export function useSocket(userId?: string) {
   const queryClient = useQueryClient();
   const addNotification = useNotificationStore((state) => state.addNotification);
-  const accessToken = useAuthStore((state) => state.user?.accessToken);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const socketUrl = getSocketBaseUrl();
 
-    if (!userId || !accessToken || !socketUrl) {
+    if (!userId || !socketUrl) {
       setIsConnected(false);
       return;
     }
@@ -55,9 +53,7 @@ export function useSocket(userId?: string) {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
-      auth: {
-        token: accessToken,
-      },
+      withCredentials: true,
     });
 
     const invalidateMailbox = (payload?: MailboxChangedPayload) => {
@@ -163,7 +159,7 @@ export function useSocket(userId?: string) {
       socket.disconnect();
       setIsConnected(false);
     };
-  }, [accessToken, addNotification, queryClient, userId]);
+  }, [addNotification, queryClient, userId]);
 
   return { isConnected };
 }

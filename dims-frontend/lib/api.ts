@@ -59,12 +59,6 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().user?.accessToken;
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
   return config;
 });
 
@@ -83,32 +77,13 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const state = useAuthStore.getState();
-        const refreshToken = state.user?.refreshToken;
-
-        if (!refreshToken) {
-          throw new Error("No refresh token available");
-        }
-
-        const response = await axios.post(
+        await axios.post(
           `${API_URL}/auth/refresh`,
-          { refreshToken },
+          {},
           { withCredentials: true },
         );
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        const currentUser = state.user;
-
-        if (currentUser) {
-          state.setUser({
-            ...currentUser,
-            accessToken,
-            refreshToken: newRefreshToken,
-          });
-        }
-
         originalRequest.headers = originalRequest.headers ?? {};
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().clearUser();

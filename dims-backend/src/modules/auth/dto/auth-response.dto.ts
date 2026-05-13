@@ -46,12 +46,6 @@ export class AuthUserDto {
 export class LoginResponseDataDto {
   @ApiProperty({ type: () => AuthUserDto })
   user: AuthUserDto;
-
-  @ApiProperty()
-  accessToken: string;
-
-  @ApiProperty()
-  refreshToken: string;
 }
 
 export class LoginResponseDto {

@@ -70,11 +70,12 @@ export class User {
   @Column()
   subsidiaryId: string;
 
-  @Column("json", { nullable: true })
+  @Column("json", { nullable: true, select: false })
   sessions?: {
     refreshToken: string;
     userAgent: string;
     ip: string;
+    createdAt?: string;
   }[];
 
   // ---- RELATIONSHIPS ----
