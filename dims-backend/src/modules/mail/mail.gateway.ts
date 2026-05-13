@@ -24,6 +24,25 @@ type SubscribePayload = {
   room?: string;
 };
 
+export type MailboxChangedPayload = {
+  action:
+    | "message_sent"
+    | "message_received"
+    | "draft_saved"
+    | "read_state_changed"
+    | "star_state_changed"
+    | "moved_to_trash"
+    | "restored_from_trash"
+    | "permanently_deleted"
+    | "trash_emptied";
+  messageId?: string;
+  messageIds?: string[];
+  threadId?: string;
+  threadIds?: string[];
+  folders?: string[];
+  timestamp?: string;
+};
+
 @WebSocketGateway({
   cors: { origin: "*" },
   namespace: "/notifications",
@@ -130,6 +149,13 @@ export class MailGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitMailRead(userId: string, payload: Record<string, unknown>) {
     this.emitEventToUser(userId, "mail_read", payload);
+  }
+
+  emitMailboxChanged(userId: string, payload: MailboxChangedPayload) {
+    this.emitEventToUser(userId, "mailbox_changed", {
+      ...payload,
+      timestamp: payload.timestamp ?? new Date().toISOString(),
+    });
   }
 
   emitUserStatus(userId: string, status: string) {

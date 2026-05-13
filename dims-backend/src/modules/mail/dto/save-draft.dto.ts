@@ -7,6 +7,7 @@ import {
   IsString,
   IsUUID,
   IsEmail,
+  IsBoolean,
 } from "class-validator";
 
 const normalizeOptionalEmailList = ({ value }: { value: unknown }) => {
@@ -76,4 +77,9 @@ export class SaveDraftDto {
   @ArrayUnique()
   @IsOptional()
   attachmentIds?: string[];
+
+  @ApiPropertyOptional({ description: "Ignored compatibility flag" })
+  @IsBoolean()
+  @IsOptional()
+  isDraft?: boolean;
 }

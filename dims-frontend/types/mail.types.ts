@@ -32,6 +32,9 @@ export interface MessageRecipient {
   id: string;
   type: RecipientType;
   recipientId: string;
+  email?: string | null;
+  name?: string;
+  avatarUrl?: string | null;
   isRead: boolean;
   isStarred: boolean;
   isDeleted: boolean;
@@ -74,6 +77,8 @@ export interface MailThreadSummary {
   id: string;
   subject: string;
   unreadCount: number;
+  isStarred?: boolean;
+  updatedAt?: string;
   latestMessage: MailListMessage | null;
 }
 

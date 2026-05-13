@@ -32,13 +32,14 @@ export default function MailMessage({
   isConsecutive?: boolean
 }) {
   const { user } = useAuthStore();
-  const { useMarkRead, useStarMail } = useMail();
+  const { useDeleteMail, useMarkRead, useStarMail } = useMail();
   const markRead = useMarkRead(); 
   const starMail = useStarMail();
+  const deleteMail = useDeleteMail();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
 
   const myRecipient = message.recipients.find(
-    (r) => r.recipient?.email === user?.email
+    (r) => r.email === user?.email || r.recipient?.email === user?.email
   );
   // Marks message as read on expand (PATCH /api/mail/:id/read)
   useEffect(() => {
@@ -64,6 +65,9 @@ export default function MailMessage({
   
   const fullName = message.sender?.name || message.sender?.email || "Unknown sender";
   const senderEmail = message.sender?.email || "unknown@danagroup.internal";
+  const toLine = formatRecipients(message.recipients, "to");
+  const ccLine = formatRecipients(message.recipients, "cc");
+  const bccLine = formatRecipients(message.recipients, "bcc");
 
   return (
     <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
@@ -116,7 +120,15 @@ export default function MailMessage({
             >
               <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} />
             </button>
-            <button className="p-1.5 hover:bg-muted rounded text-destructive" title="Delete"><Trash2 className="h-4 w-4" /></button>
+            <button
+              type="button"
+              disabled={deleteMail.isPending}
+              onClick={() => deleteMail.mutate(message.id)}
+              className="p-1.5 hover:bg-muted rounded text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+              title="Move to trash"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -126,6 +138,9 @@ export default function MailMessage({
         <div className="px-11 animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="mb-6 flex flex-col text-xs text-muted-foreground">
             <span>From: <b className="text-foreground">{fullName}</b> &lt;{senderEmail}&gt;</span>
+            {toLine ? <span>To: {toLine}</span> : null}
+            {ccLine ? <span>Cc: {ccLine}</span> : null}
+            {bccLine ? <span>Bcc: {bccLine}</span> : null}
             <span>Date: {format(new Date(message.createdAt), "PPPP 'at' p")}</span>
           </div>
 
@@ -165,3 +180,20 @@ export default function MailMessage({
   );
 }
 
+function formatRecipients(
+  recipients: Message["recipients"],
+  type: "to" | "cc" | "bcc",
+) {
+  const labels = recipients
+    .filter((recipient) => recipient.type === type)
+    .map(
+      (recipient) =>
+        recipient.name ||
+        recipient.email ||
+        recipient.recipient?.name ||
+        recipient.recipient?.email,
+    )
+    .filter(Boolean);
+
+  return labels.join(", ");
+}

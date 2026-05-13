@@ -47,8 +47,9 @@ export class MailMapper {
     }
 
     return (
-      thread.userStates.find((userState) => userState.userId === currentUserId) ??
-      null
+      thread.userStates.find(
+        (userState) => userState.userId === currentUserId,
+      ) ?? null
     );
   }
 
@@ -65,7 +66,16 @@ export class MailMapper {
     };
   }
 
-  static toListMessage(message: Message) {
+  static getVisibleRecipients(message: Message, currentUserId?: string) {
+    return (message.recipients ?? []).filter(
+      (recipient) =>
+        recipient.type !== "bcc" ||
+        message.senderId === currentUserId ||
+        recipient.recipientId === currentUserId,
+    );
+  }
+
+  static toListMessage(message: Message, currentUserId?: string) {
     return {
       id: message.id,
       threadId: message.threadId,
@@ -74,31 +84,36 @@ export class MailMapper {
       createdAt: message.createdAt,
       sentAt: message.sentAt,
       sender: this.toSenderSummary(message.sender),
-      recipients: (message.recipients ?? []).map((recipient) =>
-        this.toRecipient(recipient),
+      recipients: this.getVisibleRecipients(message, currentUserId).map(
+        (recipient) => this.toRecipient(recipient),
       ),
     };
   }
 
   static toRecipient(recipient: MessageRecipient) {
+    const participant = this.toParticipant(recipient.recipient);
+
     return {
       id: recipient.id,
       type: recipient.type,
       recipientId: recipient.recipientId,
+      email: participant?.email ?? null,
+      name: participant?.name ?? "",
+      avatarUrl: participant?.avatarUrl ?? null,
       isRead: recipient.isRead,
       isStarred: recipient.isStarred,
       isDeleted: recipient.isDeleted,
       readAt: recipient.readAt,
       deletedAt: recipient.deletedAt,
-      recipient: this.toParticipant(recipient.recipient),
+      recipient: participant,
     };
   }
 
   static toMessage(message: Message, currentUserId?: string) {
     const currentRecipient = currentUserId
-      ? message.recipients?.find(
+      ? (message.recipients?.find(
           (recipient) => recipient.recipientId === currentUserId,
-        ) ?? null
+        ) ?? null)
       : null;
 
     return {
@@ -112,8 +127,8 @@ export class MailMapper {
       createdAt: message.createdAt,
       senderDeletedAt: message.senderDeletedAt,
       sender: this.toParticipant(message.sender),
-      recipients: (message.recipients ?? []).map((recipient) =>
-        this.toRecipient(recipient),
+      recipients: this.getVisibleRecipients(message, currentUserId).map(
+        (recipient) => this.toRecipient(recipient),
       ),
       attachments:
         message.attachments?.map((attachment) => ({
@@ -140,14 +155,22 @@ export class MailMapper {
       id: thread.id,
       subject: thread.subject,
       unreadCount: userState?.unreadCount ?? 0,
-      latestMessage: latest ? this.toListMessage(latest) : null,
+      isStarred: userState?.isStarred ?? false,
+      updatedAt: thread.lastMessageAt ?? thread.lastActivityAt,
+      latestMessage: latest ? this.toListMessage(latest, currentUserId) : null,
     };
   }
 
-  static toThreadDetail(threadId: string, messages: Message[], currentUserId: string) {
+  static toThreadDetail(
+    threadId: string,
+    messages: Message[],
+    currentUserId: string,
+  ) {
     return {
       threadId,
-      messages: messages.map((message) => this.toMessage(message, currentUserId)),
+      messages: messages.map((message) =>
+        this.toMessage(message, currentUserId),
+      ),
     };
   }
 

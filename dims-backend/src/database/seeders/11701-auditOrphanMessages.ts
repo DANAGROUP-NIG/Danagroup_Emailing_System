@@ -30,8 +30,7 @@ async function run() {
       JSON.stringify(
         {
           orphanCount: rows.length,
-          note:
-            "These messages were saved without recipient rows. They cannot be reconstructed from the DB alone.",
+          note: "These messages were saved without recipient rows. They cannot be reconstructed from the DB alone.",
           messages: rows,
         },
         null,

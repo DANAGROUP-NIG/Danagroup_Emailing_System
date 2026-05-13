@@ -28,7 +28,7 @@ import type {
 } from "@/types/mail.types";
 
 type ApiEnvelope<T> = T | { data: T };
-const MAIL_STALE_TIME = 30_000;
+const MAIL_STALE_TIME = 0;
 export const supportedMailFolders: MailFolder[] = [
   "inbox",
   "sent",
@@ -72,6 +72,9 @@ export function useMail() {
         queryKey: ["mail", "inbox", page],
         queryFn: () => getMailPage("inbox", page),
         staleTime: MAIL_STALE_TIME,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       }),
 
     useSent: (page = 1) =>
@@ -79,6 +82,9 @@ export function useMail() {
         queryKey: ["mail", "sent", page],
         queryFn: () => getMailPage("sent", page),
         staleTime: MAIL_STALE_TIME,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       }),
 
     useDrafts: (page = 1) =>
@@ -86,6 +92,9 @@ export function useMail() {
         queryKey: ["mail", "drafts", page],
         queryFn: () => getMailPage("drafts", page),
         staleTime: MAIL_STALE_TIME,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       }),
 
     useStarred: (page = 1) =>
@@ -93,6 +102,9 @@ export function useMail() {
         queryKey: ["mail", "starred", page],
         queryFn: () => getMailPage("starred", page),
         staleTime: MAIL_STALE_TIME,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       }),
 
     useTrash: (page = 1) =>
@@ -100,6 +112,9 @@ export function useMail() {
         queryKey: ["mail", "trash", page],
         queryFn: () => getMailPage("trash", page),
         staleTime: MAIL_STALE_TIME,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
       }),
 
   // Fetches full thread and marks all messages within it as read
@@ -210,6 +225,17 @@ export function useMail() {
     useEmptyTrash: () =>
       useMutation({
         mutationFn: () => api.delete("/mail/trash/empty"),
+        onSuccess: invalidateMail,
+      }),
+
+    usePermanentDeleteMail: () =>
+      useMutation({
+        mutationFn: async (id: string) => {
+          const res = await api.delete<ApiEnvelope<Message>>(
+            `/mail/messages/${id}/permanent`,
+          );
+          return unwrapResponse(res.data);
+        },
         onSuccess: invalidateMail,
       }),
 

@@ -27,6 +27,7 @@ interface MailStore {
   
   // Compose Actions
   openCompose: (draftId?: string) => void;
+  setComposeDraftId: (draftId: string | null) => void;
   closeCompose: () => void;
 }
 
@@ -61,6 +62,10 @@ export const useMailStore = create<MailStore>((set) => ({
   openCompose: (draftId?: string | null) => set({ 
     isComposeOpen: true, 
     composeDraftId: draftId || null
+  }),
+
+  setComposeDraftId: (draftId) => set({
+    composeDraftId: draftId,
   }),
   
   closeCompose: () => set({ 

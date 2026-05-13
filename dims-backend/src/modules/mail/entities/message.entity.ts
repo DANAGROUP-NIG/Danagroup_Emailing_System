@@ -13,8 +13,7 @@ import { User } from "@modules/users/entities/user.entity";
 import { MessageRecipient } from "./message-recipient.entity";
 import { Attachment } from "@modules/files/entities/attachment.entity";
 
-
-@Index(['threadId', 'sentAt'])
+@Index(["threadId", "sentAt"])
 @Entity("messages")
 export class Message {
   @PrimaryGeneratedColumn("uuid")

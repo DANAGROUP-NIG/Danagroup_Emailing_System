@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { MailOpen, Trash2 } from "lucide-react";
+import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import { supportedMailFolders, useMail } from "@/hooks/useMail";
@@ -27,9 +27,14 @@ type MailListRow = {
   id: string;
   threadId: string | null;
   messageId?: string;
+  selectionId: string;
   isDraft: boolean;
+  isStarred: boolean;
+  isUnread: boolean;
   senderName: string;
-  recipientSummary?: string;
+  toSummary?: string;
+  ccSummary?: string;
+  bccSummary?: string;
   subject: string;
   bodyPreview: string;
   date?: string;
@@ -43,6 +48,9 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   const { selectedMessageIds, toggleMessageSelection, resetSelection } =
     useMailStore();
   const page = searchParams?.page || 1;
+  const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const mailApi = useMail();
   const folderHooks = {
@@ -53,7 +61,10 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
     trash: mailApi.useTrash,
   };
   const { mutate: markAsRead } = mailApi.useMarkRead();
+  const starMail = mailApi.useStarMail();
   const deleteMail = mailApi.useDeleteMail();
+  const restoreMail = mailApi.useRestoreMail();
+  const permanentDeleteMail = mailApi.usePermanentDeleteMail();
   const isSupportedFolder = supportedMailFolders.includes(viewMode);
   const activeFolderQuery = isSupportedFolder
     ? folderHooks[viewMode as keyof typeof folderHooks](page)
@@ -71,8 +82,8 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
     }
 
     items.forEach((item) => {
-      if (!selectedMessageIds.includes(item.id)) {
-        toggleMessageSelection(item.id);
+      if (!selectedMessageIds.includes(item.selectionId)) {
+        toggleMessageSelection(item.selectionId);
       }
     });
   };
@@ -116,7 +127,14 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                 <button
                   className="rounded p-1.5 text-destructive hover:bg-slate-100"
                   onClick={() => {
-                    selectedMessageIds.forEach((id) => deleteMail.mutate(id));
+                    selectedMessageIds.forEach((id) => {
+                      if (viewMode === "trash") {
+                        permanentDeleteMail.mutate(id);
+                        return;
+                      }
+
+                      deleteMail.mutate(id);
+                    });
                     resetSelection();
                   }}
                 >
@@ -141,36 +159,39 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
       <div className="flex-1 overflow-y-auto">
         {items.length > 0 ? (
           items.map((item) => (
-            <button
+            <div
               key={item.id}
-              onClick={() => {
-                if (item.isDraft) {
-                  openCompose(item.id);
-                  return;
-                }
-
-                if (item.messageId) {
-                  markAsRead(item.messageId);
-                }
-
-                if (item.threadId) {
-                  router.push(`/mail/${viewMode}/${item.threadId}`);
-                }
-              }}
               className={`mail-list-item w-full border-b p-4 text-left transition-colors hover:bg-slate-50 ${
                 currentThreadId === item.threadId ? "bg-slate-100" : ""
-              }`}
+              } ${item.isUnread ? "bg-blue-50/40" : ""}`}
             >
               <div className="flex w-full items-start gap-3">
                 <input
                   type="checkbox"
-                  checked={selectedMessageIds.includes(item.id)}
-                  onChange={() => toggleMessageSelection(item.id)}
+                  checked={selectedMessageIds.includes(item.selectionId)}
+                  onChange={() => toggleMessageSelection(item.selectionId)}
                   onClick={(e) => e.stopPropagation()}
-                  className="h-4 w-4 rounded"
+                  className="mt-1 h-4 w-4 rounded"
                 />
 
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (item.isDraft) {
+                      openCompose(item.id);
+                      return;
+                    }
+
+                    if (item.messageId && viewMode !== "trash") {
+                      markAsRead(item.messageId);
+                    }
+
+                    if (item.threadId) {
+                      router.push(`/mail/${viewMode}/${item.threadId}`);
+                    }
+                  }}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div
                       className={`truncate text-sm font-semibold ${
@@ -187,20 +208,109 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                         : "No date"}
                     </div>
                   </div>
-                  {item.recipientSummary ? (
-                    <p className="truncate text-xs font-medium text-slate-500">
-                      To: {item.recipientSummary}
-                    </p>
-                  ) : null}
+                  <RecipientLine label="To" value={item.toSummary} />
+                  <RecipientLine label="Cc" value={item.ccSummary} />
+                  <RecipientLine label="Bcc" value={item.bccSummary} />
                   <p className="truncate text-sm font-medium text-gray-800">
                     {item.subject}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {item.bodyPreview}
                   </p>
+                </button>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  {viewMode === "inbox" || viewMode === "starred" ? (
+                    <button
+                      type="button"
+                      disabled={!item.messageId}
+                      onClick={() => {
+                        if (!item.messageId) {
+                          return;
+                        }
+
+                        const nextStarred = !(
+                          starOverrides[item.messageId] ?? item.isStarred
+                        );
+                        setStarOverrides((current) => ({
+                          ...current,
+                          [item.messageId as string]: nextStarred,
+                        }));
+                        starMail.mutate({
+                          id: item.messageId,
+                          isStarred: nextStarred,
+                        }, {
+                          onError: () => {
+                            setStarOverrides((current) => ({
+                              ...current,
+                              [item.messageId as string]: item.isStarred,
+                            }));
+                          },
+                        });
+                      }}
+                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={
+                        (item.messageId
+                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                          : item.isStarred)
+                          ? "Unstar"
+                          : "Star"
+                      }
+                    >
+                      <Star
+                        className={`h-4 w-4 ${
+                          item.messageId &&
+                          (starOverrides[item.messageId] ?? item.isStarred)
+                            ? "fill-amber-400 text-amber-400"
+                            : ""
+                        }`}
+                      />
+                    </button>
+                  ) : null}
+
+                  {viewMode === "trash" ? (
+                    <button
+                      type="button"
+                      disabled={!item.messageId || restoreMail.isPending}
+                      onClick={() => {
+                        if (item.messageId) {
+                          restoreMail.mutate(item.messageId);
+                        }
+                      }}
+                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Restore"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    disabled={
+                      !item.messageId ||
+                      deleteMail.isPending ||
+                      permanentDeleteMail.isPending
+                    }
+                    onClick={() => {
+                      if (!item.messageId) {
+                        return;
+                      }
+
+                      if (viewMode === "trash") {
+                        permanentDeleteMail.mutate(item.messageId);
+                        return;
+                      }
+
+                      deleteMail.mutate(item.messageId);
+                    }}
+                    className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                    title={viewMode === "trash" ? "Delete forever" : "Move to trash"}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            </button>
+            </div>
           ))
         ) : (
           <EmptyState />
@@ -259,6 +369,18 @@ function MailListSkeleton() {
   );
 }
 
+function RecipientLine({ label, value }: { label: string; value?: string }) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <p className="truncate text-xs font-medium text-slate-500">
+      {label}: {value}
+    </p>
+  );
+}
+
 function normalizeMailRows(
   viewMode: MailFolder,
   payload: unknown,
@@ -276,8 +398,15 @@ function normalizeMailRows(
       return {
         id: draft.id,
         threadId: draft.threadId ?? null,
+        messageId: draft.id,
+        selectionId: draft.id,
         isDraft: true,
+        isStarred: false,
+        isUnread: false,
         senderName: "Draft",
+        toSummary: formatRecipientSummary(draft.recipients ?? [], "to"),
+        ccSummary: formatRecipientSummary(draft.recipients ?? [], "cc"),
+        bccSummary: formatRecipientSummary(draft.recipients ?? [], "bcc"),
         subject: draft.subject || "(No Subject)",
         bodyPreview: htmlToText(draft.bodyHtml) || draft.body || "(No content)",
         date: draft.createdAt,
@@ -289,20 +418,35 @@ function normalizeMailRows(
     const thread = item as MailThreadSummary;
     const latestMessage = thread.latestMessage;
     const sender = latestMessage?.sender;
+    const recipients = latestMessage?.recipients ?? [];
+    const isStarred =
+      thread.isStarred ||
+      recipients.some((recipient) => recipient.isStarred === true);
 
     return {
       id: thread.id,
       threadId: latestMessage?.threadId ?? null,
       messageId: latestMessage?.id,
+      selectionId: latestMessage?.id ?? thread.id,
       isDraft: false,
+      isStarred,
+      isUnread: (thread.unreadCount ?? 0) > 0,
       senderName:
         sender?.name ||
         [sender?.firstName, sender?.lastName].filter(Boolean).join(" ") ||
         sender?.email ||
         "Unknown sender",
-      recipientSummary:
+      toSummary:
         viewMode === "sent"
-          ? formatRecipientSummary(latestMessage?.recipients ?? [])
+          ? formatRecipientSummary(recipients, "to")
+          : undefined,
+      ccSummary:
+        viewMode === "sent"
+          ? formatRecipientSummary(recipients, "cc")
+          : undefined,
+      bccSummary:
+        viewMode === "sent"
+          ? formatRecipientSummary(recipients, "bcc")
           : undefined,
       subject: thread.subject || "(No Subject)",
       bodyPreview:
@@ -316,16 +460,23 @@ function normalizeMailRows(
 
 function formatRecipientSummary(
   recipients: NonNullable<MailThreadSummary["latestMessage"]>["recipients"] = [],
-) {
+  type: "to" | "cc" | "bcc" = "to",
+): string | undefined {
   const directRecipients = recipients.filter(
-    (recipient) => recipient.type === "to",
+    (recipient) => recipient.type === type,
   );
   const labels = directRecipients
-    .map((recipient) => recipient.recipient?.name || recipient.recipient?.email)
+    .map(
+      (recipient) =>
+        recipient.name ||
+        recipient.email ||
+        recipient.recipient?.name ||
+        recipient.recipient?.email,
+    )
     .filter((value): value is string => Boolean(value));
 
   if (labels.length === 0) {
-    return "No recipients";
+    return undefined;
   }
 
   if (labels.length === 1) {

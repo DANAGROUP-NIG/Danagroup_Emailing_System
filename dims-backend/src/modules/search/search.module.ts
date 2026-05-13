@@ -11,7 +11,10 @@ import { User } from "@modules/users/entities/user.entity";
     ElasticsearchModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({
-        node: config.get("ELASTICSEARCH_NODE") || config.get("ES_NODE") || "http://localhost:9200",
+        node:
+          config.get("ELASTICSEARCH_NODE") ||
+          config.get("ES_NODE") ||
+          "http://localhost:9200",
         auth: {
           username: config.get("ELASTICSEARCH_USERNAME"),
           password: config.get("ELASTICSEARCH_PASSWORD"),

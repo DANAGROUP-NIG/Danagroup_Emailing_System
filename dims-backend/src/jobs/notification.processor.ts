@@ -1,8 +1,4 @@
-import {
-  OnWorkerEvent,
-  Processor,
-  WorkerHost,
-} from "@nestjs/bullmq";
+import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { MailGateway } from "../modules/mail/mail.gateway";
@@ -78,7 +74,10 @@ export class NotificationProcessor extends WorkerHost {
   }
 
   private async dispatchAnnouncement(job: Job) {
-    const payload = validateJobPayload(AnnouncementNotificationJobData, job.data);
+    const payload = validateJobPayload(
+      AnnouncementNotificationJobData,
+      job.data,
+    );
 
     for (const userId of payload.userIds) {
       const notification = await this.notificationsService.create(

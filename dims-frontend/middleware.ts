@@ -15,6 +15,12 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
   const token = request.cookies.get("access_token")?.value;
 
+  if (pathname === "/") {
+    return NextResponse.redirect(
+      new URL(token ? "/mail/inbox" : "/login", request.url),
+    );
+  }
+
   if (!isPublicRoute && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

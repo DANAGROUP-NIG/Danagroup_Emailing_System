@@ -105,7 +105,9 @@ export class FilesService {
     }
 
     if (attachment.uploaderId !== requesterId) {
-      throw new ForbiddenException("You do not have permission to delete this attachment");
+      throw new ForbiddenException(
+        "You do not have permission to delete this attachment",
+      );
     }
 
     await this.minioClient.removeObject(this.bucket, attachment.storageKey);

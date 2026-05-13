@@ -1,6 +1,8 @@
+"use client";
+
 import { formatDistanceToNow } from "date-fns";
 import { Star } from "lucide-react";
-import { useMailStore } from "@/store/mailStore";
+import { useMail } from "@/hooks/useMail";
 
 // TODO: Implement MailListItem Component
 // Ensure you do not delet the comments. just implement the the todos under each
@@ -21,16 +23,16 @@ export default function MailListItem({
   isSelected: boolean; 
   onClick: () => void; 
 }) {
-  const handleStarToggle = async (e: React.MouseEvent) => {
+  const { useStarMail } = useMail();
+  const starMail = useStarMail();
+  const messageId = thread.messageId || thread.latestMessage?.id || thread.id;
+
+  const handleStarToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await fetch(`/api/mail/${thread.id}/star`, {
-        method: 'PATCH',
-      });
-      // Optionally update local store/state here
-    } catch (error) {
-      console.error("Failed to toggle star", error);
-    }
+    starMail.mutate({
+      id: messageId,
+      isStarred: !thread.starred,
+    });
   };
 
   const initials = thread.senderName
@@ -41,9 +43,16 @@ export default function MailListItem({
     .toUpperCase();
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       className={`mail-list-item w-full text-left transition-colors ${
         thread.unread ? "unread" : ""
       } ${isSelected ? "selected" : ""}`}
@@ -94,6 +103,6 @@ export default function MailListItem({
           }`}
         />
       </button>
-    </button>
+    </div>
   );
 }

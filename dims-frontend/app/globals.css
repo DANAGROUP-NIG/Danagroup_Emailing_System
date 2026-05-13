@@ -116,6 +116,7 @@
     scrollbar-width: thin;
   }
 
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }

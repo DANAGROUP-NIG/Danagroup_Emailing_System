@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class MakeAttachmentMessageOptional1777293000000
-  implements MigrationInterface
-{
+export class MakeAttachmentMessageOptional1777293000000 implements MigrationInterface {
   name = "MakeAttachmentMessageOptional1777293000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {

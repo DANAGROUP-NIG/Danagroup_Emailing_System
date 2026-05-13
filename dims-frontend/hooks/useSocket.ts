@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { getSocketBaseUrl } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
+import type { MailFolder } from "@/types/mail.types";
 
 type MailNotificationPayload = {
   notificationId?: string;
@@ -16,6 +17,23 @@ type MailNotificationPayload = {
   referenceId?: string;
   createdAt?: string;
 };
+
+type MailboxChangedPayload = {
+  action?: string;
+  messageId?: string;
+  messageIds?: string[];
+  threadId?: string;
+  threadIds?: string[];
+  folders?: MailFolder[];
+};
+
+const mailFolders: MailFolder[] = [
+  "inbox",
+  "sent",
+  "drafts",
+  "starred",
+  "trash",
+];
 
 export function useSocket(userId?: string) {
   const queryClient = useQueryClient();
@@ -32,7 +50,6 @@ export function useSocket(userId?: string) {
     }
 
     const socket: Socket = io(`${socketUrl}/notifications`, {
-      transports: ["websocket"],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -43,9 +60,52 @@ export function useSocket(userId?: string) {
       },
     });
 
+    const invalidateMailbox = (payload?: MailboxChangedPayload) => {
+      const folders =
+        payload?.folders?.filter((folder): folder is MailFolder =>
+          mailFolders.includes(folder),
+        ) ?? mailFolders;
+
+      const folderInvalidations = folders.map((folder) =>
+        queryClient.invalidateQueries({ queryKey: ["mail", folder] }),
+      );
+
+      const threadInvalidations = [
+        payload?.threadId
+          ? queryClient.invalidateQueries({
+              queryKey: ["mail", "thread", payload.threadId],
+            })
+          : queryClient.invalidateQueries({ queryKey: ["mail", "thread"] }),
+        ...(payload?.threadIds ?? []).map((threadId) =>
+          queryClient.invalidateQueries({
+            queryKey: ["mail", "thread", threadId],
+          }),
+        ),
+      ];
+
+      const messageInvalidations = [
+        payload?.messageId
+          ? queryClient.invalidateQueries({
+              queryKey: ["message", payload.messageId],
+            })
+          : undefined,
+        ...(payload?.messageIds ?? []).map((messageId) =>
+          queryClient.invalidateQueries({ queryKey: ["message", messageId] }),
+        ),
+      ].filter((promise): promise is Promise<void> => Boolean(promise));
+
+      void Promise.all([
+        ...folderInvalidations,
+        ...threadInvalidations,
+        ...messageInvalidations,
+        queryClient.invalidateQueries({ queryKey: ["search", "mail"] }),
+      ]);
+    };
+
     socket.on("connect", () => {
       setIsConnected(true);
       socket.emit("subscribe", { room: `user:${userId}` });
+      invalidateMailbox();
     });
 
     socket.on("disconnect", () => {
@@ -67,19 +127,25 @@ export function useSocket(userId?: string) {
       }
     });
 
-    socket.on("new_mail", () => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["mail", "inbox"] }),
-        queryClient.invalidateQueries({ queryKey: ["mail", "thread"] }),
-      ]);
+    socket.on("new_mail", (payload?: MailboxChangedPayload) => {
+      invalidateMailbox({
+        ...payload,
+        folders: payload?.folders?.length ? payload.folders : ["inbox"],
+      });
       toast.success("New mail received");
     });
 
-    socket.on("mail_read", () => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["mail"] }),
-        queryClient.invalidateQueries({ queryKey: ["message"] }),
-      ]);
+    socket.on("mailbox_changed", (payload?: MailboxChangedPayload) => {
+      invalidateMailbox(payload);
+    });
+
+    socket.on("mail_read", (payload?: MailboxChangedPayload) => {
+      invalidateMailbox({
+        ...payload,
+        folders: payload?.folders?.length
+          ? payload.folders
+          : ["inbox", "starred"],
+      });
     });
 
     socket.on("announcement", () => {

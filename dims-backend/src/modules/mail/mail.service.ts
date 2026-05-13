@@ -34,9 +34,9 @@ import { UsersService } from "@modules/users/users.service";
 import { DraftMapper } from "./mappers/draft.mapper";
 import { InboxMapper } from "./mappers/inbox.mapper";
 import { MailMapper } from "./mappers/mail.mapper";
-import { MailGateway } from "./mail.gateway";
+import { MailboxChangedPayload, MailGateway } from "./mail.gateway";
 import { SentMapper } from "./mappers/sent.mapper";
-import { StarredMapper } from "./mappers/starred.mapper";
+import DOMPurify from "isomorphic-dompurify";
 
 type MailboxResponse<T> = {
   data: T[];
@@ -92,6 +92,36 @@ export class MailService {
     };
   }
 
+  private emitMailboxChanged(userId: string, payload: MailboxChangedPayload) {
+    this.mailGateway.emitMailboxChanged(userId, payload);
+  }
+
+  private uniqueFolders(folders: string[]) {
+    return [...new Set(folders)];
+  }
+
+  private getUserMailboxFoldersForMessage(message: Message, userId: string) {
+    const folders: string[] = [];
+
+    if (message.senderId === userId) {
+      folders.push(message.senderDeletedAt ? "trash" : "sent");
+    }
+
+    const recipient = message.recipients?.find(
+      (item) => item.recipientId === userId,
+    );
+
+    if (recipient) {
+      folders.push(recipient.isDeleted ? "trash" : "inbox");
+
+      if (recipient.isStarred) {
+        folders.push("starred");
+      }
+    }
+
+    return this.uniqueFolders(folders);
+  }
+
   private isUuid(value: string) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       value,
@@ -135,32 +165,41 @@ export class MailService {
     return Number(totalResult?.count ?? 0);
   }
 
-  private applyThreadRelations(
-    qb: SelectQueryBuilder<Thread>,
-    userId: string,
-  ) {
-    return qb
-      .leftJoinAndSelect("thread.messages", "threadMessage")
-      // 1. Use leftJoin instead of leftJoinAndSelect for the sender
-      .leftJoin("threadMessage.sender", "threadMessageSender")
-      // 2. Explicitly select only the columns you need (excluding 'sessions')
-      .addSelect([
-        "threadMessageSender.id",
-        "threadMessageSender.email",
-        "threadMessageSender.firstName",
-        "threadMessageSender.lastName",
-        "threadMessageSender.role",
-        "threadMessageSender.avatarUrl",
-      ])
-      .leftJoinAndSelect("threadMessage.recipients", "threadMessageRecipient")
-      .leftJoinAndSelect(
-        "thread.userStates",
-        "threadUserState",
-        "threadUserState.userId = :userId",
-        { userId },
-      );
+  private applyThreadRelations(qb: SelectQueryBuilder<Thread>, userId: string) {
+    return (
+      qb
+        .leftJoinAndSelect("thread.messages", "threadMessage")
+        // 1. Use leftJoin instead of leftJoinAndSelect for the sender
+        .leftJoin("threadMessage.sender", "threadMessageSender")
+        // 2. Explicitly select only the columns you need (excluding 'sessions')
+        .addSelect([
+          "threadMessageSender.id",
+          "threadMessageSender.email",
+          "threadMessageSender.firstName",
+          "threadMessageSender.lastName",
+          "threadMessageSender.role",
+          "threadMessageSender.avatarUrl",
+        ])
+        .leftJoinAndSelect("threadMessage.recipients", "threadMessageRecipient")
+        .leftJoin(
+          "threadMessageRecipient.recipient",
+          "threadMessageRecipientUser",
+        )
+        .addSelect([
+          "threadMessageRecipientUser.id",
+          "threadMessageRecipientUser.email",
+          "threadMessageRecipientUser.firstName",
+          "threadMessageRecipientUser.lastName",
+          "threadMessageRecipientUser.avatarUrl",
+        ])
+        .leftJoinAndSelect(
+          "thread.userStates",
+          "threadUserState",
+          "threadUserState.userId = :userId",
+          { userId },
+        )
+    );
   }
-
 
   private compareMessages(
     left: Message,
@@ -211,10 +250,13 @@ export class MailService {
     // Use the clone to avoid polluting the baseQuery logic
     const qb = this.applyThreadRelations(baseQuery.clone(), userId);
     const rows = await qb
-      .addSelect('COALESCE(thread.last_message_at, thread.last_activity_at)', 'thread_sort_date')
+      .addSelect(
+        "COALESCE(thread.last_message_at, thread.last_activity_at)",
+        "thread_sort_date",
+      )
       .distinct(true)
-      .setParameter('userId', userId) 
-      .orderBy('thread_sort_date', 'DESC')
+      .setParameter("userId", userId)
+      .orderBy("thread_sort_date", "DESC")
       .skip((page - 1) * limit)
       .take(limit)
       .getMany();
@@ -236,7 +278,7 @@ export class MailService {
           ? SentMapper.toResponse(threads, userId)
           : folder === "starred"
             ? InboxMapper.toResponse(threads, userId)
-          : InboxMapper.toResponse(threads, userId);
+            : InboxMapper.toResponse(threads, userId);
 
     return {
       data,
@@ -261,7 +303,6 @@ export class MailService {
         { userId },
       );
   }
-
 
   private getSentBaseQuery(userId: string) {
     return this.threadRepo
@@ -313,41 +354,6 @@ export class MailService {
       );
   }
 
-  async getStarred(
-    userId: string,
-    query: MailQueryDto,
-  ): Promise<MailboxResponse<any>> {
-    try {
-      const { page, limit } = this.normalizePagination(query);
-
-      const [data, total] = await this.messageRepo
-        .createQueryBuilder("message")
-        .innerJoinAndSelect("message.thread", "thread")
-        .leftJoinAndSelect("message.sender", "sender")
-        .innerJoinAndSelect(
-          "message.recipients",
-          "recipient",
-          "recipient.recipientId = :userId AND recipient.isDeleted = false AND recipient.isStarred = true",
-          { userId },
-        )
-        .leftJoinAndSelect("recipient.recipient", "recipientUser")
-        .where("message.isDraft = false")
-        .orderBy("COALESCE(message.sentAt, message.createdAt)", "DESC")
-        .skip((page - 1) * limit)
-        .take(limit)
-        .getManyAndCount();
-
-      return {
-        data: StarredMapper.toResponse(data, userId),
-        total,
-        page,
-        lastPage: total === 0 ? 1 : Math.ceil(total / limit),
-      };
-    } catch (error) {
-      this.handleError("getStarred", error);
-    }
-  }
-
   private async getThreadsByMailbox(
     type: "inbox" | "sent",
     userId: string,
@@ -395,9 +401,15 @@ export class MailService {
 
   async getInboxThreadsOptimized(userId: string, cursor?: string, limit = 20) {
     try {
-      const qb = this.applyThreadRelations(this.getInboxBaseQuery(userId), userId)
+      const qb = this.applyThreadRelations(
+        this.getInboxBaseQuery(userId),
+        userId,
+      )
         .distinct(true)
-        .addSelect("COALESCE(thread.lastMessageAt, thread.lastActivityAt)", "thread_activity")
+        .addSelect(
+          "COALESCE(thread.lastMessageAt, thread.lastActivityAt)",
+          "thread_activity",
+        )
         .orderBy("thread_activity", "DESC");
 
       this.buildCursorPagination(qb, cursor, limit);
@@ -411,9 +423,15 @@ export class MailService {
 
   async getSentThreadsOptimized(userId: string, cursor?: string, limit = 20) {
     try {
-      const qb = this.applyThreadRelations(this.getSentBaseQuery(userId), userId)
+      const qb = this.applyThreadRelations(
+        this.getSentBaseQuery(userId),
+        userId,
+      )
         .distinct(true)
-        .orderBy("COALESCE(thread.lastMessageAt, thread.lastActivityAt)", "DESC");
+        .orderBy(
+          "COALESCE(thread.lastMessageAt, thread.lastActivityAt)",
+          "DESC",
+        );
 
       this.buildCursorPagination(qb, cursor, limit);
 
@@ -486,7 +504,10 @@ export class MailService {
 
   async getThread(threadId: string, userId: string) {
     try {
-      const visibleMessages = await this.getVisibleThreadMessages(threadId, userId);
+      const visibleMessages = await this.getVisibleThreadMessages(
+        threadId,
+        userId,
+      );
 
       return {
         data: MailMapper.toThreadDetail(threadId, visibleMessages, userId),
@@ -521,7 +542,13 @@ export class MailService {
         case "drafts":
           return this.getDrafts(userId, query);
         case "starred":
-          return this.getStarred(userId, query);
+          return this.buildMailboxResponse(
+            this.getStarredBaseQuery(userId),
+            userId,
+            page,
+            limit,
+            "starred",
+          );
         case "trash":
           return this.buildMailboxResponse(
             this.getTrashBaseQuery(userId),
@@ -589,7 +616,12 @@ export class MailService {
         await this.replaceRecipients(manager, saved.id, recipients);
 
         if (dto.attachmentIds?.length) {
-          await this.attachFiles(manager, saved.id, sender.id, dto.attachmentIds);
+          await this.attachFiles(
+            manager,
+            saved.id,
+            sender.id,
+            dto.attachmentIds,
+          );
         }
 
         if (subject) {
@@ -602,6 +634,7 @@ export class MailService {
           id: saved.id,
           threadId: thread.id,
           sentAt,
+          recipientIds: recipients.map((recipient) => recipient.recipientId),
         };
       });
 
@@ -612,13 +645,27 @@ export class MailService {
 
       const response = MailMapper.toSendMailResponse(result);
 
+      this.emitMailboxChanged(sender.id, {
+        action: "message_sent",
+        messageId: response.messageId,
+        threadId: response.threadId,
+        folders: dto.draftId ? ["sent", "drafts"] : ["sent"],
+      });
+      for (const recipientId of result.recipientIds) {
+        this.emitMailboxChanged(recipientId, {
+          action: "message_received",
+          messageId: response.messageId,
+          threadId: response.threadId,
+          folders: ["inbox"],
+        });
+      }
+
       return {
         messageId: response.messageId,
         threadId: response.threadId,
         sentAt: response.sentAt,
         status: response.status,
       };
-
     } catch (error) {
       this.handleError("send", error);
     }
@@ -626,7 +673,7 @@ export class MailService {
 
   async saveDraft(dto: SaveDraftDto, senderId: string) {
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      const draft = await this.dataSource.transaction(async (manager) => {
         const subject = dto.subject?.trim() ?? "";
         const thread = await this.resolveThread(manager, dto.threadId, subject);
 
@@ -636,23 +683,53 @@ export class MailService {
           draft.threadId = thread.id;
           draft.subject = dto.subject ?? draft.subject;
           draft.body = dto.body ?? draft.body ?? "";
-          draft.bodyHtml =
-            dto.bodyHtml ??
-            (dto.body
-              ? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`
-              : draft.bodyHtml);
+          draft.bodyHtml = DOMPurify.sanitize(dto.bodyHtml, {
+            ALLOWED_TAGS: [
+              "p",
+              "br",
+              "b",
+              "i",
+              "strong",
+              "em",
+              "a",
+              "ul",
+              "ol",
+              "li",
+            ],
+            ALLOWED_ATTR: ["href", "target"],
+          });
           draft.isDraft = true;
           draft.sentAt = null;
           draft.senderDeletedAt = null;
         } else {
+          const generatedHtml = dto.body
+            ? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`
+            : null;
+
           draft = manager.create(Message, {
             threadId: thread.id,
             senderId,
             subject,
             body: dto.body ?? "",
-            bodyHtml:
-              dto.bodyHtml ??
-              (dto.body ? `<p>${dto.body.replace(/\n/g, "<br>")}</p>` : null),
+            bodyHtml: dto.bodyHtml
+              ? DOMPurify.sanitize(dto.bodyHtml, {
+                  ALLOWED_TAGS: [
+                    "p",
+                    "br",
+                    "b",
+                    "i",
+                    "strong",
+                    "em",
+                    "u",
+                    "a",
+                    "ul",
+                    "ol",
+                    "li",
+                    "blockquote",
+                  ],
+                  ALLOWED_ATTR: ["href", "target"],
+                })
+              : generatedHtml,
             isDraft: true,
             sentAt: null,
           });
@@ -681,6 +758,15 @@ export class MailService {
         await this.refreshThreadMetadata(manager, thread.id, subject);
         return await this.getMessageOrFail(manager, savedDraft.id);
       });
+
+      this.emitMailboxChanged(senderId, {
+        action: "draft_saved",
+        messageId: draft.id,
+        threadId: draft.threadId,
+        folders: ["drafts"],
+      });
+
+      return draft;
     } catch (error) {
       this.handleError("saveDraft", error);
     }
@@ -804,7 +890,18 @@ export class MailService {
         message.threadId,
         userId,
       );
-      this.emitMailReadEvent(userId, messageId, message.threadId, recipient.readAt);
+      this.emitMailReadEvent(
+        userId,
+        messageId,
+        message.threadId,
+        recipient.readAt,
+      );
+      this.emitMailboxChanged(userId, {
+        action: "read_state_changed",
+        messageId,
+        threadId: message.threadId,
+        folders: recipient.isStarred ? ["inbox", "starred"] : ["inbox"],
+      });
 
       return {
         data: {
@@ -845,13 +942,31 @@ export class MailService {
         select: ["id", "threadId"],
       });
 
-      for (const threadId of [...new Set(messages.map((message) => message.threadId))]) {
-        await this.refreshUserThreadState(this.dataSource.manager, threadId, userId);
+      for (const threadId of [
+        ...new Set(messages.map((message) => message.threadId)),
+      ]) {
+        await this.refreshUserThreadState(
+          this.dataSource.manager,
+          threadId,
+          userId,
+        );
       }
 
       for (const message of messages) {
-        this.emitMailReadEvent(userId, message.id, message.threadId, new Date());
+        this.emitMailReadEvent(
+          userId,
+          message.id,
+          message.threadId,
+          new Date(),
+        );
       }
+
+      this.emitMailboxChanged(userId, {
+        action: "read_state_changed",
+        messageIds,
+        threadIds: [...new Set(messages.map((message) => message.threadId))],
+        folders: ["inbox", "starred"],
+      });
 
       return {
         data: {
@@ -886,11 +1001,20 @@ export class MailService {
         )
         .execute();
 
-      await this.refreshUserThreadState(this.dataSource.manager, threadId, userId);
+      await this.refreshUserThreadState(
+        this.dataSource.manager,
+        threadId,
+        userId,
+      );
       this.mailGateway.emitMailRead(userId, {
         threadId,
         isRead: true,
         readAt: new Date().toISOString(),
+      });
+      this.emitMailboxChanged(userId, {
+        action: "read_state_changed",
+        threadId,
+        folders: ["inbox", "starred"],
       });
 
       return {
@@ -907,7 +1031,10 @@ export class MailService {
   async readThread(threadId: string, userId: string) {
     try {
       await this.markThreadAsRead(threadId, userId);
-      const visibleMessages = await this.getVisibleThreadMessages(threadId, userId);
+      const visibleMessages = await this.getVisibleThreadMessages(
+        threadId,
+        userId,
+      );
 
       return {
         data: MailMapper.toThreadDetail(threadId, visibleMessages, userId),
@@ -944,6 +1071,14 @@ export class MailService {
           message.threadId,
           userId,
         );
+        this.emitMailboxChanged(userId, {
+          action: "star_state_changed",
+          messageId,
+          threadId: message.threadId,
+          folders: recipient.isDeleted
+            ? ["trash", "starred"]
+            : ["inbox", "starred"],
+        });
       }
 
       return {
@@ -970,6 +1105,10 @@ export class MailService {
         throw new NotFoundException("Message not found");
       }
 
+      const previousFolders = this.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
       let changed = false;
       const now = new Date();
 
@@ -993,8 +1132,21 @@ export class MailService {
         throw new ForbiddenException("No access to this message");
       }
 
-      await this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId);
-      await this.refreshUserThreadState(this.dataSource.manager, message.threadId, userId);
+      await this.refreshThreadAfterMutation(
+        this.dataSource.manager,
+        message.threadId,
+      );
+      await this.refreshUserThreadState(
+        this.dataSource.manager,
+        message.threadId,
+        userId,
+      );
+      this.emitMailboxChanged(userId, {
+        action: "moved_to_trash",
+        messageId,
+        threadId: message.threadId,
+        folders: this.uniqueFolders([...previousFolders, "trash"]),
+      });
 
       return {
         data: {
@@ -1025,7 +1177,7 @@ export class MailService {
 
   async restoreFromTrash(messageId: string, userId: string) {
     try {
-      const message = await this.messageRepo.findOne({
+      let message = await this.messageRepo.findOne({
         where: { id: messageId },
         relations: { recipients: true },
       });
@@ -1034,6 +1186,41 @@ export class MailService {
         throw new NotFoundException("Message not found");
       }
 
+      if (!this.isMessageInTrashForUser(message, userId)) {
+        const trashedThreadMessage = await this.messageRepo
+          .createQueryBuilder("message")
+          .leftJoinAndSelect("message.recipients", "recipient")
+          .where("message.threadId = :threadId", {
+            threadId: message.threadId,
+          })
+          .andWhere(
+            new Brackets((qb) => {
+              qb.where(
+                "message.senderId = :userId AND message.senderDeletedAt IS NOT NULL",
+                { userId },
+              ).orWhere(
+                "recipient.recipientId = :userId AND recipient.isDeleted = true",
+                { userId },
+              );
+            }),
+          )
+          .addSelect(
+            "COALESCE(message.sentAt, message.createdAt)",
+            "messageSortDate",
+          )
+          .orderBy("messageSortDate", "DESC")
+          .getOne();
+
+        if (trashedThreadMessage) {
+          message = trashedThreadMessage;
+          messageId = trashedThreadMessage.id;
+        }
+      }
+
+      const previousFolders = this.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
       let changed = false;
 
       if (message.senderId === userId && message.senderDeletedAt !== null) {
@@ -1059,8 +1246,24 @@ export class MailService {
         );
       }
 
-      await this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId);
-      await this.refreshUserThreadState(this.dataSource.manager, message.threadId, userId);
+      await this.refreshThreadAfterMutation(
+        this.dataSource.manager,
+        message.threadId,
+      );
+      await this.refreshUserThreadState(
+        this.dataSource.manager,
+        message.threadId,
+        userId,
+      );
+      this.emitMailboxChanged(userId, {
+        action: "restored_from_trash",
+        messageId,
+        threadId: message.threadId,
+        folders: this.uniqueFolders([
+          ...previousFolders,
+          ...this.getUserMailboxFoldersForMessage(message, userId),
+        ]),
+      });
 
       return {
         data: {
@@ -1084,11 +1287,25 @@ export class MailService {
         throw new NotFoundException("Message not found");
       }
 
-      if (message.senderId === userId) {
+      const previousFolders = this.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
+
+      if (message.senderId === userId && message.senderDeletedAt !== null) {
         const threadId = message.threadId;
         await this.messageRepo.delete(messageId);
-        await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+        await this.refreshThreadAfterMutation(
+          this.dataSource.manager,
+          threadId,
+        );
         await this.jobsService.enqueueMessageDelete({ messageId });
+        this.emitMailboxChanged(userId, {
+          action: "permanently_deleted",
+          messageId,
+          threadId,
+          folders: this.uniqueFolders([...previousFolders, "trash"]),
+        });
         return { messageId, status: "permanently_deleted_by_sender" };
       }
 
@@ -1097,12 +1314,21 @@ export class MailService {
       );
       if (recipient && recipient.isDeleted) {
         await this.recipientRepo.remove(recipient);
-        await this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId);
+        await this.refreshThreadAfterMutation(
+          this.dataSource.manager,
+          message.threadId,
+        );
         await this.refreshUserThreadState(
           this.dataSource.manager,
           message.threadId,
           userId,
         );
+        this.emitMailboxChanged(userId, {
+          action: "permanently_deleted",
+          messageId,
+          threadId: message.threadId,
+          folders: this.uniqueFolders([...previousFolders, "trash"]),
+        });
         return {
           data: {
             messageId,
@@ -1169,14 +1395,29 @@ export class MailService {
         .andWhere("senderDeletedAt IS NOT NULL")
         .execute();
 
-      for (const message of senderMessages.filter((item) => !!item.senderDeletedAt)) {
+      for (const message of senderMessages.filter(
+        (item) => !!item.senderDeletedAt,
+      )) {
         await this.jobsService.enqueueMessageDelete({ messageId: message.id });
       }
 
       for (const threadId of affectedThreadIds) {
-        await this.refreshUserThreadState(this.dataSource.manager, threadId, userId);
-        await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+        await this.refreshUserThreadState(
+          this.dataSource.manager,
+          threadId,
+          userId,
+        );
+        await this.refreshThreadAfterMutation(
+          this.dataSource.manager,
+          threadId,
+        );
       }
+
+      this.emitMailboxChanged(userId, {
+        action: "trash_emptied",
+        threadIds: affectedThreadIds,
+        folders: ["trash"],
+      });
 
       return {
         data: {
@@ -1227,7 +1468,9 @@ export class MailService {
           affectedThreadIds.add(message.threadId);
         }
 
-        await this.recipientRepo.delete(expiredRecipientRows.map((row) => row.id));
+        await this.recipientRepo.delete(
+          expiredRecipientRows.map((row) => row.id),
+        );
       }
 
       for (const message of senderMessages) {
@@ -1236,21 +1479,32 @@ export class MailService {
       }
 
       if (senderMessages.length > 0) {
-        await this.messageRepo.delete(senderMessages.map((message) => message.id));
+        await this.messageRepo.delete(
+          senderMessages.map((message) => message.id),
+        );
 
         for (const message of senderMessages) {
-          await this.jobsService.enqueueMessageDelete({ messageId: message.id });
+          await this.jobsService.enqueueMessageDelete({
+            messageId: message.id,
+          });
         }
       }
 
       for (const threadId of affectedThreadIds) {
-        await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+        await this.refreshThreadAfterMutation(
+          this.dataSource.manager,
+          threadId,
+        );
       }
 
       for (const userId of affectedUserIds) {
         const threadIds = [...affectedThreadIds];
         for (const threadId of threadIds) {
-          await this.refreshUserThreadState(this.dataSource.manager, threadId, userId);
+          await this.refreshUserThreadState(
+            this.dataSource.manager,
+            threadId,
+            userId,
+          );
         }
       }
 
@@ -1342,7 +1596,9 @@ export class MailService {
       return [];
     }
 
-    const distinctEmails = [...new Set(rawRecipients.map((recipient) => recipient.email))];
+    const distinctEmails = [
+      ...new Set(rawRecipients.map((recipient) => recipient.email)),
+    ];
     const users = await this.userRepo.find({
       where: {
         email: In(distinctEmails),
@@ -1405,7 +1661,9 @@ export class MailService {
   ) {
     await manager.delete(MessageRecipient, { messageId });
 
-    const validRecipients = recipients.filter((recipient) => !!recipient.recipientId);
+    const validRecipients = recipients.filter(
+      (recipient) => !!recipient.recipientId,
+    );
     if (validRecipients.length > 0) {
       const entities = validRecipients.map((recipient) =>
         manager.create(MessageRecipient, { ...recipient, messageId }),
@@ -1483,7 +1741,7 @@ export class MailService {
   }
 
   private async getVisibleThreadMessages(threadId: string, userId: string) {
-    const messages = await this.messageRepo
+    let messages = await this.messageRepo
       .createQueryBuilder("message")
       .leftJoinAndSelect("message.sender", "sender")
       .leftJoinAndSelect("message.recipients", "recipient")
@@ -1512,6 +1770,35 @@ export class MailService {
       )
       .orderBy("message.createdAt", "ASC")
       .getMany();
+
+    if (!messages.length) {
+      messages = await this.messageRepo
+        .createQueryBuilder("message")
+        .leftJoinAndSelect("message.sender", "sender")
+        .leftJoinAndSelect("message.recipients", "recipient")
+        .leftJoinAndSelect("recipient.recipient", "recipientUser")
+        .leftJoinAndSelect("message.attachments", "attachment")
+        .where("message.threadId = :threadId", { threadId })
+        .andWhere(
+          new Brackets((qb) => {
+            qb.where(
+              `
+              message.senderId = :userId
+              AND message.senderDeletedAt IS NOT NULL
+              `,
+              { userId },
+            ).orWhere(
+              `
+              recipient.recipientId = :userId
+              AND recipient.isDeleted = true
+              `,
+              { userId },
+            );
+          }),
+        )
+        .orderBy("message.createdAt", "ASC")
+        .getMany();
+    }
 
     if (!messages.length) {
       throw new ForbiddenException("You do not have access to this thread");
@@ -1577,10 +1864,15 @@ export class MailService {
       latestMessage?.createdAt ??
       thread.lastActivityAt ??
       new Date();
-    thread.lastMessageAt = latestMessage?.sentAt ?? latestMessage?.createdAt ?? null;
-    thread.snippet = latestMessage?.body?.slice(0, 140) ?? thread.snippet ?? null;
+    thread.lastMessageAt =
+      latestMessage?.sentAt ?? latestMessage?.createdAt ?? null;
+    thread.snippet =
+      latestMessage?.body?.slice(0, 140) ?? thread.snippet ?? null;
 
-    if (fallbackSubject && (!thread.subject || thread.subject === "No Subject")) {
+    if (
+      fallbackSubject &&
+      (!thread.subject || thread.subject === "No Subject")
+    ) {
       thread.subject = fallbackSubject;
     }
 
@@ -1654,7 +1946,7 @@ export class MailService {
   private async getMessageOrFail(manager: EntityManager, messageId: string) {
     const message = await manager.findOne(Message, {
       where: { id: messageId },
-      relations: ['recipients']
+      relations: ["recipients"],
     });
 
     if (!message) {

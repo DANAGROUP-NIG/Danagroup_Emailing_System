@@ -9,16 +9,19 @@ import {
   Post,
   Query,
   Req,
-  UseInterceptors,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
 import { MailService } from "./mail.service";
 import { MailQueryDto } from "./dto/mail-query.dto";
 import { SendMailDto } from "./dto/send-mail.dto";
 import { SaveDraftDto } from "./dto/save-draft.dto";
 import { UpdateMessageStatusDto } from "./dto/update-message-status.dto";
-import { CacheInterceptor } from "@nestjs/cache-manager";
 import { SendMailResponseDto } from "./dto/response/send-mail.response.dto";
 
 type SendMailEnvelope = {
@@ -28,7 +31,6 @@ type SendMailEnvelope = {
 
 @ApiTags("mail")
 @ApiBearerAuth()
-@UseInterceptors(CacheInterceptor)
 @Controller("mail")
 export class MailController {
   constructor(private readonly mailService: MailService) {}
@@ -80,7 +82,7 @@ export class MailController {
 
   @Post("send")
   @ApiOperation({ summary: "Send a new message or send an existing draft" })
-  @ApiResponse({ status: 201, type: SendMailResponseDto})
+  @ApiResponse({ status: 201, type: SendMailResponseDto })
   async send(
     @CurrentUser() user: { userId: string; email: string },
     @Body() dto: SendMailDto,

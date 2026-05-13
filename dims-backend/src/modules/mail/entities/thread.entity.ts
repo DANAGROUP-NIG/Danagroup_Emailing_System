@@ -10,7 +10,7 @@ import {
 import { Message } from "./message.entity";
 import { UserThreadState } from "./UserThreadState.entity";
 
-@Index(['lastMessageAt'])
+@Index(["lastMessageAt"])
 @Entity("threads")
 export class Thread {
   @PrimaryGeneratedColumn("uuid")
@@ -19,9 +19,8 @@ export class Thread {
   @Column({ length: 500 })
   subject: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   snippet: string;
-
 
   @Index() // important for inbox sorting
   @Column({
@@ -42,7 +41,7 @@ export class Thread {
   })
   updatedAt: Date;
 
-  @Column({ name: 'last_message_at', type: 'timestamp', nullable: true })
+  @Column({ name: "last_message_at", type: "timestamp", nullable: true })
   lastMessageAt: Date;
 
   @OneToMany(() => Message, (message) => message.thread)
@@ -51,4 +50,3 @@ export class Thread {
   @OneToMany(() => UserThreadState, (uts) => uts.thread)
   userStates: UserThreadState[];
 }
-

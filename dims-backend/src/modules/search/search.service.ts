@@ -24,20 +24,26 @@ export class SearchService {
     try {
       await this.ensureIndexExists(this.USER_INDEX);
     } catch (err: any) {
-      this.logger.warn(`ensureIndexExists(${this.USER_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`);
+      this.logger.warn(
+        `ensureIndexExists(${this.USER_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+      );
       return;
     }
     try {
       await this.ensureIndexExists(this.MESSAGE_INDEX);
     } catch (err: any) {
-      this.logger.warn(`ensureIndexExists(${this.MESSAGE_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`);
+      this.logger.warn(
+        `ensureIndexExists(${this.MESSAGE_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+      );
       return;
     }
     this.logger.log("Starting initial data sync...");
     try {
       await this.syncUsersToIndex();
     } catch (err: any) {
-      this.logger.warn(`syncUsersToIndex failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`);
+      this.logger.warn(
+        `syncUsersToIndex failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+      );
       return;
     }
     this.logger.log("Elasticsearch is ready and synced.");

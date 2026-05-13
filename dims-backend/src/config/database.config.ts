@@ -24,10 +24,7 @@ export default (config: ConfigService): TypeOrmModuleOptions => ({
 
   namingStrategy: new SnakeNamingStrategy(),
 
-  ssl:
-    config.get("DB_SSL") === "true"
-      ? { rejectUnauthorized: false }
-      : false,
+  ssl: config.get("DB_SSL") === "true" ? { rejectUnauthorized: false } : false,
 
   extra: {
     max: 20,

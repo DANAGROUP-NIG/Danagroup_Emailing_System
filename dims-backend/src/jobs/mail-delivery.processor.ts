@@ -99,8 +99,10 @@ export class MailDeliveryProcessor extends WorkerHost {
         eventPayload: {
           event: "new_mail",
           data: {
+            action: "message_received",
             messageId: message.id,
             threadId: message.threadId,
+            folders: ["inbox"],
             subject: message.subject,
             sender: {
               id: message.senderId,

@@ -57,7 +57,7 @@ export const ComposeInput = forwardRef<HTMLInputElement, ComposeInputProp>(funct
         {...props} 
         ref={ref}
         placeholder={placeholder}
-        className={`w-full border-b py-3 text-sm border-gray-100 outline-none ${errors ? 'border-red-500' : 'border-gray-100'}`}
+        className={`w-full shadow-sm border-[1px] py-3 text-sm pl-3 rounded-[5px] border-gray-100 outline-none ${errors ? 'border-red-500' : 'border-gray-100'}`}
       />
       {errors && <span className="text-xs text-red-500 px-1">{errors.message}</span>}
 

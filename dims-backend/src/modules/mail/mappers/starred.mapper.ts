@@ -13,7 +13,9 @@ export class StarredMapper {
         id: message.id,
         subject: message.subject || message.thread?.subject || "No Subject",
         unreadCount: currentRecipient?.isRead ? 0 : 1,
-        latestMessage: MailMapper.toListMessage(message),
+        isStarred: true,
+        updatedAt: message.sentAt ?? message.createdAt,
+        latestMessage: MailMapper.toListMessage(message, currentUserId),
       };
     });
   }

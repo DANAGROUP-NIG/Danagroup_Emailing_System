@@ -97,7 +97,10 @@ function buildRedisUrl(config: ConfigService): string {
     ElasticsearchModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        node: config.get<string>("ELASTICSEARCH_NODE") || config.get<string>("ES_NODE") || "http://localhost:9200",
+        node:
+          config.get<string>("ELASTICSEARCH_NODE") ||
+          config.get<string>("ES_NODE") ||
+          "http://localhost:9200",
         maxRetries: 5,
         requestTimeout: 60000,
         sniffOnStart: false,

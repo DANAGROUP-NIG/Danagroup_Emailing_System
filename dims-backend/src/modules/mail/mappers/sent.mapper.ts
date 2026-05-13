@@ -16,7 +16,9 @@ export class SentMapper {
           id: message.id,
           subject: message.subject || thread.subject,
           unreadCount: 0,
-          latestMessage: MailMapper.toListMessage(message),
+          isStarred: false,
+          updatedAt: message.sentAt ?? message.createdAt,
+          latestMessage: MailMapper.toListMessage(message, currentUserId),
         })),
     );
 
@@ -27,7 +29,9 @@ export class SentMapper {
     });
   }
 
-  private static getMessageDate(message: Pick<Message, "sentAt" | "createdAt">) {
+  private static getMessageDate(
+    message: Pick<Message, "sentAt" | "createdAt">,
+  ) {
     return message.sentAt ?? message.createdAt;
   }
 }
