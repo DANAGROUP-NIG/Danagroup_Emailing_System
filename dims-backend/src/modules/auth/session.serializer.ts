@@ -20,13 +20,18 @@ export class SessionSerializer extends PassportSerializer {
     userId: string,
     done: (
       err: Error | null,
-      user?: { userId: string; email: string; role: string },
+      user?: { id: string; email: string; role: string },
     ) => void,
   ): Promise<void> {
     try {
       const user = await this.usersService.findById(userId);
+
+      if (!user || !user.isActive) {
+        return done(null, undefined);
+      }
+
       done(null, {
-        userId: user.id,
+        id: user.id,
         email: user.email,
         role: user.role,
       });

@@ -18,6 +18,29 @@ async function bootstrap() {
       logger: ["error", "warn", "log", "debug"], // Enable debug logs
     });
 
+    const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/$/, ""))
+      .filter(Boolean);
+
+    app.enableCors({
+      origin: (origin, callback) => {
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        const normalizedOrigin = origin.replace(/\/$/, "");
+        if (allowedOrigins.includes(normalizedOrigin)) {
+          return callback(null, true);
+        }
+
+        return callback(null, false);
+      },
+      credentials: true,
+      methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    });
+
     //Initialize ioredis client
     // const redisClient = new Redis({
     //   host: process.env.REDIS_HOST || 'localhost',
@@ -42,23 +65,26 @@ async function bootstrap() {
 
     await redisClient.connect();
 
+    const isProduction = process.env.NODE_ENV === "production";
+
+    app.use(cookieParser());
+
     app.use(
       session({
         store: new RedisStore({ client: redisClient, prefix: "sess:" }),
         secret: process.env.SESSION_SECRET || "super-secret",
         resave: false,
         saveUninitialized: false,
-        name: "dims_sid", // Custom cookie name
+        name: "dims_sid",
         cookie: {
-          httpOnly: true, // Prevents XSS
-          secure: process.env.NODE_ENV === "production",
-          maxAge: 1000 * 60 * 60 * 24, // 24 hours
-          sameSite: "lax", // Helps with CSRF
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: isProduction ? "none" : "lax",
+          maxAge: 1000 * 60 * 60 * 24,
         },
       }),
     );
 
-    app.use(cookieParser());
     app.use(passport.initialize());
     app.use(passport.session());
 
@@ -74,11 +100,6 @@ async function bootstrap() {
         },
       }),
     );
-
-    app.enableCors({
-      origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
-      credentials: true,
-    });
 
     const swaggerConfig = new DocumentBuilder()
       .setTitle("DIMS API")
@@ -97,7 +118,7 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup("api/docs", app, document);
 
-    const port = process.env.PORT ?? 3000;
+    const port = process.env.PORT ?? 8000;
     await app.listen(port, "0.0.0.0");
     console.log(`✅ DIMS API running on http://localhost:${port}/api`);
     console.log(`✅ Swagger docs at http://localhost:${port}/api/docs`);

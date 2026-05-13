@@ -107,8 +107,10 @@ export class UsersService {
 
   // TODO: Implement findByEmail(email): User | null (used by AuthService)
   async findByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+
     return this.userRepo.findOne({
-      where: { email },
+      where: { email: ILike(normalizedEmail) },
       select: [
         "id",
         "email",

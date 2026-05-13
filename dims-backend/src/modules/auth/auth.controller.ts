@@ -80,6 +80,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      path: "/",
       maxAge: 15 * 60 * 1000, // 15 min
     });
 
@@ -87,6 +88,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -131,8 +133,8 @@ export class AuthController {
     await this.authService.logout(user.userId, accessToken, refreshToken, req);
 
     // clear cookies
-    res.clearCookie("access_token");
-    res.clearCookie("refresh_token");
+    res.clearCookie("access_token", { path: "/" });
+    res.clearCookie("refresh_token", { path: "/" });
 
     return new ApiResponseDto(true, "Logged out successfully");
   }
@@ -168,10 +170,19 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      path: "/",
       maxAge: 15 * 60 * 1000,
     });
 
-    return new ApiResponseDto(true, "Token refreshed");
+    res.cookie("refresh_token", tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return new ApiResponseDto(true, "Token refreshed", tokens);
   }
 
   // TODO: Implement GET /auth/me

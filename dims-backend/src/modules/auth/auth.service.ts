@@ -85,7 +85,9 @@ export class AuthService {
   // - Compare password hash using bcrypt.compare
   // - Return user without password if valid, null otherwise
   async validateUser(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmail(
+      email.trim().toLowerCase(),
+    );
 
     if (!user) return null;
     if (!user.isActive) return null;

@@ -63,12 +63,15 @@ export const useAuthStore = create<AuthState>()(
           const payload = response.data?.data ?? response.data;
           const { user, accessToken, refreshToken } = payload;
 
+          if (!user || !accessToken || !refreshToken) {
+            throw new Error("Login response is missing authentication data");
+          }
+
           set({
             user: {...user, accessToken, refreshToken},
             isAuthenticated: true,
             isLoading: false
           });
-          get().checkAuth();
 
           toast.success("Login successful", {position: "top-right"});
 
@@ -80,7 +83,10 @@ export const useAuthStore = create<AuthState>()(
           set({isLoading: false})
 
           if (axios.isAxiosError(error)) {
-            const message = (error.response?.data as { message?: string})?.message || "Invalid email or password";
+            const responseMessage = (error.response?.data as { message?: string | string[] })?.message;
+            const message = Array.isArray(responseMessage)
+              ? responseMessage[0]
+              : responseMessage || "Invalid email or password";
             toast.error(message, {position: "top-right"})
           } else if (error instanceof Error) {
             toast.error(error.message, {position: "top-right"});
