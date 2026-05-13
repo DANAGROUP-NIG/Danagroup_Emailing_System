@@ -65,6 +65,13 @@ export function useMail() {
     ]);
   };
 
+  const invalidateDrafts = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["mail", "drafts"],
+      refetchType: "active",
+    });
+  };
+
   return {
     // --- QUERIES ---
     useInbox: (page = 1) =>
@@ -118,7 +125,7 @@ export function useMail() {
       }),
 
   // Fetches full thread and marks all messages within it as read
-  useThread: (threadId?: string) =>
+    useThread: (threadId?: string) =>
     useQuery<ThreadDetail>({
     queryKey: ["mail", "thread", threadId],
     queryFn: async () => {
@@ -131,6 +138,7 @@ export function useMail() {
       return res.data.data;
     },
     enabled: !!threadId,
+    staleTime: 30_000,
   }),
 
     // --- MUTATIONS ---
@@ -149,9 +157,12 @@ export function useMail() {
       useMutation({
         mutationFn: async (payload: ComposeData) => {
           const res = await api.post<ApiEnvelope<Message>>("/mail/draft", payload);
-          return unwrapResponse(res.data);
+          return unwrapResponse<Message>(res.data);
         },
-        onSuccess: invalidateMail,
+        onSuccess: async (draft) => {
+          queryClient.setQueryData(["message", draft.id], draft);
+          await invalidateDrafts();
+        },
       }),
 
     // Single Message Actions

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
@@ -9,6 +10,7 @@ import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
 
 import { useAuthStore } from "@/store/authStore";
+import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
 
 
@@ -22,7 +24,7 @@ import { htmlToText } from "@/lib/utils";
 // - Action buttons: Reply, Forward, Star, Delete (shown on hover)
 // - Marks message as read on expand (PATCH /api/mail/:id/read)
 
-export default function MailMessage({ 
+function MailMessage({ 
   message, 
   isCollapsed: initialCollapsed = false,
   isConsecutive = false,
@@ -32,8 +34,9 @@ export default function MailMessage({
   isConsecutive?: boolean
 }) {
   const { user } = useAuthStore();
-  const { useDeleteMail, useMarkRead, useStarMail } = useMail();
-  const markRead = useMarkRead(); 
+  const openReply = useMailStore((state) => state.openReply);
+  const openForward = useMailStore((state) => state.openForward);
+  const { useDeleteMail, useStarMail } = useMail();
   const starMail = useStarMail();
   const deleteMail = useDeleteMail();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
@@ -41,33 +44,36 @@ export default function MailMessage({
   const myRecipient = message.recipients.find(
     (r) => r.email === user?.email || r.recipient?.email === user?.email
   );
-  // Marks message as read on expand (PATCH /api/mail/:id/read)
-  useEffect(() => {
-    const canMarkRead = 
-      !isCollapsed && 
-      message.id && 
-      !message.isDraft && 
-      message.sender?.id !== user?.id && 
-      myRecipient && 
-      myRecipient.isRead === false;
-
-    if (canMarkRead) {
-      // Pass the message.id to the mutation
-      markRead.mutate(message.id);
-    }
-  }, [isCollapsed, markRead, message.id, message.isDraft, message.sender?.id, myRecipient, user?.id]);
-
-  //console.log(message)
-
   const isUnread = myRecipient?.isRead === false;
 
-  const sanitizedBody = DOMPurify.sanitize(message.bodyHtml || message.body);
+  const sanitizedBody = useMemo(
+    () => DOMPurify.sanitize(message.bodyHtml || message.body),
+    [message.body, message.bodyHtml],
+  );
   
   const fullName = message.sender?.name || message.sender?.email || "Unknown sender";
   const senderEmail = message.sender?.email || "unknown@danagroup.internal";
   const toLine = formatRecipients(message.recipients, "to");
   const ccLine = formatRecipients(message.recipients, "cc");
   const bccLine = formatRecipients(message.recipients, "bcc");
+  const replyDefaults = useMemo(
+    () => buildReplyDefaults(message, user?.email),
+    [message, user?.email],
+  );
+  const forwardDefaults = useMemo(
+    () => buildForwardDefaults(message),
+    [message],
+  );
+  const handleReply = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openReply(replyDefaults);
+  };
+  const handleForward = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openForward(forwardDefaults);
+  };
 
   return (
     <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
@@ -101,13 +107,31 @@ export default function MailMessage({
           </span>
           
           {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[]">
-            <button className="p-1.5 hover:bg-muted rounded" title="Reply"><Reply className="h-4 w-4" /></button>
-            <button className="p-1.5 hover:bg-muted rounded" title="Forward"><Forward className="h-4 w-4" /></button>
+          <div className="relative z-20 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <button
+              type="button"
+              className="rounded p-1.5 hover:bg-muted focus:bg-muted focus:outline-none focus:ring-2 focus:ring-dana-blue-300"
+              title="Reply"
+              aria-label="Reply"
+              onClick={handleReply}
+            >
+              <Reply className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="rounded p-1.5 hover:bg-muted focus:bg-muted focus:outline-none focus:ring-2 focus:ring-dana-blue-300"
+              title="Forward"
+              aria-label="Forward"
+              onClick={handleForward}
+            >
+              <Forward className="h-4 w-4" />
+            </button>
             <button
               type="button"
               disabled={!myRecipient || starMail.isPending}
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 if (!myRecipient) return;
 
                 starMail.mutate({
@@ -123,7 +147,11 @@ export default function MailMessage({
             <button
               type="button"
               disabled={deleteMail.isPending}
-              onClick={() => deleteMail.mutate(message.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                deleteMail.mutate(message.id);
+              }}
               className="p-1.5 hover:bg-muted rounded text-destructive disabled:cursor-not-allowed disabled:opacity-50"
               title="Move to trash"
             >
@@ -178,6 +206,113 @@ export default function MailMessage({
       )}
     </div>
   );
+}
+
+export default memo(MailMessage);
+
+function normalizeSubjectForReply(subject: string) {
+  const trimmed = subject?.trim() || "(No Subject)";
+  return /^re:/i.test(trimmed) ? trimmed : `Re: ${trimmed}`;
+}
+
+function normalizeSubjectForForward(subject: string) {
+  const trimmed = subject?.trim() || "(No Subject)";
+  return /^fwd?:/i.test(trimmed) ? trimmed : `Fwd: ${trimmed}`;
+}
+
+function uniqueEmails(emails: string[], currentUserEmail?: string) {
+  const current = currentUserEmail?.toLowerCase();
+  const seen = new Set<string>();
+
+  return emails
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => {
+      if (!email || email === current || seen.has(email)) {
+        return false;
+      }
+
+      seen.add(email);
+      return true;
+    });
+}
+
+function recipientEmail(recipient: Message["recipients"][number]) {
+  return recipient.email || recipient.recipient?.email || "";
+}
+
+function buildReplyDefaults(message: Message, currentUserEmail?: string) {
+  const senderEmail = message.sender?.email || "";
+  const toRecipients = message.recipients
+    .filter((recipient) => recipient.type === "to")
+    .map(recipientEmail);
+  const ccRecipients = message.recipients
+    .filter((recipient) => recipient.type === "cc")
+    .map(recipientEmail);
+
+  const toEmails =
+    senderEmail.toLowerCase() === currentUserEmail?.toLowerCase()
+      ? uniqueEmails(toRecipients, currentUserEmail)
+      : uniqueEmails([senderEmail], currentUserEmail);
+
+  const ccEmails = uniqueEmails(
+    [...ccRecipients, ...toRecipients.filter((email) => !toEmails.includes(email.toLowerCase()))],
+    currentUserEmail,
+  );
+
+  const originalBody = htmlToText(message.bodyHtml) || message.body || "";
+  const quotedBody = originalBody
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+  const senderLabel = message.sender?.name || senderEmail || "the sender";
+  const createdAt = message.createdAt
+    ? format(new Date(message.createdAt), "PP p")
+    : "an earlier date";
+
+  return {
+    mode: "reply" as const,
+    threadId: message.threadId,
+    to: toEmails.join(", "),
+    cc: ccEmails.join(", "),
+    subject: normalizeSubjectForReply(message.subject),
+    body: `\n\nOn ${createdAt}, ${senderLabel} wrote:\n${quotedBody}`,
+  };
+}
+
+function buildForwardDefaults(message: Message) {
+  const senderEmail = message.sender?.email || "";
+  const senderLabel = message.sender?.name || senderEmail || "Unknown sender";
+  const createdAt = message.createdAt
+    ? format(new Date(message.createdAt), "PPPP 'at' p")
+    : "an earlier date";
+  const toLine = formatRecipients(message.recipients, "to") || "(undisclosed)";
+  const ccLine = formatRecipients(message.recipients, "cc");
+  const originalBody = htmlToText(message.bodyHtml) || message.body || "";
+  const attachmentSummary = message.attachments?.length
+    ? `\nAttachments on original message: ${message.attachments
+        .map((attachment) => attachment.filename)
+        .join(", ")}\n`
+    : "";
+
+  return {
+    mode: "forward" as const,
+    subject: normalizeSubjectForForward(message.subject),
+    body: [
+      "",
+      "",
+      "---------- Forwarded message ---------",
+      `From: ${senderLabel} <${senderEmail}>`,
+      `Date: ${createdAt}`,
+      `Subject: ${message.subject || "(No Subject)"}`,
+      `To: ${toLine}`,
+      ccLine ? `Cc: ${ccLine}` : null,
+      attachmentSummary.trim() || null,
+      "",
+      originalBody,
+    ]
+      .filter((line): line is string => line !== null)
+      .join("\n"),
+  };
 }
 
 function formatRecipients(

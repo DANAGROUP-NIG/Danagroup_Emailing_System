@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2, CornerUpLeft, Forward } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
 import toast from 'react-hot-toast';
 import { useMail } from '@/hooks/useMail';
@@ -96,15 +96,23 @@ const mapComposeValuesToPayload = (
 });
 
 export default function ComposeModal() {
-  const { isComposeOpen, closeCompose, composeDraftId, setComposeDraftId } =
+  const {
+    isComposeOpen,
+    closeCompose,
+    composeDraftId,
+    composeDefaults,
+    setComposeDraftId,
+  } =
     useMailStore();
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
   const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
   const [isClosing, setIsClosing] = useState(false);
   const isSendingRef = useRef(false);
   const isClosingRef = useRef(false);
+  const saveDraftInFlightRef = useRef<Promise<Message | null> | null>(null);
   const lastSavedSignatureRef = useRef("");
   const currentDraftIdRef = useRef<string | null>(null);
+  const currentThreadIdRef = useRef<string | null>(null);
   const initializedComposeKeyRef = useRef<string | null>(null);
 
   const { data } = useGetMessage(composeDraftId || "");
@@ -118,15 +126,50 @@ export default function ComposeModal() {
   });
 
   const draftData = data as Message; 
+  const composeMode = composeDefaults?.mode ?? (composeDraftId ? "draft" : "new");
+  const composeTitle =
+    composeMode === "reply"
+      ? "Reply"
+      : composeMode === "forward"
+        ? "Forward"
+        : composeMode === "draft"
+          ? "Edit Draft"
+          : "New Message";
   const watchedValues = watch();
   const attachmentIds = useMemo(
     () => uploadedAttachments.map((attachment) => attachment.id),
     [uploadedAttachments],
   );
 
+  const initialAttachmentFiles = useMemo(
+    () =>
+      uploadedAttachments.map((attachment) => ({
+        ...attachment,
+        progress: attachment.progress ?? 100,
+        isUploading: false,
+      })),
+    [uploadedAttachments],
+  );
+
+  const saveAsSentPayload = useCallback(
+    (values: ComposeFormValues): ComposeData => ({
+      ...mapComposeValuesToPayload(
+        values,
+        currentDraftIdRef.current || composeDraftId,
+      ),
+      threadId:
+        currentDraftIdRef.current || composeDraftId || composeMode === "reply"
+          ? currentThreadIdRef.current || composeDefaults?.threadId || undefined
+          : undefined,
+      attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
+    }),
+    [composeDefaults?.threadId, composeDraftId, composeMode, uploadedAttachments],
+  );
+
   const buildDraftPayload = useCallback(
     (values: Partial<ComposeFormValues>): ComposeData => ({
       draftId: currentDraftIdRef.current || composeDraftId || undefined,
+      threadId: currentThreadIdRef.current || composeDefaults?.threadId || undefined,
       toEmails: parseEmailList(values.to),
       ccEmails: parseEmailList(values.cc),
       bccEmails: parseEmailList(values.bcc),
@@ -135,7 +178,7 @@ export default function ComposeModal() {
       bodyHtml: buildBodyHtml(values.body || ""),
       attachmentIds,
     }),
-    [attachmentIds, composeDraftId],
+    [attachmentIds, composeDefaults?.threadId, composeDraftId],
   );
 
   const hasDraftContent = useCallback(
@@ -157,6 +200,10 @@ export default function ComposeModal() {
         return null;
       }
 
+      if (saveDraftInFlightRef.current) {
+        return saveDraftInFlightRef.current;
+      }
+
       const payload = buildDraftPayload(values);
       const signature = JSON.stringify(payload);
 
@@ -164,21 +211,36 @@ export default function ComposeModal() {
         return null;
       }
 
-      const savedDraft = await saveDraft(payload);
-      if ((savedDraft as Partial<Message> | undefined)?.id) {
-        currentDraftIdRef.current = (savedDraft as Partial<Message>).id ?? null;
-      }
+      const savePromise = saveDraft(payload)
+        .then((savedDraft) => {
+          if ((savedDraft as Partial<Message> | undefined)?.id) {
+            currentDraftIdRef.current =
+              (savedDraft as Partial<Message>).id ?? null;
+          }
 
-      lastSavedSignatureRef.current = JSON.stringify({
-        ...payload,
-        draftId: currentDraftIdRef.current || payload.draftId,
-      });
+          if ((savedDraft as Partial<Message> | undefined)?.threadId) {
+            currentThreadIdRef.current =
+              (savedDraft as Partial<Message>).threadId ??
+              currentThreadIdRef.current;
+          }
 
-      if (showToast) {
-        toast.success("Draft saved");
-      }
+          lastSavedSignatureRef.current = JSON.stringify({
+            ...payload,
+            draftId: currentDraftIdRef.current || payload.draftId,
+          });
 
-      return savedDraft;
+          if (showToast) {
+            toast.success("Draft saved");
+          }
+
+          return (savedDraft as Message | undefined) ?? null;
+        })
+        .finally(() => {
+          saveDraftInFlightRef.current = null;
+        });
+
+      saveDraftInFlightRef.current = savePromise;
+      return savePromise;
     },
     [
       buildDraftPayload,
@@ -225,7 +287,7 @@ export default function ComposeModal() {
       return;
     }
 
-    const composeKey = composeDraftId || "new";
+    const composeKey = composeDraftId || JSON.stringify(composeDefaults ?? {});
     if (initializedComposeKeyRef.current === composeKey) {
       return;
     }
@@ -235,6 +297,7 @@ export default function ComposeModal() {
     }
 
     currentDraftIdRef.current = composeDraftId || null;
+    currentThreadIdRef.current = composeDefaults?.threadId || null;
     initializedComposeKeyRef.current = composeKey;
 
     // If we are editing an EXISTING draft
@@ -264,6 +327,18 @@ export default function ComposeModal() {
         subject: draftData.subject || '',
         body: draftData.body || '',
       });
+      currentThreadIdRef.current = draftData.threadId || composeDefaults?.threadId || null;
+      setUploadedAttachments(
+        (draftData.attachments ?? []).map((attachment) => ({
+          id: attachment.id,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.sizeBytes,
+          storageKey: attachment.storageKey,
+          progress: 100,
+          isUploading: false,
+        })),
+      );
       lastSavedSignatureRef.current = JSON.stringify(
         buildDraftPayload({
           to: toField,
@@ -277,13 +352,30 @@ export default function ComposeModal() {
     
     // If we are opening a FRESH compose modal
     if (!composeDraftId) {
-      reset({ to: '', cc: '', bcc: '', subject: '', body: '' });
-      setUploadedAttachments([]);
+      const defaults = composeDefaults ?? {};
+      reset({
+        to: defaults.to ?? '',
+        cc: defaults.cc ?? '',
+        bcc: defaults.bcc ?? '',
+        subject: defaults.subject ?? '',
+        body: defaults.body ?? '',
+      });
+      setUploadedAttachments(
+        (defaults.attachments ?? []).map((attachment) => ({
+          id: attachment.id,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.sizeBytes,
+          storageKey: attachment.storageKey,
+          progress: 100,
+          isUploading: false,
+        })),
+      );
       lastSavedSignatureRef.current = "";
       isSendingRef.current = false;
     }
     
-  }, [buildDraftPayload, draftData, isComposeOpen, composeDraftId, reset]);
+  }, [buildDraftPayload, composeDefaults, draftData, isComposeOpen, composeDraftId, reset]);
 
 
 
@@ -314,6 +406,7 @@ export default function ComposeModal() {
     setUploadedAttachments([]);
     lastSavedSignatureRef.current = "";
     currentDraftIdRef.current = null;
+    currentThreadIdRef.current = null;
     isClosingRef.current = false;
     setIsClosing(false);
     closeCompose();
@@ -323,10 +416,7 @@ export default function ComposeModal() {
   // Change 'data: ComposeFormValues' to 'data: any'
   const onSubmit = (data: ComposeFormValues) => {
     isSendingRef.current = true;
-    const payload = {
-      ...mapComposeValuesToPayload(data, currentDraftIdRef.current || composeDraftId),
-      attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
-    };
+    const payload = saveAsSentPayload(data);
 
     sendEmail(payload, {
       onSuccess: () => {
@@ -335,6 +425,7 @@ export default function ComposeModal() {
         setUploadedAttachments([]);
         setComposeDraftId(null);
         lastSavedSignatureRef.current = "";
+        currentThreadIdRef.current = null;
         closeCompose();
       },
       onError: (err: any) => {
@@ -366,7 +457,11 @@ export default function ComposeModal() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 fixed top-[10%] flex-col z-[100] bg-white max-h-[80vh] min-w-[60vw] rounded-lg">
 
           <div className="flex justify-between items-center p-2 bg-dana-red-100/30 rounded-t-lg h-[12vh] lg:h-[14vh] border-b-dana-blue-500/60 border-b-4">
-            <span className="text-sm font-bold px-2">New Message</span>
+            <span className="flex items-center gap-2 px-2 text-sm font-bold">
+              {composeMode === "reply" ? <CornerUpLeft size={16} /> : null}
+              {composeMode === "forward" ? <Forward size={16} /> : null}
+              {composeTitle}
+            </span>
             <button 
               type="button" 
               onClick={handleCloseAndSaveDraft} 
@@ -421,6 +516,7 @@ export default function ComposeModal() {
             {errors.body && <span className="text-xs text-red-500 px-1">{errors.body.message}</span>}
 
             <AttachmentUploader
+              initialFiles={initialAttachmentFiles}
               onChange={setUploadedAttachments}
               onError={(message) => toast.error(message)}
             />

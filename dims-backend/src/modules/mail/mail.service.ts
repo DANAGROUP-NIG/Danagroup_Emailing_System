@@ -13,6 +13,7 @@ import {
   DataSource,
   EntityManager,
   In,
+  IsNull,
   Repository,
   SelectQueryBuilder,
 } from "typeorm";
@@ -318,7 +319,11 @@ export class MailService {
   private getTrashBaseQuery(userId: string) {
     return this.threadRepo
       .createQueryBuilder("thread")
-      .innerJoin("thread.messages", "filterMessage")
+      .innerJoin(
+        "thread.messages",
+        "filterMessage",
+        "filterMessage.isDraft = false",
+      )
       .leftJoin(
         "filterMessage.recipients",
         "filterRecipient",
@@ -474,7 +479,7 @@ export class MailService {
         where: {
           senderId: userId,
           isDraft: true,
-          senderDeletedAt: null,
+          senderDeletedAt: IsNull(),
         },
         relations: {
           thread: true,
@@ -584,7 +589,12 @@ export class MailService {
         }
 
         const subject = dto.subject?.trim() ?? "";
-        const thread = await this.resolveThread(manager, dto.threadId, subject);
+        const thread = await this.resolveThread(
+          manager,
+          dto.threadId,
+          subject,
+          sender.id,
+        );
         const sentAt = new Date();
 
         let message: Message;
@@ -594,7 +604,7 @@ export class MailService {
           message.subject = dto.subject ?? message.subject;
           message.body = dto.body;
           message.bodyHtml =
-            dto.bodyHtml ?? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`;
+            this.sanitizeBodyHtml(dto.bodyHtml) ?? this.buildBodyHtml(dto.body);
           message.isDraft = false;
           message.sentAt = sentAt;
           message.senderDeletedAt = null;
@@ -605,7 +615,8 @@ export class MailService {
             subject,
             body: dto.body,
             bodyHtml:
-              dto.bodyHtml ?? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`,
+              this.sanitizeBodyHtml(dto.bodyHtml) ??
+              this.buildBodyHtml(dto.body),
             isDraft: false,
             sentAt,
           });
@@ -615,14 +626,12 @@ export class MailService {
 
         await this.replaceRecipients(manager, saved.id, recipients);
 
-        if (dto.attachmentIds?.length) {
-          await this.attachFiles(
-            manager,
-            saved.id,
-            sender.id,
-            dto.attachmentIds,
-          );
-        }
+        await this.replaceAttachments(
+          manager,
+          saved.id,
+          sender.id,
+          dto.attachmentIds ?? [],
+        );
 
         if (subject) {
           await this.updateThreadSubject(manager, thread, subject);
@@ -675,7 +684,12 @@ export class MailService {
     try {
       const draft = await this.dataSource.transaction(async (manager) => {
         const subject = dto.subject?.trim() ?? "";
-        const thread = await this.resolveThread(manager, dto.threadId, subject);
+        const thread = await this.resolveThread(
+          manager,
+          dto.threadId,
+          subject,
+          senderId,
+        );
 
         let draft: Message;
         if (dto.draftId) {
@@ -683,21 +697,9 @@ export class MailService {
           draft.threadId = thread.id;
           draft.subject = dto.subject ?? draft.subject;
           draft.body = dto.body ?? draft.body ?? "";
-          draft.bodyHtml = DOMPurify.sanitize(dto.bodyHtml, {
-            ALLOWED_TAGS: [
-              "p",
-              "br",
-              "b",
-              "i",
-              "strong",
-              "em",
-              "a",
-              "ul",
-              "ol",
-              "li",
-            ],
-            ALLOWED_ATTR: ["href", "target"],
-          });
+          draft.bodyHtml = this.sanitizeBodyHtml(
+            dto.bodyHtml ?? this.buildBodyHtml(draft.body),
+          );
           draft.isDraft = true;
           draft.sentAt = null;
           draft.senderDeletedAt = null;
@@ -712,23 +714,7 @@ export class MailService {
             subject,
             body: dto.body ?? "",
             bodyHtml: dto.bodyHtml
-              ? DOMPurify.sanitize(dto.bodyHtml, {
-                  ALLOWED_TAGS: [
-                    "p",
-                    "br",
-                    "b",
-                    "i",
-                    "strong",
-                    "em",
-                    "u",
-                    "a",
-                    "ul",
-                    "ol",
-                    "li",
-                    "blockquote",
-                  ],
-                  ALLOWED_ATTR: ["href", "target"],
-                })
+              ? this.sanitizeBodyHtml(dto.bodyHtml)
               : generatedHtml,
             isDraft: true,
             sentAt: null,
@@ -742,12 +728,12 @@ export class MailService {
           await this.replaceRecipients(manager, savedDraft.id, recipients);
         }
 
-        if (dto.attachmentIds) {
-          await this.attachFiles(
+        if (Object.prototype.hasOwnProperty.call(dto, "attachmentIds")) {
+          await this.replaceAttachments(
             manager,
             savedDraft.id,
             senderId,
-            dto.attachmentIds,
+            dto.attachmentIds ?? [],
           );
         }
 
@@ -1103,6 +1089,30 @@ export class MailService {
 
       if (!message) {
         throw new NotFoundException("Message not found");
+      }
+
+      if (message.isDraft) {
+        if (message.senderId !== userId) {
+          throw new ForbiddenException("No access to this draft");
+        }
+
+        const threadId = message.threadId;
+        await this.messageRepo.delete(messageId);
+        await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+        await this.jobsService.enqueueMessageDelete({ messageId });
+        this.emitMailboxChanged(userId, {
+          action: "permanently_deleted",
+          messageId,
+          threadId,
+          folders: ["drafts"],
+        });
+
+        return {
+          data: {
+            messageId,
+            status: "draft_deleted",
+          },
+        };
       }
 
       const previousFolders = this.getUserMailboxFoldersForMessage(
@@ -1535,16 +1545,82 @@ export class MailService {
     });
   }
 
+  private buildBodyHtml(body: string) {
+    return `<p>${body.replace(/\n/g, "<br>")}</p>`;
+  }
+
+  private sanitizeBodyHtml(bodyHtml?: string | null) {
+    if (!bodyHtml) {
+      return null;
+    }
+
+    return DOMPurify.sanitize(bodyHtml, {
+      ALLOWED_TAGS: [
+        "p",
+        "br",
+        "b",
+        "i",
+        "strong",
+        "em",
+        "u",
+        "a",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+      ],
+      ALLOWED_ATTR: ["href", "target"],
+    });
+  }
+
+  private async assertThreadAccess(
+    manager: EntityManager,
+    threadId: string,
+    userId: string,
+  ) {
+    const accessibleCount = await manager
+      .createQueryBuilder(Message, "message")
+      .leftJoin(
+        MessageRecipient,
+        "recipient",
+        "recipient.messageId = message.id AND recipient.recipientId = :userId",
+        { userId },
+      )
+      .where("message.threadId = :threadId", { threadId })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where(
+            "message.senderId = :userId AND message.senderDeletedAt IS NULL",
+            { userId },
+          ).orWhere(
+            "recipient.recipientId = :userId AND recipient.isDeleted = false",
+            { userId },
+          );
+        }),
+      )
+      .getCount();
+
+    if (!accessibleCount) {
+      throw new ForbiddenException("You do not have access to this thread");
+    }
+  }
+
   private async resolveThread(
     manager: EntityManager,
     threadId?: string,
     subject?: string,
+    userId?: string,
   ): Promise<Thread> {
     if (threadId) {
       const thread = await manager.findOne(Thread, { where: { id: threadId } });
       if (!thread) {
         throw new NotFoundException("Thread not found");
       }
+
+      if (userId) {
+        await this.assertThreadAccess(manager, threadId, userId);
+      }
+
       return thread;
     }
 
@@ -1599,13 +1675,12 @@ export class MailService {
     const distinctEmails = [
       ...new Set(rawRecipients.map((recipient) => recipient.email)),
     ];
-    const users = await this.userRepo.find({
-      where: {
-        email: In(distinctEmails),
-        isActive: true,
-      },
-      select: ["id", "email"],
-    });
+    const users = await this.userRepo
+      .createQueryBuilder("user")
+      .select(["user.id", "user.email"])
+      .where("LOWER(user.email) IN (:...emails)", { emails: distinctEmails })
+      .andWhere("user.isActive = true")
+      .getMany();
 
     if (users.length !== distinctEmails.length) {
       if (requireAtLeastOne) {
@@ -1619,7 +1694,9 @@ export class MailService {
       );
     }
 
-    const emailToIdMap = new Map(users.map((user) => [user.email, user.id]));
+    const emailToIdMap = new Map(
+      users.map((user) => [user.email.toLowerCase(), user.id]),
+    );
     return this.dedupeRecipients(
       rawRecipients
         .map((recipient) => {
@@ -1682,21 +1759,31 @@ export class MailService {
     }
   }
 
-  private async attachFiles(
+  private async replaceAttachments(
     manager: EntityManager,
     messageId: string,
     senderId: string,
-    attachmentIds?: string[],
+    attachmentIds: string[],
   ) {
-    if (!attachmentIds?.length) {
+    await manager.update(Attachment, { messageId }, { messageId: null });
+
+    if (!attachmentIds.length) {
       return;
     }
 
     const attachments = await manager.find(Attachment, {
-      where: {
-        id: In(attachmentIds),
-        uploaderId: senderId,
-      },
+      where: [
+        {
+          id: In(attachmentIds),
+          uploaderId: senderId,
+          messageId: IsNull(),
+        },
+        {
+          id: In(attachmentIds),
+          uploaderId: senderId,
+          messageId,
+        },
+      ],
     });
 
     if (attachments.length !== attachmentIds.length) {
@@ -1707,9 +1794,7 @@ export class MailService {
       attachment.messageId = messageId;
     }
 
-    if (attachments.length) {
-      await manager.save(attachments);
-    }
+    await manager.save(attachments);
   }
 
   private async findOwnedDraft(
@@ -1946,7 +2031,14 @@ export class MailService {
   private async getMessageOrFail(manager: EntityManager, messageId: string) {
     const message = await manager.findOne(Message, {
       where: { id: messageId },
-      relations: ["recipients"],
+      relations: {
+        thread: true,
+        sender: true,
+        recipients: {
+          recipient: true,
+        },
+        attachments: true,
+      },
     });
 
     if (!message) {

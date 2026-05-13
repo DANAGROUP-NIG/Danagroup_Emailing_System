@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Upload } from 'lucide-react';
 import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -32,11 +32,13 @@ export interface UploadedAttachment {
 }
 
 interface AttachmentUploaderProps {
+  initialFiles?: UploadedAttachment[];
   onChange?: (files: UploadedAttachment[]) => void;
   onError?: (error: string) => void;
 }
 
 export default function AttachmentUploader({
+  initialFiles = [],
   onChange,
   onError,
 }: AttachmentUploaderProps) {
@@ -44,6 +46,7 @@ export default function AttachmentUploader({
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialSignatureRef = useRef('');
 
   const totalSize = uploadedFiles.reduce((sum, file) => sum + file.sizeBytes, 0);
 
@@ -53,6 +56,19 @@ export default function AttachmentUploader({
     },
     [onChange],
   );
+
+  useEffect(() => {
+    const signature = JSON.stringify(
+      initialFiles.map((file) => [file.id, file.filename, file.sizeBytes]),
+    );
+    if (signature === initialSignatureRef.current) {
+      return;
+    }
+
+    initialSignatureRef.current = signature;
+    setUploadedFiles(initialFiles);
+    onChange?.(initialFiles.filter((file) => !file.isUploading && !file.error));
+  }, [initialFiles, onChange]);
 
   const validateFile = (file: File) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
