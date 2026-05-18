@@ -5,6 +5,18 @@ import { create } from 'zustand';
 
 type MailFolder = "inbox" | "sent" | "drafts" | "trash";
 
+export type ComposeMode = "new" | "reply" | "forward";
+
+export interface ComposeDefaults {
+  mode?: ComposeMode;
+  threadId?: string;
+  to?: string;
+  cc?: string;
+  bcc?: string;
+  subject?: string;
+  body?: string;
+}
+
 interface MailStore {
   // Navigation & View State
   activeFolder: MailFolder;
@@ -16,6 +28,7 @@ interface MailStore {
   // Compose Modal State
   isComposeOpen: boolean;
   composeDraftId: string | null; // If editing an existing draft
+  composeDefaults: ComposeDefaults | null;
 
   // Actions
   setFolder: (folder: MailFolder) => void;
@@ -26,7 +39,7 @@ interface MailStore {
   resetSelection: () => void;
   
   // Compose Actions
-  openCompose: (draftId?: string) => void;
+  openCompose: (draftId?: string | null, defaults?: ComposeDefaults | null) => void;
   setComposeDraftId: (draftId: string | null) => void;
   closeCompose: () => void;
 }
@@ -37,6 +50,7 @@ export const useMailStore = create<MailStore>((set) => ({
   selectedMessageIds: [],
   isComposeOpen: false,
   composeDraftId: null,
+  composeDefaults: null,
 
   // Change folder and reset dependent states
   setFolder: (folder) => set({ 
@@ -59,9 +73,10 @@ export const useMailStore = create<MailStore>((set) => ({
   resetSelection: () => set({ selectedMessageIds: [] }),
 
   // Compose management
-  openCompose: (draftId?: string | null) => set({ 
+  openCompose: (draftId?: string | null, defaults?: ComposeDefaults | null) => set({ 
     isComposeOpen: true, 
-    composeDraftId: draftId || null
+    composeDraftId: draftId || null,
+    composeDefaults: defaults || null,
   }),
 
   setComposeDraftId: (draftId) => set({
@@ -70,6 +85,7 @@ export const useMailStore = create<MailStore>((set) => ({
   
   closeCompose: () => set({ 
     isComposeOpen: false, 
-    composeDraftId: null 
+    composeDraftId: null,
+    composeDefaults: null,
   }),
 }));

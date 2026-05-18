@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import DOMPurify from "isomorphic-dompurify";
@@ -9,6 +10,7 @@ import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
 
 import { useAuthStore } from "@/store/authStore";
+import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
 
 
@@ -32,6 +34,7 @@ export default function MailMessage({
   isConsecutive?: boolean
 }) {
   const { user } = useAuthStore();
+  const { openCompose } = useMailStore();
   const { useDeleteMail, useMarkRead, useStarMail } = useMail();
   const markRead = useMarkRead(); 
   const starMail = useStarMail();
@@ -68,6 +71,37 @@ export default function MailMessage({
   const toLine = formatRecipients(message.recipients, "to");
   const ccLine = formatRecipients(message.recipients, "cc");
   const bccLine = formatRecipients(message.recipients, "bcc");
+  const replyTo = buildReplyRecipients(message, user?.email);
+  const replySubject = withSubjectPrefix(message.subject, "Re:");
+  const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
+  const originalText = htmlToText(message.bodyHtml) || message.body || "";
+  const sentDate = format(new Date(message.createdAt), "PPP p");
+  const senderLabel = `${fullName} <${senderEmail}>`;
+  const replyBody = `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quoteText(originalText)}`;
+  const forwardBody = `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\nSubject: ${message.subject || "(No Subject)"}${toLine ? `\nTo: ${toLine}` : ""}\n\n${originalText}`;
+  const handleReply = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    openCompose(null, {
+      mode: "reply",
+      threadId: message.threadId,
+      to: replyTo,
+      subject: replySubject,
+      body: replyBody,
+    });
+  };
+
+  const handleForward = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    openCompose(null, {
+      mode: "forward",
+      subject: forwardSubject,
+      body: forwardBody,
+    });
+  };
 
   return (
     <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
@@ -101,9 +135,23 @@ export default function MailMessage({
           </span>
           
           {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-[]">
-            <button className="p-1.5 hover:bg-muted rounded" title="Reply"><Reply className="h-4 w-4" /></button>
-            <button className="p-1.5 hover:bg-muted rounded" title="Forward"><Forward className="h-4 w-4" /></button>
+          <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+            <button
+              type="button"
+              className="p-1.5 hover:bg-muted rounded"
+              title="Reply"
+              onClick={handleReply}
+            >
+              <Reply className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="p-1.5 hover:bg-muted rounded"
+              title="Forward"
+              onClick={handleForward}
+            >
+              <Forward className="h-4 w-4" />
+            </button>
             <button
               type="button"
               disabled={!myRecipient || starMail.isPending}
@@ -178,6 +226,37 @@ export default function MailMessage({
       )}
     </div>
   );
+}
+
+function withSubjectPrefix(subject: string | undefined, prefix: "Re:" | "Fwd:") {
+  const normalizedSubject = subject?.trim() || "(No Subject)";
+  return normalizedSubject.toLowerCase().startsWith(prefix.toLowerCase())
+    ? normalizedSubject
+    : `${prefix} ${normalizedSubject}`;
+}
+
+function quoteText(value: string) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => `> ${line}`)
+    .join("\n");
+}
+
+function buildReplyRecipients(message: Message, currentUserEmail?: string) {
+  const currentEmail = currentUserEmail?.toLowerCase();
+  const senderEmail = message.sender?.email?.toLowerCase();
+
+  if (senderEmail && senderEmail !== currentEmail) {
+    return senderEmail;
+  }
+
+  return message.recipients
+    .filter((recipient) => recipient.type === "to" || recipient.type === "cc")
+    .map((recipient) => recipient.email || recipient.recipient?.email)
+    .filter((email): email is string => Boolean(email))
+    .map((email) => email.toLowerCase())
+    .filter((email, index, emails) => email !== currentEmail && emails.indexOf(email) === index)
+    .join(", ");
 }
 
 function formatRecipients(
