@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import toast from "react-hot-toast";
-import { getSocketBaseUrl } from "@/lib/api";
+import api, { getSocketBaseUrl } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import type { MailFolder } from "@/types/mail.types";
@@ -38,6 +38,7 @@ const mailFolders: MailFolder[] = [
 export function useSocket(userId?: string) {
   const queryClient = useQueryClient();
   const addNotification = useNotificationStore((state) => state.addNotification);
+  const setUnreadCount = useNotificationStore((state) => state.setUnreadCount);
   const accessToken = useAuthStore((state) => state.user?.accessToken);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -106,6 +107,14 @@ export function useSocket(userId?: string) {
       setIsConnected(true);
       socket.emit("subscribe", { room: `user:${userId}` });
       invalidateMailbox();
+      api
+        .get<{ count: number }>("/notifications/unread-count")
+        .then((res) => {
+          setUnreadCount(res.data?.count ?? 0);
+        })
+        .catch(() => {
+          // Silently fail — the count will stay in sync via real-time events
+        });
     });
 
     socket.on("disconnect", () => {
@@ -163,7 +172,7 @@ export function useSocket(userId?: string) {
       socket.disconnect();
       setIsConnected(false);
     };
-  }, [accessToken, addNotification, queryClient, userId]);
+  }, [accessToken, addNotification, queryClient, setUnreadCount, userId]);
 
   return { isConnected };
 }

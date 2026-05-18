@@ -1,11 +1,11 @@
 "use client";
 
-import { Bell, LogOut, Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 import { useAuthStore } from "@/store/authStore";
-import { useNotificationStore } from "@/store/notificationStore";
+import NotificationPanel from "@/components/layout/NotificationPanel";
 
 const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/inbox/, title: "Inbox", subtitle: "Recent conversations and unread activity" },
@@ -28,7 +28,6 @@ export default function TopBar() {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   const routeMeta = useMemo(
     () =>
@@ -55,18 +54,7 @@ export default function TopBar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 ? (
-              <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-dana-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            ) : null}
-          </button>
+          <NotificationPanel userId={user?.id} />
 
           <div className="hidden items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 md:flex">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-dana-blue-600 text-xs font-semibold text-white">

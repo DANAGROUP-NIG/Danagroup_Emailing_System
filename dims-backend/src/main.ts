@@ -75,8 +75,25 @@ async function bootstrap() {
       }),
     );
 
+    const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+
+    function isOriginAllowed(origin: string): boolean {
+      return allowedOrigins.some((p) =>
+        p.startsWith("*.") ? origin.endsWith(p.slice(1)) : origin === p,
+      );
+    }
+
     app.enableCors({
-      origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
+      origin: (requestOrigin, callback) => {
+        if (!requestOrigin || isOriginAllowed(requestOrigin)) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
       credentials: true,
     });
 

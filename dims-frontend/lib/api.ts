@@ -8,24 +8,25 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
 function resolveApiUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
+  // Absolute URL — use directly
   if (configuredUrl && /^https?:\/\//i.test(configuredUrl)) {
     return configuredUrl;
   }
 
+  // Relative path (e.g. /api) — return as-is so the current origin (nginx/tunnel) handles routing
+  if (configuredUrl?.startsWith("/")) {
+    return configuredUrl;
+  }
+
+  // No env var — fall back to direct localhost:8000 for bare local dev without a proxy
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;
-    const localBackendBase = `${protocol}//${hostname}:8000`;
-
-    if (configuredUrl?.startsWith("/")) {
-      return `${localBackendBase}${configuredUrl}`;
-    }
-
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${localBackendBase}/api`;
+      return `${protocol}//${hostname}:8000/api`;
     }
   }
 
-  return configuredUrl || "http://localhost:8000/api";
+  return "http://localhost:8000/api";
 }
 
 function resolveSocketUrl() {

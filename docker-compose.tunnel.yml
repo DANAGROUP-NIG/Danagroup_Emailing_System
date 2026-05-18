@@ -23,6 +23,9 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: dims_tunnel
     command: tunnel --no-autoupdate --url http://nginx:80
+    sysctls:
+      net.core.rmem_max: 7340032   # fixes QUIC UDP buffer size warning
+      net.core.wmem_max: 7340032
     depends_on:
       - nginx
     restart: unless-stopped
@@ -36,8 +39,15 @@ services:
   #   command: tunnel --no-autoupdate run
   #   environment:
   #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+  #   sysctls:
+  #     net.core.rmem_max: 7340032   # fixes QUIC UDP buffer size warning
+  #     net.core.wmem_max: 7340032
   #   depends_on:
   #     - nginx
   #   restart: unless-stopped
   #   networks:
   #     - dims_net
+
+# ─── Networks (merged from base compose) ─────────────────────────────────────
+networks:
+  dims_net:

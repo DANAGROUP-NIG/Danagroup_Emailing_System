@@ -44,6 +44,8 @@ jobs:
           JWT_SECRET=${{ secrets.STAGING_JWT_SECRET }}
           JWT_ACCESS_EXPIRY=15m
           JWT_REFRESH_EXPIRY=7d
+          FRONTEND_URL=${{ secrets.STAGING_FRONTEND_URL }}
+          SESSION_SECRET=${{ secrets.STAGING_SESSION_SECRET }}
           EOF
 
       - name: Pull latest images and restart
@@ -103,6 +105,8 @@ jobs:
           JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
           JWT_ACCESS_EXPIRY=15m
           JWT_REFRESH_EXPIRY=7d
+          FRONTEND_URL=${{ secrets.PROD_FRONTEND_URL }}
+          SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}
           EOF
 
       - name: Backup database before deploy
