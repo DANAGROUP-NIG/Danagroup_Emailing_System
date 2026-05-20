@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useMailStore } from '@/store/mailStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { UserRole } from '@/types/user.types';
+import logo from "@/assets/logo.png";
 import {
   Bell,
   Building2,
@@ -29,6 +30,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import Image from 'next/image';
 
 type NavItem = {
   href: string;
@@ -134,16 +136,10 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="dims-sidebar fixed left-0 top-0">
       <div className="flex h-full flex-col">
-        <div className="border-b border-white/10 px-5 py-5">
+        <div className="border-b border-white/10 px-5 py-3 flex flex-col">
           <Link href="/mail/inbox" onClick={onNavigate} className="mb-5 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-base font-semibold text-white">
-              DG
-            </div>
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-100/80">
-                Dana Group
-              </p>
-              <p className="text-lg font-semibold text-white">DIMS Mail</p>
+            <div className='bg-white px-4 py-2 w-full rounded-lg'>
+              <Image src={logo} width={140} height={140} alt='Dana logo'/>
             </div>
           </Link>
 

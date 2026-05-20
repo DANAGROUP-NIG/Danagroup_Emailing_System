@@ -13,12 +13,6 @@ function resolveApiUrl() {
     return configuredUrl;
   }
 
-  // Relative path (e.g. /api) — return as-is so the current origin (nginx/tunnel) handles routing
-  if (configuredUrl?.startsWith("/")) {
-    return configuredUrl;
-  }
-
-  // No env var — fall back to direct localhost:8000 for bare local dev without a proxy
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
@@ -26,6 +20,12 @@ function resolveApiUrl() {
     }
   }
 
+  // Relative path (e.g. /api) — return as-is so the current origin (nginx/tunnel) handles routing
+  if (configuredUrl?.startsWith("/")) {
+    return configuredUrl;
+  }
+
+  // No env var — fall back to direct localhost:8000 for bare local dev without a proxy
   return "http://localhost:8000/api";
 }
 
@@ -59,57 +59,29 @@ export const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().user?.accessToken;
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config as RetriableRequestConfig | undefined;
     const isLoginRequest = originalRequest?.url?.includes("/auth/login");
+    const isRefreshRequest = originalRequest?.url?.includes("/auth/refresh");
 
     if (
       error.response?.status === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !isLoginRequest
+      !isLoginRequest &&
+      !isRefreshRequest
     ) {
       originalRequest._retry = true;
 
       try {
-        const state = useAuthStore.getState();
-        const refreshToken = state.user?.refreshToken;
-
-        if (!refreshToken) {
-          throw new Error("No refresh token available");
-        }
-
-        const response = await axios.post(
+        await axios.post(
           `${API_URL}/auth/refresh`,
-          { refreshToken },
+          {},
           { withCredentials: true },
         );
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        const currentUser = state.user;
-
-        if (currentUser) {
-          state.setUser({
-            ...currentUser,
-            accessToken,
-            refreshToken: newRefreshToken,
-          });
-        }
-
-        originalRequest.headers = originalRequest.headers ?? {};
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().clearUser();

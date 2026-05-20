@@ -27,7 +27,6 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   errors: Record<string, string>;
-
 }
 
 // export const useAuthStore = create<AuthState>()(
@@ -53,29 +52,23 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       errors: {},
       checkingAuth: false,
-  
-
       login: async ({email, password}: LoginProps) => {
         set({ isLoading: true});
 
         try {
           const response = await api.post("/auth/login", {email, password});
           const payload = response.data?.data ?? response.data;
-          const { user, accessToken, refreshToken } = payload;
+          const { user } = payload;
 
           set({
-            user: {...user, accessToken, refreshToken},
+            user,
             isAuthenticated: true,
             isLoading: false
           });
-          get().checkAuth();
 
           toast.success("Login successful", {position: "top-right"});
 
-          console.log(response.data);
           return true;
-
-          
         } catch (error) {
           set({isLoading: false})
 
@@ -109,15 +102,8 @@ export const useAuthStore = create<AuthState>()(
           withCredentials: true,
         });
 
-        const previousUser = get().user;
         set({
-          user: res.data.data
-            ? {
-                ...res.data.data,
-                accessToken: previousUser?.accessToken,
-                refreshToken: previousUser?.refreshToken,
-              }
-            : null,
+          user: res.data.data ?? null,
           isAuthenticated: !!res.data.data,
           checkingAuth: false,
         });
@@ -134,18 +120,8 @@ export const useAuthStore = create<AuthState>()(
 
       try {
         const res = await api.post("/auth/refresh", {}, {withCredentials: true});
-        const currentUser = get().user;
-        const data = res.data?.data;
-        set({
-          user: currentUser && data
-            ? {
-                ...currentUser,
-                accessToken: data.accessToken ?? currentUser.accessToken,
-                refreshToken: data.refreshToken ?? currentUser.refreshToken,
-              }
-            : currentUser,
-          checkingAuth: false,
-        });
+        set({ checkingAuth: false });
+        await get().checkAuth();
         return res.data;
       } catch (error) {
         set({ user: null, checkingAuth: false, isAuthenticated: false });
@@ -158,6 +134,16 @@ export const useAuthStore = create<AuthState>()(
     }),
     { 
       name: "dims-auth",
+      partialize: (state) => ({
+        user: state.user
+          ? {
+              ...state.user,
+              accessToken: undefined,
+              refreshToken: undefined,
+            }
+          : null,
+        isAuthenticated: state.isAuthenticated,
+      }),
       // Optional: skips hydration during SSR to avoid mismatch errors
       skipHydration: true, 
     }
