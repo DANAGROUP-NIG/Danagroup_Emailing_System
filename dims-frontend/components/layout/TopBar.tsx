@@ -93,9 +93,9 @@ export default function TopBar() {
                       </div>
                     }
 
-                    <div className="absolute bottom-0 right-0 h-8 w-8 flex justify-center items-center rounded-full bg-gray-200">
+                    <button className="absolute cu bottom-0 right-0 h-8 w-8 flex justify-center items-center rounded-full bg-gray-200">
                       <Camera />
-                    </div>
+                    </button>
 
                   </div>
 
@@ -104,7 +104,7 @@ export default function TopBar() {
                   </div>
                 </div>
 
-                <div className="rounded-full border border-gray-200 text-sm text-dana-blue-400 px-6 py-[6px]"> Manage your Account</div>
+                <button className="rounded-full border border-gray-200 text-sm text-dana-blue-400 px-6 py-[6px]"> Manage your Account</button>
 
               </div>
               
