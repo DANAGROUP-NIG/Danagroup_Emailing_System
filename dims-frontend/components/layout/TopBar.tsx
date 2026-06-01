@@ -65,8 +65,13 @@ export default function TopBar() {
             <div className="group">
               <div
                 onClick={() => {setIsOpen(!isOpen)}} 
-              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-dana-blue-600 text-xs font-semibold text-white">
-                {getInitials(user?.firstName, user?.lastName)}
+              className="flex cursor-pointer text-xs font-semibold text-white items-center justify-center rounded-full h-7 w-7">
+                { user?.avatarUrl
+                  ?  <div className="relative h-7 w-7 rounded-full overflow-hidden">
+                      <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} sizes="18px" fill priority className=" object-cover"/>
+                    </div>
+                  : <div className="h-7 w-7 flex justify-center items-center rounded-full bg-dana-blue-600"> { getInitials(user?.firstName, user?.lastName) } </div>
+                }
               </div>
 
               <div className={`absolute ${ !isOpen ? "group-hover:opacity-100 transition group-hover:delay-75 opacity-0" : "opacity-0" } top-14 right-0 rounded text-sm text-gray-300 font-semibold bg-gray-800/70 px-3 py-2`}>
@@ -85,24 +90,11 @@ export default function TopBar() {
                   <p className="truncate text-sm text-slate-500">{user?.email ?? "user@danagroup.com"}</p>
                 </div>
 
-                <div className="flex flex-col gap-2 mt-4">
-                  {/* <div className="relative">
-                    { user?.avatarUrl 
-                    ? <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} width={80} height={80} className="rounded-full"/> 
-                    : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-dana-blue-600 text-2xl font-semibold text-white">
-                        {getInitials(user?.firstName, user?.lastName)}
-                      </div>
-                    }
-
-                    <button className="absolute cu bottom-0 right-0 h-8 w-8 flex justify-center items-center rounded-full bg-gray-200">
-                      <Camera />
-                    </button>
-
-                  </div> */}
+                <div className="flex flex-col gap-2 mt-4 justify-center items-center">
 
                   <ProfileAvatarSetting initialUser={user!} />
 
-                  <div className="text-lg font-thin">
+                  <div className="text-lg font-thin my-1">
                     Hi, <span> {user ? `${user.firstName}` : "Current User"}!</span>
                   </div>
                 </div>

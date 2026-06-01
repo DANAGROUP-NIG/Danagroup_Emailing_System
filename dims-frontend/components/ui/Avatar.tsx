@@ -3,14 +3,13 @@ import { User } from '@/types/user.types';
 import { useProfileStore } from '../../store/profileStore';
 import Image from 'next/image';
 import { getInitials } from '../layout/TopBar';
-import { Camera } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react'; // Added Loader2 for a better loading state
 
-export function ProfileAvatarSetting( {initialUser}: {initialUser: User} ) {
+export function ProfileAvatarSetting({ initialUser }: { initialUser: User }) {
   const [user, setUser] = useState(initialUser);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { uploadProfilePicture } = useProfileStore();
-
+  const { changeDP } = useProfileStore();
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = event.target.files;
@@ -18,7 +17,6 @@ export function ProfileAvatarSetting( {initialUser}: {initialUser: User} ) {
 
     const selectedFile = fileList[0];
 
-    // Client-side quick validation (Optional but recommended)
     if (!selectedFile.type.startsWith('image/')) {
       setErrorMessage('Please select a valid image file (PNG/JPEG).');
       return;
@@ -28,20 +26,22 @@ export function ProfileAvatarSetting( {initialUser}: {initialUser: User} ) {
       setIsUploading(true);
       setErrorMessage('');
 
-      // 1. Call our upload service
-      // const newImageUrl = await uploadDisplayPicture(selectedFile);
-
-      const result = await uploadProfilePicture(selectedFile);
-      const newImageUrl = result.avatarUrl; // Assuming the API returns the new image URL in this field
+      const result = await changeDP(selectedFile);
       
+      console.log('Upload result:', result);
+      
+      // Adapt key based on your store's precise API response structure
+      const newImageUrl = result?.avatarUrl; 
 
-      // 2. Update local state to show the new DP instantly
+      if (!newImageUrl) {
+        throw new Error('Failed to retrieve image URL from upload response.');
+      }
+
       setUser((prevUser) => ({
         ...prevUser,
-        avatarUrl: newImageUrl, // Assuming the API returns the new image URL in this field
+        avatarUrl: newImageUrl,
       }));
       
-      alert('Profile picture updated!');
     } catch (error: any) {
       setErrorMessage(error.message || 'Something went wrong.');
     } finally {
@@ -50,54 +50,61 @@ export function ProfileAvatarSetting( {initialUser}: {initialUser: User} ) {
   };
 
   return (
-    <div style={{ textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h3>Change Display Picture</h3>
-      
-      {/* Avatar Container */}
-      <div style={{ position: 'relative', display: 'inline-block' }}>
-       { user?.avatarUrl 
-        ? <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} width={80} height={80} className="rounded-full"/> 
-        : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-dana-blue-600 text-2xl font-semibold text-white">
-            {getInitials(user?.firstName, user?.lastName)}
-          </div>
-        }
+    <div className="flex flex-col items-center justify-center p-4">
+      {/* Avatar Wrapper Container */}
+      <div className="relative inline-block group">
+        
+        {/* Profile Image State */}
+        <div className={`relative h-20 w-20 overflow-hidden rounded-full ${isUploading ? 'opacity-50' : 'opacity-100'}`}>
+          {user?.avatarUrl ? (
+            <Image 
+              alt={`${user.firstName || 'User'}'s profile`} 
+              src={user.avatarUrl} 
+              fill // Use fill for flexible, clean wrapper sizing
+              sizes="80px"
+              className="rounded-full object-cover"
+              priority
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-dana-blue-600 text-2xl font-semibold text-white">
+              {getInitials(user?.firstName, user?.lastName)}
+            </div>
+          )}
 
-        {isUploading && (
-          <div style={{ position: 'absolute', top: '40%', left: '30%', fontWeight: 'bold' }}>
-            Uploading...
-          </div>
-        )}
-      </div>
+          {/* Loading Overlay */}
+          {isUploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full">
+              <Loader2 className="h-6 w-6 animate-spin text-white" />
+            </div>
+          )}
+        </div>
 
-      {/* Hidden File Input styled by a standard Label Button */}
-      <div style={{ marginTop: '15px' }}>
-        <Camera>
-          <label 
-            htmlFor="dp-upload" 
-            style={{
-              backgroundColor: '#0070f3',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: isUploading ? 'not-allowed' : 'pointer',
-              display: 'inline-block'
-            }}
-          >
-            {isUploading ? 'Processing...' : 'Choose New Photo'}
-          </label>
-          
+        {/* Floating Upload Trigger Button */}
+        <label 
+          htmlFor="dp-upload" 
+          className={`absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-gray-700 shadow-md transition-colors hover:bg-gray-300 ${
+            isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+          }`}
+          title="Change profile picture"
+        >
+          <Camera className="h-4 w-4" />
           <input
             id="dp-upload"
             type="file"
             accept="image/*"
             onChange={handleFileChange}
             disabled={isUploading}
-            style={{ display: 'none' }} // Hide the ugly default input
+            className="hidden" // Native clean Tailwind hiding class
           />
-        </Camera>
+        </label>
       </div>
 
-      {errorMessage && <p style={{ color: 'red', marginTop: '10px' }}>{errorMessage}</p>}
+      {/* Dynamic Error Indicator */}
+      {errorMessage && (
+        <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-md">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }
