@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import NotificationPanel from "@/components/layout/NotificationPanel";
 import Image from "next/image";
 import profileImage from "@/assets/profile-image.webp"
+import { ProfileAvatarSetting } from "../ui/Avatar";
 
 const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/inbox/, title: "Inbox", subtitle: "Recent conversations and unread activity" },
@@ -22,7 +23,7 @@ const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/admin\/subsidiaries/, title: "Subsidiary Admin", subtitle: "Manage subsidiary records and domains" },
 ];
 
-function getInitials(firstName?: string, lastName?: string) {
+export function getInitials(firstName?: string, lastName?: string) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "DG";
 }
 
@@ -85,9 +86,9 @@ export default function TopBar() {
                 </div>
 
                 <div className="flex flex-col gap-2 mt-4">
-                  <div className="relative">
+                  {/* <div className="relative">
                     { user?.avatarUrl 
-                    ? <Image alt="avatar" src={profileImage} width={80} height={80} className="rounded-full"/> 
+                    ? <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} width={80} height={80} className="rounded-full"/> 
                     : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-dana-blue-600 text-2xl font-semibold text-white">
                         {getInitials(user?.firstName, user?.lastName)}
                       </div>
@@ -97,7 +98,9 @@ export default function TopBar() {
                       <Camera />
                     </button>
 
-                  </div>
+                  </div> */}
+
+                  <ProfileAvatarSetting initialUser={user!} />
 
                   <div className="text-lg font-thin">
                     Hi, <span> {user ? `${user.firstName}` : "Current User"}!</span>

@@ -1,62 +1,103 @@
-"use client";
+import React, { useState } from 'react';
+import { User } from '@/types/user.types';
+import { useProfileStore } from '../../store/profileStore';
+import Image from 'next/image';
+import { getInitials } from '../layout/TopBar';
+import { Camera } from 'lucide-react';
 
-import * as React from "react";
-import * as AvatarPrimitive from "@radix-ui/react-avatar";
-import { cn } from "@/lib/utils";
+export function ProfileAvatarSetting( {initialUser}: {initialUser: User} ) {
+  const [user, setUser] = useState(initialUser);
+  const [isUploading, setIsUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const { uploadProfilePicture } = useProfileStore();
 
-// TODO: Implement Avatar Component
-// Props: src?: string, name: string, size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
-// - Built on @radix-ui/react-avatar (Avatar, AvatarImage, AvatarFallback)
-// - Fallback shows initials from name (first + last initial) on dana-blue bg
-// - size variants: xs=6, sm=8, md=10, lg=12, xl=16 (Tailwind units)
 
-const sizeClasses = {
-  xs: "h-6 w-6 text-[10px]",
-  sm: "h-8 w-8 text-xs",
-  md: "h-10 w-10 text-sm",
-  lg: "h-12 w-12 text-base",
-  xl: "h-16 w-16 text-xl",
-};
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
 
-interface AvatarProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> {
-  src?: string;
-  name: string;
-  size?: keyof typeof sizeClasses;
-}
+    const selectedFile = fileList[0];
 
-export default function Avatar({ src, name, size = "md", className, ...props }: AvatarProps) {
-  // Helper to get initials (e.g., "Amina Yusuf" -> "AY")
-  const initials = React.useMemo(() => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }, [name]);
+    // Client-side quick validation (Optional but recommended)
+    if (!selectedFile.type.startsWith('image/')) {
+      setErrorMessage('Please select a valid image file (PNG/JPEG).');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setErrorMessage('');
+
+      // 1. Call our upload service
+      // const newImageUrl = await uploadDisplayPicture(selectedFile);
+
+      const result = await uploadProfilePicture(selectedFile);
+      const newImageUrl = result.avatarUrl; // Assuming the API returns the new image URL in this field
+      
+
+      // 2. Update local state to show the new DP instantly
+      setUser((prevUser) => ({
+        ...prevUser,
+        avatarUrl: newImageUrl, // Assuming the API returns the new image URL in this field
+      }));
+      
+      alert('Profile picture updated!');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Something went wrong.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
-    <AvatarPrimitive.Root
-      className={cn(
-        "relative flex shrink-0 overflow-hidden rounded-full border border-border shadow-sm",
-        sizeClasses[size],
-        className
-      )}
-      {...props}
-    >
-      <AvatarPrimitive.Image
-        src={src}
-        alt={name}
-        className="aspect-square h-full w-full object-cover"
-      />
-      <AvatarPrimitive.Fallback
-        className={cn(
-          "flex h-full w-full items-center justify-center rounded-full font-semibold text-white",
-          "bg-dana-blue" // Fallback shows initials on dana-blue bg
+    <div style={{ textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <h3>Change Display Picture</h3>
+      
+      {/* Avatar Container */}
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+       { user?.avatarUrl 
+        ? <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} width={80} height={80} className="rounded-full"/> 
+        : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-dana-blue-600 text-2xl font-semibold text-white">
+            {getInitials(user?.firstName, user?.lastName)}
+          </div>
+        }
+
+        {isUploading && (
+          <div style={{ position: 'absolute', top: '40%', left: '30%', fontWeight: 'bold' }}>
+            Uploading...
+          </div>
         )}
-      >
-        {initials}
-      </AvatarPrimitive.Fallback>
-    </AvatarPrimitive.Root>
+      </div>
+
+      {/* Hidden File Input styled by a standard Label Button */}
+      <div style={{ marginTop: '15px' }}>
+        <Camera>
+          <label 
+            htmlFor="dp-upload" 
+            style={{
+              backgroundColor: '#0070f3',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: isUploading ? 'not-allowed' : 'pointer',
+              display: 'inline-block'
+            }}
+          >
+            {isUploading ? 'Processing...' : 'Choose New Photo'}
+          </label>
+          
+          <input
+            id="dp-upload"
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            disabled={isUploading}
+            style={{ display: 'none' }} // Hide the ugly default input
+          />
+        </Camera>
+      </div>
+
+      {errorMessage && <p style={{ color: 'red', marginTop: '10px' }}>{errorMessage}</p>}
+    </div>
   );
 }
