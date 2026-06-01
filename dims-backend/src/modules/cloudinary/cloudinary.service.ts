@@ -13,7 +13,7 @@ export class CloudinaryService {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: "profile_images",
+          folder: "dims-profile_images",
           transformation: [{ width: 500, height: 500, crop: "limit" }],
         },
         (error: UploadApiErrorResponse, result) => {
