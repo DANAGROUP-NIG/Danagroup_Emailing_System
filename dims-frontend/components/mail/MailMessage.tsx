@@ -76,6 +76,7 @@ export default function MailMessage({
   const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
   const originalText = htmlToText(message.bodyHtml) || message.body || "";
   const sentDate = format(new Date(message.createdAt), "PPP p");
+  const messageDate = new Date(message.createdAt);
   const senderLabel = `${fullName} <${senderEmail}>`;
   const replyBody = `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quoteText(originalText)}`;
   const forwardBody = `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\nSubject: ${message.subject || "(No Subject)"}${toLine ? `\nTo: ${toLine}` : ""}\n\n${originalText}`;
@@ -104,11 +105,11 @@ export default function MailMessage({
   };
 
   return (
-    <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
+    <div className={`group border-b border-border border-none transition-all  ${!isCollapsed ? "pb-6" : ""}`}>
       {/* Header / Collapsed View */}
       <div 
         
-        className="flex items-center justify-between p-4 hover:bg-muted/30"
+        className="flex items-center justify-between px-4 h-14 hover:bg-dana-red-200 bg-dana-red-100 rounded-t-md"
       >
         <div 
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -116,9 +117,13 @@ export default function MailMessage({
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           
           <div className="flex flex-col min-w-0">
-            <span className={`truncate text-sm ${isUnread ? "font-bold" : "font-medium"}`}>
-              {fullName}
-            </span>
+            <div>
+              <span className={`truncate text-sm ${isUnread ? "font-bold" : "font-medium"}`}>
+                {fullName}
+              </span>
+              <span className="text-xs text-gray-600 px-2"> {'<'} {message.sender?.email} {'>'} </span>
+            </div>
+
             {isCollapsed && (
               <span className="truncate text-xs text-muted-foreground">
                 {htmlToText(message.bodyHtml) || message.body}
@@ -130,9 +135,11 @@ export default function MailMessage({
         <div className="flex items-center gap-4">
           <span className="shrink-0 text-xs text-muted-foreground">
             {isCollapsed 
-              ? format(new Date(message.createdAt), "MMM d") 
-              : format(new Date(message.createdAt), "PPP p")}
+              ? format(messageDate, "MMM d") 
+              : format(messageDate, "PPP p")
+            }
           </span>
+          
           
           {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
           <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
@@ -183,9 +190,8 @@ export default function MailMessage({
 
       {/* Expanded state: shows full sender info, formatted date, HTML body */}
       {!isCollapsed && (
-        <div className="px-11 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="px-11 animate-in fade-in slide-in-from-top-1 duration-200 mt-2 py-4 rounded-md shadow- border-dana-blue-200 border-[1px]">
           <div className="mb-6 flex flex-col text-xs text-muted-foreground">
-            <span>From: <b className="text-foreground">{fullName}</b> &lt;{senderEmail}&gt;</span>
             {toLine ? <span>To: {toLine}</span> : null}
             {ccLine ? <span>Cc: {ccLine}</span> : null}
             {bccLine ? <span>Bcc: {bccLine}</span> : null}
@@ -267,9 +273,7 @@ function formatRecipients(
     .filter((recipient) => recipient.type === type)
     .map(
       (recipient) =>
-        recipient.name ||
         recipient.email ||
-        recipient.recipient?.name ||
         recipient.recipient?.email,
     )
     .filter(Boolean);

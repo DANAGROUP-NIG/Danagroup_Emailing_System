@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
@@ -14,6 +14,9 @@ import type {
 } from "@/types/mail.types";
 import { htmlToText } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getInitials } from "../layout/TopBar";
+import { useAuthStore } from "@/store/authStore";
+import { Span } from "next/dist/trace";
 
 interface MailListProps {
   viewMode: MailFolder;
@@ -52,6 +55,18 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
     {},
   );
 
+  const user = useAuthStore((state) => state.user);
+  const { useThread } = useMail();
+  const { data: threadData, isLoading, error } = useThread(currentThreadId);
+  const messages = threadData?.messages || [];
+
+  
+  const name = messages[0]?.sender?.name.split(" ") as string[] || [];
+  const firstName = name[0];
+  const lastName = name[1]
+  
+
+
   const mailApi = useMail();
   const folderHooks = {
     inbox: mailApi.useInbox,
@@ -78,6 +93,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   const toggleSelectAll = () => {
     if (selectedMessageIds.length === items.length) {
       resetSelection();
+
       return;
     }
 
@@ -86,7 +102,9 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
         toggleMessageSelection(item.selectionId);
       }
     });
+
   };
+
 
   if (!isSupportedFolder) {
     return (
@@ -107,13 +125,13 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
+    <div className="flex h-full flex-col overflow-hidden">
       <div className="shrink-0 border-b border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-border"
+              className="h-3 w-3 rounded border-border"
               checked={
                 items.length > 0 && selectedMessageIds.length === items.length
               }
@@ -165,14 +183,33 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                 currentThreadId === item.threadId ? "bg-slate-100" : ""
               } ${item.isUnread ? "bg-blue-50/40" : ""}`}
             >
-              <div className="flex w-full items-start gap-3">
+              <div className="flex w-full items-start gap-3 group">
                 <input
                   type="checkbox"
                   checked={selectedMessageIds.includes(item.selectionId)}
-                  onChange={() => toggleMessageSelection(item.selectionId)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 h-4 w-4 rounded"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    toggleMessageSelection(item.selectionId);
+                  }}
+                  className={`mt-1 h-3 w-3 rounded group-hover:opacity-100
+                    ${selectedMessageIds.includes(item.selectionId)
+                    ? 'opacity-100' 
+                    : 'opacity-0'
+                  } `}
                 />
+
+                <div className="bg-red-700 h-10 w-10 self-center rounded-full flex justify-center items-center font-semibold text-white"> 
+                  { 
+                    isLoading 
+                    ? <></> 
+                    : <>{viewMode === "inbox" ? (<span>
+                          {getInitials(firstName, lastName)} 
+                        </span>) : (<span>
+                          {/* { getInitials(user?.firstName, user?.lastName) }  */}
+                        </span>) }
+                      </>
+                  }
+                   
+                </div>
 
                 <button
                   type="button"
@@ -192,6 +229,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                   }}
                   className="min-w-0 flex-1 text-left"
                 >
+               
                   <div className="flex items-center justify-between gap-2">
                     <div
                       className={`truncate text-sm font-semibold ${
@@ -211,7 +249,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                   <RecipientLine label="To" value={item.toSummary} />
                   <RecipientLine label="Cc" value={item.ccSummary} />
                   <RecipientLine label="Bcc" value={item.bccSummary} />
-                  <p className="truncate text-sm font-medium text-gray-800">
+                  <p className="truncate text-md text-gray-600 ">
                     {item.subject}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">

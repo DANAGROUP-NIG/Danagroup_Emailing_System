@@ -62,7 +62,7 @@ export default function MailListItem({
         {initials}
       </div>
 
-      <div className="min-w-0 flex-1 flex flex-col gap-1">
+      <div className="min-w-0 flex-1 flex flex-col gap-1 ">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 overflow-hidden">
             {/* Sender Name */}
