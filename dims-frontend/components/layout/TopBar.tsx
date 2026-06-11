@@ -7,7 +7,8 @@ import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import NotificationPanel from "@/components/layout/NotificationPanel";
 import Image from "next/image";
-import { ProfileAvatarSetting } from "../ui/Avatar";
+import { ProfilePictureUploader } from "@/components/profile/ProfilePictureUploader";
+import { getInitials } from "@/components/ui/Avatar";
 
 const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/inbox/, title: "Inbox", subtitle: "Recent conversations and unread activity" },
@@ -21,10 +22,6 @@ const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/admin\/departments/, title: "Department Admin", subtitle: "Edit department structure and ownership" },
   { match: /^\/admin\/subsidiaries/, title: "Subsidiary Admin", subtitle: "Manage subsidiary records and domains" },
 ];
-
-export function getInitials(firstName?: string, lastName?: string) {
-  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "DG";
-}
 
 export default function TopBar() {
   const pathname = usePathname();
@@ -113,7 +110,7 @@ export default function TopBar() {
 
                 <div className="flex flex-col gap-2 mt-4 justify-center items-center">
 
-                  <ProfileAvatarSetting initialUser={user!} />
+                  <ProfilePictureUploader initialUser={user!} />
 
                   <div className="text-lg font-thin my-1">
                     Hi, <span> {user ? `${user.firstName}` : "Current User"}!</span>

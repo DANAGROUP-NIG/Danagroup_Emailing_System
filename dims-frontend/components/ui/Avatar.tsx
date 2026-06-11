@@ -1,110 +1,109 @@
-import React, { useState } from 'react';
-import { User } from '@/types/user.types';
-import { useProfileStore } from '../../store/profileStore';
-import Image from 'next/image';
-import { getInitials } from '../layout/TopBar';
-import { Camera, Loader2 } from 'lucide-react'; // Added Loader2 for a better loading state
+// components/ui/Avatar.tsx — Canonical Avatar
+"use client";
 
-export function ProfileAvatarSetting({ initialUser }: { initialUser: User }) {
-  const [user, setUser] = useState(initialUser);
-  const [isUploading, setIsUploading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const { changeDP } = useProfileStore();
+import * as React from "react";
+import * as RadixAvatar from "@radix-ui/react-avatar";
+import { cn } from "@/lib/utils";
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-    const selectedFile = fileList[0];
+export function getInitials(firstName?: string, lastName?: string): string {
+  const first = firstName?.[0] ?? "";
+  const last = lastName?.[0] ?? "";
+  return (first + last).toUpperCase() || "DG";
+}
 
-    if (!selectedFile.type.startsWith('image/')) {
-      setErrorMessage('Please select a valid image file (PNG/JPEG).');
-      return;
-    }
+/** Deterministically pick one of 6 dana-blue/dana-red tint pairs from a name. */
+function getFallbackColor(name: string): string {
+  const palette = [
+    "bg-dana-blue-600 text-white",
+    "bg-dana-blue-400 text-white",
+    "bg-dana-blue-800 text-white",
+    "bg-dana-blue-200 text-dana-blue-900",
+    "bg-dana-red-500 text-white",
+    "bg-dana-red-200 text-dana-red-900",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return palette[hash % palette.length];
+}
 
-    try {
-      setIsUploading(true);
-      setErrorMessage('');
+// ─── Size map ────────────────────────────────────────────────────────────────
 
-      const result = await changeDP(selectedFile);
+const sizeClasses = {
+  xs: "h-6 w-6 text-[10px]",
+  sm: "h-8 w-8 text-xs",
+  md: "h-10 w-10 text-sm",
+  lg: "h-12 w-12 text-base",
+  xl: "h-16 w-16 text-xl",
+} as const;
 
-      console.log('Upload result:', result);
-      
-      // Adapt key based on your store's precise API response structure
-      const newImageUrl = result?.avatarUrl; 
+const statusClasses = {
+  online: "bg-success",
+  offline: "bg-muted-foreground",
+  busy: "bg-warning",
+} as const;
 
-      if (!newImageUrl) {
-        throw new Error('Failed to retrieve image URL from upload response.');
-      }
+// ─── Props ────────────────────────────────────────────────────────────────────
 
-      setUser((prevUser) => ({
-        ...prevUser,
-        avatarUrl: newImageUrl,
-      }));
-      
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Something went wrong.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+export interface AvatarProps {
+  src?: string;
+  name: string;
+  size?: keyof typeof sizeClasses;
+  status?: keyof typeof statusClasses;
+  className?: string;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export function Avatar({
+  src,
+  name,
+  size = "md",
+  status,
+  className,
+}: AvatarProps) {
+  const initials = getInitials(...(name.split(" ") as [string?, string?]));
+  const fallbackColor = getFallbackColor(name);
 
   return (
-    <div className="flex flex-col items-center justify-center p-4">
-      {/* Avatar Wrapper Container */}
-      <div className="relative inline-block group">
-        
-        {/* Profile Image State */}
-        <div className={`relative h-20 w-20 overflow-hidden rounded-full ${isUploading ? 'opacity-50' : 'opacity-100'}`}>
-          {user?.avatarUrl ? (
-            <Image 
-              alt={`${user.firstName || 'User'}'s profile`} 
-              src={user.avatarUrl} 
-              fill // Use fill for flexible, clean wrapper sizing
-              sizes="80px"
-              className="rounded-full object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-dana-blue-600 text-2xl font-semibold text-white">
-              {getInitials(user?.firstName, user?.lastName)}
-            </div>
+    <span className={cn("relative inline-flex shrink-0", className)}>
+      <RadixAvatar.Root
+        className={cn(
+          "relative flex items-center justify-center overflow-hidden rounded-full select-none",
+          sizeClasses[size],
+        )}
+      >
+        <RadixAvatar.Image
+          src={src}
+          alt={name}
+          className="h-full w-full object-cover"
+        />
+        <RadixAvatar.Fallback
+          className={cn(
+            "flex h-full w-full items-center justify-center rounded-full font-semibold",
+            fallbackColor,
           )}
-
-          {/* Loading Overlay */}
-          {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-full">
-              <Loader2 className="h-6 w-6 animate-spin text-white" />
-            </div>
-          )}
-        </div>
-
-        {/* Floating Upload Trigger Button */}
-        <label 
-          htmlFor="dp-upload" 
-          className={`absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-gray-700 shadow-md transition-colors hover:bg-gray-300 ${
-            isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-          }`}
-          title="Change profile picture"
+          delayMs={0}
         >
-          <Camera className="h-4 w-4" />
-          <input
-            id="dp-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            disabled={isUploading}
-            className="hidden" // Native clean Tailwind hiding class
-          />
-        </label>
-      </div>
+          {initials}
+        </RadixAvatar.Fallback>
+      </RadixAvatar.Root>
 
-      {/* Dynamic Error Indicator */}
-      {errorMessage && (
-        <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-md">
-          {errorMessage}
-        </p>
+      {status && (
+        <span
+          aria-label={status}
+          className={cn(
+            "absolute bottom-0 right-0 block rounded-full ring-2 ring-background",
+            statusClasses[status],
+            size === "xs" || size === "sm" ? "h-2 w-2" : "h-2.5 w-2.5",
+          )}
+        />
       )}
-    </div>
+    </span>
   );
 }
+
+export default Avatar;

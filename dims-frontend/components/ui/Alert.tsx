@@ -1,29 +1,41 @@
-import * as React from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
-
-import { cn } from '@/lib/utils'
+// components/ui/Alert.tsx — Extended Alert
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current',
+  [
+    "relative w-full rounded-lg border px-4 py-3 text-sm",
+    "grid has-[>svg]:grid-cols-[calc(var(--spacing,0.25rem)*5)_1fr] grid-cols-[0_1fr]",
+    "has-[>svg]:gap-x-3 gap-y-0.5 items-start",
+    "[&>svg]:size-5 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: 'bg-card text-card-foreground',
+        default:
+          "bg-card border-border text-card-foreground",
         destructive:
-          'text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90',
+          "border-danger/40 bg-danger-light text-danger [&>svg]:text-danger",
+        success:
+          "border-success/40 bg-success-light text-success [&>svg]:text-success",
+        warning:
+          "border-warning/40 bg-warning-light text-warning [&>svg]:text-warning",
+        info:
+          "border-dana-blue-200 bg-dana-blue-50 text-dana-blue-800 [&>svg]:text-dana-blue-600",
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: "default",
     },
   },
-)
+);
 
 function Alert({
   className,
   variant,
   ...props
-}: React.ComponentProps<'div'> & VariantProps<typeof alertVariants>) {
+}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
@@ -31,36 +43,36 @@ function Alert({
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />
-  )
+  );
 }
 
-function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
+function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-title"
       className={cn(
-        'col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight',
+        "col-start-2 line-clamp-1 min-h-4 font-semibold tracking-tight",
         className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function AlertDescription({
   className,
   ...props
-}: React.ComponentProps<'div'>) {
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-description"
       className={cn(
-        'text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed',
+        "col-start-2 grid justify-items-start gap-1 text-sm opacity-90 [&_p]:leading-relaxed",
         className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Alert, AlertTitle, AlertDescription }
+export { Alert, AlertTitle, AlertDescription };

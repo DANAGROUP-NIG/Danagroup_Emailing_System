@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, Send, Loader2 } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
-import toast from 'react-hot-toast';
+import { useToast } from "@/components/ui/Toast";
 import { useMail } from '@/hooks/useMail';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,6 +106,7 @@ const mapComposeValuesToPayload = (
 });
 
 export default function ComposeModal() {
+  const { showToast } = useToast();
   const { isComposeOpen, closeCompose, composeDraftId, composeDefaults, setComposeDraftId } =
     useMailStore();
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
@@ -186,7 +187,7 @@ export default function ComposeModal() {
       });
 
       if (showToast) {
-        toast.success("Draft saved");
+        showToast({ title: "Draft saved", variant: "success" });
       }
 
       return savedDraft;
@@ -320,7 +321,7 @@ export default function ComposeModal() {
       try {
         await saveDraftIfNeeded(values, true);
       } catch (err) {
-        toast.error("Could not save draft");
+        showToast({ title: "Could not save draft", variant: "error" });
         isClosingRef.current = false;
         setIsClosing(false);
         return;
@@ -351,7 +352,7 @@ export default function ComposeModal() {
 
     sendEmail(payload, {
       onSuccess: () => {
-        toast.success('Message sent!');
+        showToast({ title: "Message sent", variant: "success" });
         reset();
         setUploadedAttachments([]);
         setComposeDraftId(null);
@@ -361,7 +362,10 @@ export default function ComposeModal() {
       onError: (err: any) => {
         isSendingRef.current = false;
         const errorMessage = err.response?.data?.message || 'Failed to send';
-        toast.error(Array.isArray(errorMessage) ? errorMessage[0] : errorMessage);
+        showToast({
+          title: Array.isArray(errorMessage) ? errorMessage[0] : errorMessage,
+          variant: "error",
+        });
       },
     });
 
@@ -449,7 +453,7 @@ export default function ComposeModal() {
 
             <AttachmentUploader
               onChange={setUploadedAttachments}
-              onError={(message) => toast.error(message)}
+              onError={(message) => showToast({ title: message, variant: "error" })}
             />
               
           </div>

@@ -185,11 +185,14 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                label="Login"
-                disabled={isSubmitting}
-                btnStyle="py-2 bg-black/95 w-full text-white rounded"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isSubmitting}
                 onMouseDown={() => setShowPassword(false)}
-              />
+              >
+                Login
+              </Button>
             </div>
           </form>
         </div>
