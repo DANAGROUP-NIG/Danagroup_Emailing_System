@@ -137,4 +137,11 @@ export const filesApi = {
   },
 };
 
+export const authApi = {
+  requestPasswordReset: (email: string) =>
+    api.post("/auth/forgot-password", { email }),
+  resetPassword: (payload: { token: string; password: string }) =>
+    api.post("/auth/reset-password", payload),
+};
+
 export default api;
