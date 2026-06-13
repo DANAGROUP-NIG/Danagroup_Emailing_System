@@ -1,5 +1,16 @@
 import type { User } from "./user.types";
 
+export interface AttachmentFile {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+  progress: number;
+  uploaded: boolean;
+  error?: string;
+}
+
 export type RecipientType = "to" | "cc" | "bcc";
 
 export interface Attachment {
