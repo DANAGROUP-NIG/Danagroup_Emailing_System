@@ -144,4 +144,31 @@ export const authApi = {
     api.post("/auth/reset-password", payload),
 };
 
+export const mailApi = {
+  getThreads: (folder: string, limit: number = 50, offset: number = 0) =>
+    api.get(`/mail/threads?folder=${folder}&limit=${limit}&offset=${offset}`),
+  getThread: (threadId: string) =>
+    api.get(`/mail/threads/${threadId}`),
+  getMessages: (threadId: string) =>
+    api.get(`/mail/threads/${threadId}/messages`),
+  searchMessages: (query: string) =>
+    api.get(`/mail/search?query=${encodeURIComponent(query)}`),
+  sendMessage: (payload: any) =>
+    api.post("/mail/messages/send", payload),
+  saveDraft: (threadId: string, payload: any) =>
+    api.post(`/mail/threads/${threadId}/drafts`, payload),
+  updateDraft: (draftId: string, payload: any) =>
+    api.patch(`/mail/drafts/${draftId}`, payload),
+  deleteMessage: (messageId: string) =>
+    api.delete(`/mail/messages/${messageId}`),
+  archiveThread: (threadId: string) =>
+    api.patch(`/mail/threads/${threadId}/archive`, { archived: true }),
+  starThread: (threadId: string, starred: boolean) =>
+    api.patch(`/mail/threads/${threadId}`, { starred }),
+  markAsRead: (threadId: string, isRead: boolean) =>
+    api.patch(`/mail/threads/${threadId}`, { isRead }),
+  getRecipientSuggestions: (query: string) =>
+    api.get(`/directory/search?query=${encodeURIComponent(query)}&type=user`),
+};
+
 export default api;
