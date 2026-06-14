@@ -1,67 +1,65 @@
-// TODO: Implement Login Page
-// - Dana Group branded login form
-// - Email + password fields
-// - JWT token stored in httpOnly cookie via API
-// - Redirect to /mail/inbox on success
-// - Show error message on failed login
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import * as z from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Eye, EyeOff } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useAuthStore } from "@/store/authStore";
-import { useToast } from "@/components/ui/Toast"; // ✅ Radix toast hook
-import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
-import bg from "@/assets/Modern office with sleek lighting.jpg";
-import logoBg from "@/assets/Elegantly designed envelope with gradient swoosh.jpg";
-import Logo from "../login/logo.png";
+// ─── Schema ───────────────────────────────────────────────────────────────────
 
-// ------------------- Form Validation -------------------
 const loginSchema = z.object({
-  email: z.string().email().toLowerCase().trim(),
-  password: z.string().min(1, "Password is required").max(100),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Enter a valid email address")
+    .toLowerCase()
+    .trim(),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .max(100, "Password is too long"),
   rememberMe: z.boolean().optional(),
 });
 
-type LoginSchema = z.infer<typeof loginSchema>;
+type LoginFormValues = z.infer<typeof loginSchema>;
 
-// ------------------- Login Page -------------------
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuthStore();
   const router = useRouter();
-  const { showToast } = useToast(); // ✅ Radix toast
+  const { showToast } = useToast();
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<LoginSchema>({
-    defaultValues: {
-      email:
-        typeof window !== "undefined"
-          ? localStorage.getItem("rememberedEmail") || ""
-          : "",
-      rememberMe:
-        typeof window !== "undefined"
-          ? !!localStorage.getItem("rememberedEmail")
-          : false,
-    },
+  } = useForm<LoginFormValues>({
+    defaultValues: { email: "", password: "", rememberMe: false },
     resolver: zodResolver(loginSchema),
-    shouldUnregister: false,
   });
 
-  const onSubmit = async (data: LoginSchema) => {
+  // Read remembered email only after mount — avoids SSR/hydration mismatch
+  useEffect(() => {
+    const remembered = localStorage.getItem("rememberedEmail");
+    if (remembered) {
+      reset({ email: remembered, rememberMe: true, password: "" });
+    }
+  }, [reset]);
+
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      const success = await login(data);
+      const success = await login({ email: data.email, password: data.password });
 
       if (success) {
         if (data.rememberMe) {
@@ -69,161 +67,110 @@ export default function LoginPage() {
         } else {
           localStorage.removeItem("rememberedEmail");
         }
-
-        showToast({
-          title: "Login Successful",
-          description: "Redirecting to inbox...",
-          variant: "success",
-        });
-
-        setTimeout(() => router.push("/mail/inbox"), 500);
+        router.push("/mail/inbox");
       } else {
         showToast({
-          title: "Login Failed",
-          description: "Invalid email or password",
+          title: "Login failed",
+          description: "Invalid email or password. Please try again.",
           variant: "error",
         });
       }
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch {
       showToast({
-        title: "Login Failed",
-        description: "Something went wrong. Try again later.",
+        title: "Something went wrong",
+        description: "Unable to reach the server. Try again later.",
         variant: "error",
       });
     }
   };
 
   return (
-    <section className="min-h-screen flex w-full">
-      {/* Background Image */}
-      <div className="h-screen w-full relative">
-        <Image
-          alt="background"
-          src={bg}
-          className="absolute object-cover h-full w-full"
+    <div className="dims-card space-y-8">
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          Welcome back
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to your DIMS account to continue.
+        </p>
+      </div>
+
+      {/* Form */}
+      <form
+        aria-label="Sign in to DIMS"
+        autoComplete="on"
+        noValidate
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-5"
+      >
+        {/* Email */}
+        <Input
+          {...register("email")}
+          id="email"
+          label="Email address"
+          type="email"
+          autoComplete="email"
+          placeholder="you@danagroup.internal"
+          error={errors.email?.message}
+          fullWidth
         />
 
-        {/* Logo */}
-        <div className="z-20 absolute top-2 left-2">
-          <div className="relative max-h-16">
-            <Image src={logoBg} alt="logo-bg" className="w-24 object-cover" />
-            <div className="absolute top-[4vh] left-[0.5vw]">
-              <Image src={Logo} alt="Logo" className="object-contain w-20" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Login Form */}
-      <div className="shadow-xl h-screen w-full flex justify-center items-center relative">
-        <div className="shadow-md h-[85%] w-[70%] z-20 bg-white flex flex-col px-16 justify-center rounded">
-          <form
-            autoComplete="on"
-            method="post"
-            noValidate
-            onSubmit={handleSubmit(onSubmit)}
-          >
-            <div className="flex flex-col gap-10">
-              <div className="flex flex-col gap-2">
-                <h3 className="font-medium tracking-wider">
-                  Welcome Back to Dana DIMS
-                </h3>
-                <p className="text-xs text-gray-600">Sign in your account</p>
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <Input
-                  register={register("email")}
-                  name="email"
-                  label="Email address"
-                  placeholder="Enter your email"
-                  type="email"
-                />
-                {errors.email && (
-                  <p className="text-red-500 text-sm">{errors.email.message}</p>
-                )}
-
-                <div className="relative">
-                  <Input
-                    label="Password"
-                    placeholder="Enter your password"
-                    type={showPassword ? "text" : "password"}
-                    register={register("password")}
-                    name="password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-0 pt-6 right-2 flex items-center h-[62px] z-10"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  {errors.password && (
-                    <p className="text-red-500 text-sm">{errors.password.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-between text-xs">
-                <label className="flex items-center gap-[3px] text-gray-600 cursor-pointer">
-                  <input
-                    {...register("rememberMe")}
-                    className="border-gray-300 accent-dana-blue-600 w-[10px] h-[10px] cursor-pointer"
-                    type="checkbox"
-                  />
-                  Remember Me
-                </label>
-
-                <Link
-                  className="hover:text-dana-blue-700 text-dana-blue-500"
-                  href="/forgotpassword"
-                >
-                  Forgot Password?
-                </Link>
-              </div>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                fullWidth
-                isLoading={isSubmitting}
-                onMouseDown={() => setShowPassword(false)}
+        {/* Password */}
+        <div className="relative">
+          <Input
+            {...register("password")}
+            id="password"
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            error={errors.password?.message}
+            fullWidth
+            rightIcon={
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="pointer-events-auto text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+                onClick={() => setShowPassword((v) => !v)}
+                tabIndex={0}
               >
-                Login
-              </Button>
-            </div>
-          </form>
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            }
+          />
         </div>
 
-        {/* boxes */}
+        {/* Remember me + Forgot password */}
+        <div className="flex items-center justify-between text-sm">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-muted-foreground">
+            <input
+              {...register("rememberMe")}
+              type="checkbox"
+              className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+            />
+            Remember me
+          </label>
 
-        <div className="absolute top-[4vh] left-[2vw] h-24 w-24 rounded bg-gradient-to-br from-red-600 via-blue-800 to-blue-400 p-[7px]">
-          <div className="h-full w-full rounded bg-white"></div>
+          <Link
+            href="/forgot-password"
+            className="text-primary hover:text-primary-hover transition-colors font-medium"
+          >
+            Forgot password?
+          </Link>
         </div>
 
-
-        <div className="absolute top-[23vw] right-[0vw] ">
-
-          <div className="">
-            <div className="absolute z-10 right-[5vw] -bottom-[5vh] h-16 w-16 rounded bg-gradient-to-br from-red-600 via-blue-800 to-blue-400 p-[4px]">
-              <div className="h-full w-full rounded-sm bg-white"></div>
-            </div>
-
-            <div className="absolute top-0 right-4 h-20 w-20 rounded bg-gradient-to-br from-red-600 via-blue-800 to-blue-400 p-[4px]">
-              <div className="h-full w-full rounded-sm"></div>
-            </div>
-          </div>
-
-        </div>
-
-
-        <div className="absolute bottom-[4vh] left-[4vw] h-24 w-24 rounded bg-gradient-to-br from-red-600 via-blue-800 to-blue-400 p-[8px]">
-          <div className="h-full w-full rounded bg-white"></div>
-        </div>
-        
-      </div>
-    </section>
+        {/* Submit */}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          isLoading={isSubmitting}
+        >
+          Sign in
+        </Button>
+      </form>
+    </div>
   );
 }

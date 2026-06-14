@@ -7,12 +7,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// TODO: Add helpers:
-// formatDate(date: Date | string): string — uses date-fns formatDistanceToNow for recent, format for older
-// formatFileSize(bytes: number): string — e.g. "2.4 MB"
-// getInitials(firstName: string, lastName: string): string — e.g. "JD"
-// truncate(str: string, maxLength: number): string
-// isInternalEmail(email: string): boolean — checks for @*.internal domain
+// Relative time formatter for notifications
+export function timeAgo(dateString: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
 
 
 // Converts HTML string to plain text safely

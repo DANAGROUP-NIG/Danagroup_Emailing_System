@@ -1,120 +1,195 @@
-// components/profile/ProfilePictureUploader.tsx
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Image from "next/image";
-import { Camera, Loader2 } from "lucide-react";
-import { useProfileStore } from "@/store/profileStore";
-import { getInitials } from "@/components/ui/Avatar";
-import type { User } from "@/types/user.types";
+import { useRef, useState } from 'react';
+import Cropper from 'react-easy-crop';
+import { useUpdateAvatar } from '@/hooks/useProfile';
+import { Avatar, getInitials } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Upload } from 'lucide-react';
+import Modal from '@/components/ui/Modal';
+import type { User } from '@/types/user.types';
+import { cn } from '@/lib/utils';
 
 interface ProfilePictureUploaderProps {
-  initialUser: User;
+  user: User;
 }
 
-export function ProfilePictureUploader({
-  initialUser,
-}: ProfilePictureUploaderProps) {
-  const [user, setUser] = useState(initialUser);
-  const [isUploading, setIsUploading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const { changeDP } = useProfileStore();
+export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const updateAvatar = useUpdateAvatar();
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
-
-    const selectedFile = fileList[0];
-
-    if (!selectedFile.type.startsWith("image/")) {
-      setErrorMessage("Please select a valid image file (PNG/JPEG).");
+  const handleFileSelect = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file');
       return;
     }
 
-    try {
-      setIsUploading(true);
-      setErrorMessage("");
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreview(e.target?.result as string);
+      setSelectedFile(file);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
 
-      const result = await changeDP(selectedFile);
-      const newImageUrl = result?.avatarUrl;
-
-      if (!newImageUrl) {
-        throw new Error("Failed to retrieve image URL from upload response.");
-      }
-
-      setUser((prev) => ({ ...prev, avatarUrl: newImageUrl }));
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Something went wrong.";
-      setErrorMessage(message);
-    } finally {
-      setIsUploading(false);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file?.type.startsWith('image/')) {
+      handleFileSelect(file);
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center p-4">
-      <div className="relative inline-block group">
-        <div
-          className={cn(
-            "relative h-20 w-20 overflow-hidden rounded-full transition-opacity",
-            isUploading ? "opacity-50" : "opacity-100",
-          )}
-        >
-          {user?.avatarUrl ? (
-            <Image
-              alt={`${user.firstName ?? "User"}'s profile`}
-              src={user.avatarUrl}
-              fill
-              sizes="80px"
-              className="rounded-full object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-dana-blue-600 text-2xl font-semibold text-white">
-              {getInitials(user?.firstName, user?.lastName)}
-            </div>
-          )}
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
-          {isUploading && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30">
-              <Loader2 className="h-6 w-6 animate-spin text-white" />
-            </div>
-          )}
+  const handleCropComplete = async () => {
+    if (!selectedFile) return;
+
+    try {
+      await updateAvatar.mutateAsync(selectedFile);
+      setSelectedFile(null);
+      setPreview(null);
+      setShowCropModal(false);
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+    }
+  };
+
+  const initials = getInitials(user.firstName, user.lastName);
+  const fullName = `${user.firstName} ${user.lastName}`;
+
+  return (
+    <>
+      {/* Avatar Display */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <Avatar
+            name={fullName}
+            initials={initials}
+            avatarUrl={user.avatarUrl}
+            size="xl"
+            className="ring-4 ring-primary-light"
+          />
+          <button
+            onClick={handleUploadClick}
+            disabled={updateAvatar.isPending}
+            className={cn(
+              'absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-dana',
+              updateAvatar.isPending && 'opacity-50 cursor-not-allowed'
+            )}
+            title="Upload new picture"
+          >
+            <Upload className="h-5 w-5" />
+          </button>
         </div>
 
-        <label
-          htmlFor="dp-upload"
-          className={cn(
-            "absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-muted text-muted-foreground shadow-dana-sm transition-colors hover:bg-accent",
-            isUploading && "cursor-not-allowed opacity-60",
-          )}
-          title="Change profile picture"
-        >
-          <Camera className="h-4 w-4" />
-          <input
-            id="dp-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            disabled={isUploading}
-            className="hidden"
-          />
-        </label>
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground">Profile Picture</p>
+          <p className="text-xs text-muted-foreground">JPG or PNG, max 5MB</p>
+        </div>
       </div>
 
-      {errorMessage && (
-        <p className="mt-2 rounded-md bg-danger-light px-3 py-1 text-sm font-medium text-danger">
-          {errorMessage}
-        </p>
-      )}
-    </div>
-  );
-}
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileSelect(file);
+        }}
+      />
 
-// local cn helper to avoid import cycle on rare bundler paths
-function cn(...classes: (string | undefined | false)[]): string {
-  return classes.filter(Boolean).join(" ");
+      {/* Drag-Drop Zone */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className="border-2 border-dashed border-border rounded-lg p-6 text-center transition-colors hover:border-primary hover:bg-primary-light/10 cursor-pointer"
+        onClick={handleUploadClick}
+      >
+        <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">
+          Drag and drop your photo here
+        </p>
+        <p className="text-xs text-muted-foreground">or click to browse</p>
+      </div>
+
+      {/* Crop Modal */}
+      <Modal
+        open={showCropModal}
+        onClose={() => {
+          setShowCropModal(false);
+          setSelectedFile(null);
+          setPreview(null);
+        }}
+        title="Crop Your Photo"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {preview && (
+            <div className="relative w-full h-96 bg-muted rounded-lg overflow-hidden">
+              <Cropper
+                image={preview}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropAreaChange={setCroppedAreaPixels}
+                onZoomChange={setZoom}
+              />
+            </div>
+          )}
+
+          {/* Zoom Slider */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Zoom</label>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.1"
+              value={zoom}
+              onChange={(e) => setZoom(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-4">
+            <Button
+              onClick={handleCropComplete}
+              disabled={updateAvatar.isPending}
+              variant="primary"
+              className="flex-1"
+            >
+              {updateAvatar.isPending ? 'Uploading...' : 'Upload Photo'}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowCropModal(false);
+                setSelectedFile(null);
+                setPreview(null);
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
+  );
 }

@@ -133,3 +133,60 @@
     -webkit-text-fill-color: transparent;
   }
 }
+
+/* ================= PRINT STYLES ================= */
+@media print {
+  /* Hide interactive UI elements */
+  [role="banner"],
+  [role="navigation"],
+  .sidebar,
+  .topbar,
+  .compose-button,
+  button:not(.print-visible) {
+    display: none;
+  }
+
+  /* Optimize mail thread for print */
+  main {
+    padding: 2rem;
+    max-width: 100%;
+  }
+
+  /* Thread message styling */
+  .mail-message {
+    page-break-inside: avoid;
+    margin-bottom: 2rem;
+    border: 1px solid #e5e7eb;
+    padding: 1.5rem;
+  }
+
+  .mail-message-header {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .mail-message-body {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Attachment list */
+  .attachment-list {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  a {
+    color: #2e348f;
+    text-decoration: underline;
+  }
+
+  /* Hide decorative elements */
+  .shadow-dana,
+  .shadow-dana-md,
+  .shadow-dana-lg {
+    box-shadow: none;
+  }
+}

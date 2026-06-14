@@ -13,17 +13,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
 
-// Hiii
-// TODO: Implement MailMessage Component
-// Props: message: Message, isCollapsed?: boolean
-// - Renders a single message within a thread
-// - Collapsed state: shows sender, snippet, and date
-// - Expanded state: shows full sender info, formatted date, HTML body
-// - HTML body rendered via dangerouslySetInnerHTML (sanitized with DOMPurify)
-// - Attachment list shown below body (AttachmentList component)
-// - Action buttons: Reply, Forward, Star, Delete (shown on hover)
-// - Marks message as read on expand (PATCH /api/mail/:id/read)
-
 export default function MailMessage({ 
   message, 
   isCollapsed: initialCollapsed = false,
@@ -59,8 +48,6 @@ export default function MailMessage({
       markRead.mutate(message.id);
     }
   }, [isCollapsed, markRead, message.id, message.isDraft, message.sender?.id, myRecipient, user?.id]);
-
-  //console.log(message)
 
   const isUnread = myRecipient?.isRead === false;
 

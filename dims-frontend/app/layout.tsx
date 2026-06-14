@@ -14,8 +14,40 @@ export const metadata: Metadata = {
     default: "DIMS — Dana Internal Mail",
     template: "%s | DIMS",
   },
-  description: "Dana Internal Mail & Intranet System",
+  description: "Enterprise email and intranet platform for Dana Group",
   robots: { index: false, follow: false },
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "DIMS",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: "#2e348f",
+  openGraph: {
+    title: "DIMS — Dana Internal Mail & Intranet System",
+    description: "Enterprise email and intranet platform for Dana Group",
+    type: "website",
+    url: "https://dims.danagroup.internal",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: "DIMS — Dana Internal Mail",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +56,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={rubik.variable}>
+    <html lang="en" className={rubik.variable} suppressHydrationWarning>
       <body className="font-rubik antialiased">
         <Providers>
           {children}
