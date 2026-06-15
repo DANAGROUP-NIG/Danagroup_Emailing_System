@@ -52,8 +52,8 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
     }
   }, [inView, hasNextPage, isFetching, fetchNextPage]);
 
-  const subsidiaries = subsidiariesData?.data || [];
-  const departments = departmentsData?.data || [];
+  const subsidiaries = subsidiariesData || [];
+  const departments = departmentsData || [];
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">

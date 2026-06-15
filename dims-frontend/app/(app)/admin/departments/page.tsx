@@ -73,7 +73,7 @@ function DepartmentFormModal({
               <Select.Value placeholder="Select subsidiary..." />
             </Select.Trigger>
             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-              {subsidiariesData?.data?.map((sub) => (
+              {subsidiariesData?.map((sub) => (
                 <Select.Item key={sub.id} value={sub.id}>
                   {sub.name}
                 </Select.Item>
@@ -99,11 +99,12 @@ function AdminDepartmentsPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | undefined>();
 
-  const { data: deptsData, isLoading } = useQuery({
+  const { data: deptsData, isLoading } = useQuery<Department[]>({
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await mailApi.getDepartments?.() || { data: [] };
-      return Array.isArray(response) ? response : response.data || [];
+      const result = Array.isArray(response) ? response : response.data || [];
+      return result as Department[];
     },
   });
 

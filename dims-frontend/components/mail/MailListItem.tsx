@@ -56,7 +56,7 @@ export default function MailListItem({
       <Avatar
         name={senderName}
         initials={senderInitials}
-        avatarUrl={sender?.avatarUrl}
+        avatarUrl={sender?.avatarUrl ?? undefined}
         size="md"
       />
       <div className="flex-1 min-w-0">

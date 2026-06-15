@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Cropper from 'react-easy-crop';
+import Cropper, { type Area } from 'react-easy-crop';
 import { useUpdateAvatar } from '@/hooks/useProfile';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -19,7 +19,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateAvatar = useUpdateAvatar();
@@ -146,7 +146,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
                 cropShape="round"
                 showGrid={false}
                 onCropChange={setCrop}
-                onCropAreaChange={setCroppedAreaPixels}
+                onCropAreaChange={(_area: Area, areaPixels: Area) => setCroppedAreaPixels(areaPixels)}
                 onZoomChange={setZoom}
               />
             </div>

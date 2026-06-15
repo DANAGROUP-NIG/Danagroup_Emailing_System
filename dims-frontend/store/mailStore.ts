@@ -7,10 +7,16 @@ type MailFolder = "inbox" | "sent" | "drafts" | "trash";
 
 export type ComposeMode = "new" | "reply" | "forward";
 
+export interface ComposeRecipient {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface ComposeDefaults {
   mode?: ComposeMode;
   threadId?: string;
-  to?: string;
+  to?: string | ComposeRecipient[];
   cc?: string;
   bcc?: string;
   subject?: string;

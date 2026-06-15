@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Italic, List, Link2, Undo2, Redo2 } from 'lucide-react';
-import { Button } from './Button';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
@@ -25,9 +25,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        history: { depth: 10 },
-      }),
+      StarterKit,
       Link.configure({
         openOnClick: false,
         autolink: true,

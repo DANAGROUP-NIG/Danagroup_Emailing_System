@@ -13,7 +13,7 @@ interface SpinnerProps {
   className?: string;
 }
 
-export default function Spinner({ size = "md", className }: SpinnerProps) {
+export function Spinner({ size = "md", className }: SpinnerProps) {
   return (
     <svg
       role="status"

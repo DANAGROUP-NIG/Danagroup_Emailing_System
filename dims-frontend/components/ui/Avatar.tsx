@@ -50,7 +50,9 @@ const statusClasses = {
 
 export interface AvatarProps {
   src?: string;
+  avatarUrl?: string;
   name: string;
+  initials?: string;
   size?: keyof typeof sizeClasses;
   status?: keyof typeof statusClasses;
   className?: string;
@@ -60,12 +62,15 @@ export interface AvatarProps {
 
 export function Avatar({
   src,
+  avatarUrl,
   name,
+  initials: initialsProp,
   size = "md",
   status,
   className,
 }: AvatarProps) {
-  const initials = getInitials(...(name.split(" ") as [string?, string?]));
+  const initials = initialsProp ?? getInitials(...(name.split(" ") as [string?, string?]));
+  const resolvedSrc = src ?? avatarUrl;
   const fallbackColor = getFallbackColor(name);
 
   return (
@@ -77,7 +82,7 @@ export function Avatar({
         )}
       >
         <RadixAvatar.Image
-          src={src}
+          src={resolvedSrc}
           alt={name}
           className="h-full w-full object-cover"
         />

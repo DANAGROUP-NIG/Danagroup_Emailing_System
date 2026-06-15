@@ -3,6 +3,7 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Announcement, AnnouncementResponse, CreateAnnouncementInput, UpdateAnnouncementInput, AnnouncementTarget } from '@/types/announcement.types';
+export type { AnnouncementTarget };
 import { useToast } from '@/components/ui/Toast';
 
 export interface AnnouncementFilters {

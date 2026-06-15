@@ -169,6 +169,33 @@ export const mailApi = {
     api.patch(`/mail/threads/${threadId}`, { isRead }),
   getRecipientSuggestions: (query: string) =>
     api.get(`/directory/search?query=${encodeURIComponent(query)}&type=user`),
+  // Admin: Users
+  getUsers: () =>
+    api.get("/users"),
+  getDepartments: () =>
+    api.get("/departments"),
+  getSubsidiaries: () =>
+    api.get("/departments/subsidiaries"),
+  createUser: (data: any) =>
+    api.post("/users", data),
+  updateUser: (id: string, data: any) =>
+    api.patch(`/users/${id}`, data),
+  deactivateUser: (id: string) =>
+    api.patch(`/users/${id}/deactivate`),
+  resetUserPassword: (id: string) =>
+    api.post(`/users/${id}/reset-password`),
+  // Admin: Departments
+  createDepartment: (data: any) =>
+    api.post("/departments", data),
+  updateDepartment: (id: string, data: any) =>
+    api.patch(`/departments/${id}`, data),
+  deleteDepartment: (id: string) =>
+    api.delete(`/departments/${id}`),
+  // Admin: Subsidiaries
+  createSubsidiary: (data: any) =>
+    api.post("/subsidiaries", data),
+  updateSubsidiary: (id: string, data: any) =>
+    api.patch(`/subsidiaries/${id}`, data),
 };
 
 export default api;

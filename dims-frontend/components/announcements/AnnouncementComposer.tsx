@@ -105,8 +105,8 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
     }
   };
 
-  const subsidiaries = subsidiariesData?.data || [];
-  const departments = departmentsData?.data || [];
+  const subsidiaries = subsidiariesData || [];
+  const departments = departmentsData || [];
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -146,9 +146,8 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
               <label className="text-sm font-medium text-foreground">Content</label>
               <RichTextEditor
                 value={editorContent}
-                onChange={setEditorContent}
+                onChange={(html) => setEditorContent(html)}
                 placeholder="Write your announcement..."
-                disabled={isLoading}
               />
               {!editorContent && (
                 <p className="text-xs text-danger">Content is required</p>

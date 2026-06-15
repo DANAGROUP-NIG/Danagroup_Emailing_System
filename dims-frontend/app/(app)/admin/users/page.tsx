@@ -116,7 +116,7 @@ function UserFormModal({
               <Select.Value placeholder="Select subsidiary..." />
             </Select.Trigger>
             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-              {subsidiariesData?.data?.map((sub) => (
+              {subsidiariesData?.map((sub) => (
                 <Select.Item key={sub.id} value={sub.id}>
                   {sub.name}
                 </Select.Item>
@@ -174,11 +174,12 @@ function AdminUsersPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>();
 
-  const { data: usersData, isLoading } = useQuery({
+  const { data: usersData, isLoading } = useQuery<User[]>({
     queryKey: ['users', selectedSubsidiary],
     queryFn: async () => {
       const response = await mailApi.getUsers?.() || { data: [] };
-      return Array.isArray(response) ? response : response.data || [];
+      const result = Array.isArray(response) ? response : response.data || [];
+      return result as User[];
     },
   });
 
@@ -346,7 +347,7 @@ function AdminUsersPageContent() {
           </Select.Trigger>
           <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
             <Select.Item value="">All subsidiaries</Select.Item>
-            {subsidiariesData?.data?.map((sub) => (
+            {subsidiariesData?.map((sub) => (
               <Select.Item key={sub.id} value={sub.id}>
                 {sub.name}
               </Select.Item>

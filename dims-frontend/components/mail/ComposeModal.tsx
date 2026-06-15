@@ -164,7 +164,7 @@ export default function ComposeModal() {
   );
 
   const saveDraftIfNeeded = useCallback(
-    async (values: Partial<ComposeFormValues>, showToast = false) => {
+    async (values: Partial<ComposeFormValues>, shouldShowToast = false) => {
       if (!isComposeOpen || isSendingRef.current || !hasDraftContent(values)) {
         return null;
       }
@@ -186,7 +186,7 @@ export default function ComposeModal() {
         draftId: currentDraftIdRef.current || payload.draftId,
       });
 
-      if (showToast) {
+      if (shouldShowToast) {
         showToast({ title: "Draft saved", variant: "success" });
       }
 
@@ -289,8 +289,13 @@ export default function ComposeModal() {
     
     // If we are opening a FRESH compose modal
     if (!composeDraftId) {
+      const toValue = composeDefaults?.to
+        ? Array.isArray(composeDefaults.to)
+          ? composeDefaults.to.map((r) => r.email).join(', ')
+          : composeDefaults.to
+        : '';
       reset({
-        to: composeDefaults?.to || '',
+        to: toValue,
         cc: composeDefaults?.cc || '',
         bcc: composeDefaults?.bcc || '',
         subject: composeDefaults?.subject || '',

@@ -10,6 +10,8 @@ export interface InputProps
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   fullWidth?: boolean;
+  as?: 'input' | 'textarea';
+  rows?: number;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -23,6 +25,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       rightIcon,
       fullWidth,
       id: idProp,
+      as: asProp = 'input',
+      rows,
       ...props
     },
     ref,
@@ -30,6 +34,20 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const generatedId = React.useId();
     const id = idProp ?? generatedId;
     const helpId = `${id}-help`;
+
+    const sharedClassName = cn(
+      "flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-dana-sm",
+      "placeholder:text-muted-foreground",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      "transition-colors",
+      error && "border-danger focus-visible:ring-danger/30",
+      leftIcon && "pl-9",
+      rightIcon && "pr-9",
+      fullWidth && "w-full",
+      asProp === 'input' && "h-10",
+      className,
+    );
 
     return (
       <div className={cn("flex flex-col gap-1", fullWidth && "w-full")}>
@@ -49,25 +67,25 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </span>
           )}
 
-          <input
-            ref={ref}
-            id={id}
-            aria-describedby={error || helperText ? helpId : undefined}
-            aria-invalid={error ? true : undefined}
-            className={cn(
-              "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-dana-sm",
-              "placeholder:text-muted-foreground",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              "transition-colors",
-              error && "border-danger focus-visible:ring-danger/30",
-              leftIcon && "pl-9",
-              rightIcon && "pr-9",
-              fullWidth && "w-full",
-              className,
-            )}
-            {...props}
-          />
+          {asProp === 'textarea' ? (
+            <textarea
+              id={id}
+              aria-describedby={error || helperText ? helpId : undefined}
+              aria-invalid={error ? true : undefined}
+              rows={rows ?? 3}
+              className={sharedClassName}
+              {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+            />
+          ) : (
+            <input
+              ref={ref}
+              id={id}
+              aria-describedby={error || helperText ? helpId : undefined}
+              aria-invalid={error ? true : undefined}
+              className={sharedClassName}
+              {...props}
+            />
+          )}
 
           {rightIcon && (
             <span className="pointer-events-none absolute right-3 flex items-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">

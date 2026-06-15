@@ -135,7 +135,7 @@ export default function RecipientInput({
                   <Avatar
                     name={recipient.name}
                     initials={getInitials(recipient.name, '')}
-                    avatarUrl={recipient.avatarUrl}
+                    avatarUrl={recipient.avatarUrl ?? undefined}
                     size="sm"
                   />
                   <div className="min-w-0 flex-1">

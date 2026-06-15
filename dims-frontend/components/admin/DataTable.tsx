@@ -155,11 +155,9 @@ export function DataTable<T extends { id: string }>({
             {row.getVisibleCells().map((cell) => (
               <div key={cell.id} className="text-xs">
                 <div className="text-muted-foreground font-medium">
-                  {flexRender(cell.column.columnDef.header, {
-                    column: cell.column,
-                    header: cell.column.columnDef,
-                    table,
-                  })}
+                  {typeof cell.column.columnDef.header === 'string'
+                    ? cell.column.columnDef.header
+                    : cell.column.id}
                 </div>
                 <div className="text-foreground">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

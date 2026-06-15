@@ -84,11 +84,12 @@ function AdminSubsidiariesPageContent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSub, setEditingSub] = useState<Subsidiary | undefined>();
 
-  const { data: subsData, isLoading } = useQuery({
+  const { data: subsData, isLoading } = useQuery<Subsidiary[]>({
     queryKey: ['subsidiaries'],
     queryFn: async () => {
       const response = await mailApi.getSubsidiaries?.() || { data: [] };
-      return Array.isArray(response) ? response : response.data || [];
+      const result = Array.isArray(response) ? response : response.data || [];
+      return result as Subsidiary[];
     },
   });
 
