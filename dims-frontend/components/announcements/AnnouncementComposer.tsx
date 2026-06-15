@@ -115,13 +115,18 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
-      <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-background border border-border rounded-lg shadow-dana-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background">
-            <h2 className="text-xl font-semibold text-foreground">
-              {isEditing ? 'Edit Announcement' : 'New Announcement'}
-            </h2>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
+        <Dialog.Content
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          aria-describedby={undefined}
+        >
+          <div className="bg-background border border-border rounded-lg shadow-dana-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-background">
+              <Dialog.Title className="text-xl font-semibold text-foreground">
+                {isEditing ? 'Edit Announcement' : 'New Announcement'}
+              </Dialog.Title>
             <button
               onClick={() => handleOpenChange(false)}
               className="text-muted-foreground hover:text-foreground transition-colors p-1"
@@ -280,8 +285,9 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
               </Button>
             </div>
           </form>
-        </div>
-      </Dialog.Content>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }

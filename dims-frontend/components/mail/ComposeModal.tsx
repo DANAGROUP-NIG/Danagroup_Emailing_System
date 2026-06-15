@@ -370,81 +370,76 @@ export default function ComposeModal() {
   if (!isComposeOpen) return null;
 
   return (
-    <div className="relative flex justify-center items-center z-[100]">
-     {/* Backdrop Overlay */}
-      <div 
-        className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-[3px] transition-opacity"
-        onClick={handleCloseAndSaveDraft} // Optional: closes when clicking outside
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      {/* Backdrop Overlay */}
+      <div
+        className="absolute inset-0 bg-black/20 backdrop-blur-[3px]"
+        onClick={handleCloseAndSaveDraft}
       />
 
-      {/* Blur background */}
+      {/* Modal form */}
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative z-10 flex flex-col bg-white rounded-lg w-[90vw] max-w-[700px] max-h-[85vh] shadow-dana-lg"
+      >
+        {/* Header */}
+        <div className="flex shrink-0 justify-between items-center px-4 py-3 bg-dana-red-100/30 rounded-t-lg border-b-4 border-b-dana-blue-500/60">
+          <span id={titleId} className="text-sm font-bold">
+            {composeDefaults?.mode === "reply"
+              ? "Reply"
+              : composeDefaults?.mode === "forward"
+                ? "Forward"
+                : "New Message"}
+          </span>
+          <button
+            type="button"
+            aria-label="Close and save draft"
+            onClick={handleCloseAndSaveDraft}
+            disabled={isClosing}
+            className="hover:bg-red-100 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {isClosing ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
+          </button>
+        </div>
 
-      <div className=" flex justify-center items-center h-screen w-[100vw] z-[100]">
-        {/* Header same as before */}
-        
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          className="flex flex-1 fixed top-[10%] flex-col z-[100] bg-white max-h-[80vh] min-w-[60vw] rounded-lg"
-        >
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+          <ComposeInput
+            {...register("to")}
+            type="text"
+            label="To:"
+            placeholder="To (comma separated)"
+            errors={errors.to}
+          />
 
-          <div className="flex justify-between items-center p-2 bg-dana-red-100/30 rounded-t-lg h-[12vh] lg:h-[14vh] border-b-dana-blue-500/60 border-b-4">
-            <span id={titleId} className="text-sm font-bold px-2">
-              {composeDefaults?.mode === "reply"
-                ? "Reply"
-                : composeDefaults?.mode === "forward"
-                  ? "Forward"
-                  : "New Message"}
-            </span>
-            <button
-              type="button"
-              aria-label="Close and save draft"
-              onClick={handleCloseAndSaveDraft}
-              disabled={isClosing}
-              className="hover:bg-red-100 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {isClosing ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
-            </button>
-          </div>
+          <ComposeInput
+            type="text"
+            {...register("cc")}
+            placeholder="Add CC"
+            label="Cc:"
+            errors={errors.cc}
+          />
 
-          <div className="px-4 py-4 gap-4 flex flex-col overflow-y-auto scrollbar-track-dana-blue-300  scrollbar-thin">
-            <ComposeInput
-              {...register("to")}
-              type="text"
-              label="To:"
-              placeholder="To (comma separated)"
-              errors={errors.to}
-            />
+          <ComposeInput
+            type="text"
+            label="Bcc:"
+            {...register("bcc")}
+            placeholder="Add BCC"
+            errors={errors.bcc}
+          />
 
-            <ComposeInput
-              type="text"
-              {...register("cc")}
-              placeholder="Add CC"
-              label="Cc:"
-              errors={errors.cc}
+          <ComposeInput
+            type="text"
+            label="Subject"
+            {...register("subject")}
+            placeholder="Subject"
+            errors={errors.subject}
+          />
 
-            />
-
-            <ComposeInput
-              type="text"
-              label="Bcc:"
-              {...register("bcc")}
-              placeholder="Add BCC"
-              errors={errors.bcc}
-
-            />
-            
-
-            <ComposeInput
-              type="text"
-              label="subject"
-              {...register("subject")} 
-              placeholder="Subject"
-              errors={errors.subject}
-            />
-
+          <div>
             <label htmlFor={bodyId} className="text-xs font-medium text-muted-foreground">
               Message body
             </label>
@@ -454,33 +449,30 @@ export default function ComposeModal() {
               aria-describedby={errors.body ? `${bodyId}-err` : undefined}
               aria-invalid={errors.body ? true : undefined}
               placeholder="Write your message..."
-              className="min-h-[210px] w-full flex-1 resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="mt-1 min-h-[180px] w-full resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             {errors.body && <span id={`${bodyId}-err`} role="alert" className="text-xs text-red-500 px-1">{errors.body.message}</span>}
-
-            <AttachmentUploader
-              onChange={setUploadedAttachments}
-              onError={(message) => showToast({ title: message, variant: "error" })}
-            />
-              
           </div>
-          
 
-          {/* Footer with Submit Button */}
-         
-          <div className="flex w-full relative justify-between py-2 h-[12vh] lg:h-[14vh] border-t-dana-blue-500/60 border-t-4 bg-dana-red-100/30 rounded-b-lg">
-            <button
-              type="submit"
-              aria-label={isPending ? "Sending message…" : "Send message"}
-              disabled={isPending}
-              className="flex w-[100px] gap-2 absolute right-8 bg-gradient-to-br from-dana-blue-600 via-dana-blue-400 to-dana-red-500 text-white py-2 px-4 rounded hover:bg-dana-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
-              <span>Send</span>
-            </button>
-          </div>
-        </form> 
-      </div>
+          <AttachmentUploader
+            onChange={setUploadedAttachments}
+            onError={(message) => showToast({ title: message, variant: "error" })}
+          />
+        </div>
+
+        {/* Footer with Submit Button */}
+        <div className="flex shrink-0 items-center justify-end px-4 py-3 border-t-4 border-t-dana-blue-500/60 bg-dana-red-100/30 rounded-b-lg">
+          <button
+            type="submit"
+            aria-label={isPending ? "Sending message…" : "Send message"}
+            disabled={isPending}
+            className="flex items-center gap-2 bg-gradient-to-br from-dana-blue-600 via-dana-blue-400 to-dana-red-500 text-white py-2 px-4 rounded-lg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+            <span>Send</span>
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

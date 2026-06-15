@@ -10,6 +10,7 @@ import ComposeModal from "@/components/mail/ComposeModal";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
 import { useMe, useAuthSync } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
@@ -24,6 +25,7 @@ export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
   const user = useAuthStore((s) => s.user);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const { isPending: isLoadingUser, error } = useMe();
   const [hydrated, setHydrated] = useState(false);
 
@@ -58,7 +60,10 @@ export default function AppShell({ children }: AppShellProps) {
       <Sidebar />
 
       {/* Content area shifted by sidebar width on md+ */}
-      <div className="flex min-h-screen flex-col md:pl-[var(--sidebar-width)]">
+      <div
+        className="flex min-h-screen flex-col transition-[padding] duration-300 md:pl-[var(--sidebar-width)]"
+        style={sidebarCollapsed ? { paddingLeft: "var(--sidebar-collapsed-width)" } : undefined}
+      >
         <TopBar connectionStatus={connectionStatus} />
         <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">

@@ -1,14 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from 'cmdk';
+import { Command } from 'cmdk';
+import * as Dialog from '@radix-ui/react-dialog';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { searchApi } from '@/lib/api';
@@ -32,9 +26,6 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setOpen((prev) => !prev);
-      }
-      if (e.key === 'Escape') {
-        setOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -69,62 +60,80 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm text-muted-foreground"
+        className="relative z-10 w-full max-w-md flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-accent/50 hover:bg-accent transition-colors text-sm text-muted-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Search size={16} />
+        <Search size={16} className="shrink-0" />
         <span className="flex-1 text-left">{placeholder}</span>
-        <kbd className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-600">
+        <kbd className="text-xs font-medium px-2 py-0.5 rounded border border-border bg-background text-muted-foreground">
           ⌘K
         </kbd>
       </button>
 
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput
-          placeholder={placeholder}
-          value={query}
-          onValueChange={setQuery}
-        />
-        <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+          <Dialog.Content
+            className="fixed left-1/2 top-[20%] z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 rounded-xl border border-border bg-card shadow-dana-lg outline-none overflow-hidden"
+            aria-describedby={undefined}
+          >
+            <Dialog.Title className="sr-only">Search</Dialog.Title>
+            <Command shouldFilter={false}>
+              <div className="flex items-center gap-2 border-b border-border px-3">
+                <Search size={16} className="shrink-0 text-muted-foreground" />
+                <Command.Input
+                  placeholder={placeholder}
+                  value={query}
+                  onValueChange={setQuery}
+                  className="flex-1 h-11 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                />
+              </div>
+              <Command.List className="max-h-[300px] overflow-y-auto p-2">
+                <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
+                  {query.length < 2 ? 'Type at least 2 characters to search...' : 'No results found.'}
+                </Command.Empty>
 
-          {results.mails.length > 0 && (
-            <CommandGroup heading="Mails">
-              {results.mails.map((mail) => (
-                <CommandItem
-                  key={mail.id}
-                  onSelect={() => handleSelectMail(mail.url)}
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{mail.title}</span>
-                    <span className="text-xs text-muted-foreground truncate">{mail.subtitle}</span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
+                {results.mails.length > 0 && (
+                  <Command.Group heading="Mails" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
+                    {results.mails.map((mail) => (
+                      <Command.Item
+                        key={mail.id}
+                        value={mail.id}
+                        onSelect={() => handleSelectMail(mail.url)}
+                        className="flex flex-col gap-0.5 rounded-lg px-2 py-2 text-sm cursor-pointer aria-selected:bg-accent"
+                      >
+                        <span className="font-medium text-foreground">{mail.title}</span>
+                        <span className="text-xs text-muted-foreground truncate">{mail.subtitle}</span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
 
-          {results.users.length > 0 && (
-            <CommandGroup heading="Contacts">
-              {results.users.map((user) => (
-                <CommandItem
-                  key={user.id}
-                  onSelect={() => {
-                    router.push(user.url);
-                    setOpen(false);
-                    setQuery('');
-                  }}
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{user.title}</span>
-                    <span className="text-xs text-muted-foreground">{user.subtitle}</span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
-        </CommandList>
-      </CommandDialog>
+                {results.users.length > 0 && (
+                  <Command.Group heading="Contacts" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
+                    {results.users.map((user) => (
+                      <Command.Item
+                        key={user.id}
+                        value={user.id}
+                        onSelect={() => {
+                          router.push(user.url);
+                          setOpen(false);
+                          setQuery('');
+                        }}
+                        className="flex flex-col gap-0.5 rounded-lg px-2 py-2 text-sm cursor-pointer aria-selected:bg-accent"
+                      >
+                        <span className="font-medium text-foreground">{user.title}</span>
+                        <span className="text-xs text-muted-foreground">{user.subtitle}</span>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+              </Command.List>
+            </Command>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }

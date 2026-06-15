@@ -12,14 +12,16 @@ export function resolveApiUrl(): string {
   const configuredUrl = env.NEXT_PUBLIC_API_URL?.trim();
 
   if (configuredUrl && /^https?:\/\//i.test(configuredUrl)) {
-    return configuredUrl;
+    // Strip trailing slash to avoid double-slash issues
+    return configuredUrl.replace(/\/+$/, "");
   }
 
   if (configuredUrl?.startsWith("/")) {
-    return configuredUrl;
+    return configuredUrl.replace(/\/+$/, "");
   }
 
-  return "http://localhost:8000/api";
+  // Fallback — use /api so requests go through the Next.js rewrite proxy
+  return "/api";
 }
 
 export function resolveSocketUrl(): string | undefined {

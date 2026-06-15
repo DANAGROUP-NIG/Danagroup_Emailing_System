@@ -32,6 +32,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "DIMS",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   formatDetection: {
     telephone: false,
   },

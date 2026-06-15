@@ -6,6 +6,7 @@
 @layer base {
   :root {
     --sidebar-width: 280px;
+    --sidebar-collapsed-width: 68px;
     /* --dana-radius: 0.9rem — same value as --radius below */
     --dana-radius: 0.9rem;
     --radius: 0.9rem;
@@ -109,7 +110,12 @@
       linear-gradient(180deg, theme('colors.dana-blue.900') 0%, theme('colors.dana-blue.700') 58%, theme('colors.dana-blue.600') 100%);
     color: white;
     box-shadow: 0 18px 45px rgb(15 23 42 / 0.18);
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .dims-sidebar-collapsed {
+    width: var(--sidebar-collapsed-width);
   }
 
   .badge-unread {

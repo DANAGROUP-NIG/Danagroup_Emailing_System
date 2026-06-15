@@ -8,11 +8,15 @@ import {
   Bug,
   Building2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FolderOpen,
   Inbox,
   LogOut,
   MailPlus,
   Megaphone,
+  PanelLeftClose,
+  PanelLeftOpen,
   Send,
   Settings,
   Shield,
@@ -93,10 +97,12 @@ function NavSection({
   items,
   pathname,
   onNavigate,
+  collapsed = false,
 }: {
   items: NavItem[];
   pathname: string;
   onNavigate?: (() => void) | undefined;
+  collapsed?: boolean;
 }) {
   return (
     <nav className="space-y-0.5" aria-label="Navigation">
@@ -106,21 +112,28 @@ function NavSection({
           <Link
             key={href}
             href={href}
+            title={collapsed ? label : undefined}
             {...(onNavigate ? { onClick: onNavigate } : {})}
             className={cn(
-              "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              collapsed ? "justify-center" : "justify-between",
               active
                 ? "bg-white/15 text-white shadow-sm"
                 : "text-blue-50/80 hover:bg-white/10 hover:text-white",
             )}
           >
-            <span className="flex items-center gap-3">
+            <span className={cn("flex items-center", collapsed ? "" : "gap-3")}>
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>{label}</span>
+              {!collapsed && <span>{label}</span>}
             </span>
-            {badge ? (
+            {badge && !collapsed ? (
               <span className="badge-unread" aria-label={`${badge} unread`}>
                 {badge > 99 ? "99+" : badge}
+              </span>
+            ) : null}
+            {badge && collapsed ? (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[8px] font-bold text-dana-blue-700">
+                {badge > 9 ? "9+" : badge}
               </span>
             ) : null}
           </Link>
@@ -130,7 +143,8 @@ function NavSection({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children, collapsed = false }: { children: React.ReactNode; collapsed?: boolean }) {
+  if (collapsed) return <div className="my-2 h-px bg-white/10" />;
   return (
     <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100/50">
       {children}
@@ -229,7 +243,7 @@ function UserFooter() {
 
 // ─── Inner nav content (shared by both fixed and drawer) ─────────────────────
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const openCompose = useMailStore((s) => s.openCompose);
@@ -242,19 +256,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Brand header */}
-      <div className="border-b border-white/10 px-5 py-4">
+      <div className={cn("border-b border-white/10 py-4", collapsed ? "px-2" : "px-5")}>
         <Link
           href="/mail/inbox"
           {...(onNavigate ? { onClick: onNavigate } : {})}
           className="mb-4 flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg"
           aria-label="DIMS — go to inbox"
         >
-          <div className="w-full rounded-lg bg-white px-4 py-2">
-            <Image src={logo} width={140} height={36} alt="Dana Group logo" priority />
+          <div className={cn("rounded-lg bg-white", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
+            {collapsed ? (
+              <Image src={logo} width={32} height={32} alt="Dana Group logo" priority className="object-contain" />
+            ) : (
+              <Image src={logo} width={140} height={36} alt="Dana Group logo" priority />
+            )}
           </div>
         </Link>
 
-        {user?.subsidiary?.name && (
+        {!collapsed && user?.subsidiary?.name && (
           <p className="mb-3 truncate px-1 text-[11px] font-medium uppercase tracking-widest text-blue-100/50">
             {user.subsidiary.name}
           </p>
@@ -266,41 +284,57 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             openCompose();
             onNavigate?.();
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-dana-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-dana-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          title={collapsed ? "Compose" : undefined}
+          className={cn(
+            "flex w-full items-center justify-center rounded-lg bg-dana-blue-600 text-sm font-semibold text-white transition-colors hover:bg-dana-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+            collapsed ? "px-2 py-2.5" : "gap-2 px-4 py-2.5",
+          )}
         >
           <MailPlus className="h-4 w-4" aria-hidden="true" />
-          Compose
+          {!collapsed && "Compose"}
         </button>
       </div>
 
       {/* Scrollable nav */}
-      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20">
+      <div className={cn("flex-1 space-y-5 overflow-y-auto py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20", collapsed ? "px-2" : "px-4")}>
         <NavSection
           items={primaryNav(unreadCount)}
           pathname={pathname}
           onNavigate={onNavigate}
+          collapsed={collapsed}
         />
 
         <div className="space-y-2">
-          <SectionLabel>Explore</SectionLabel>
-          <NavSection items={secondaryNav} pathname={pathname} onNavigate={onNavigate} />
+          <SectionLabel collapsed={collapsed}>Explore</SectionLabel>
+          <NavSection items={secondaryNav} pathname={pathname} onNavigate={onNavigate} collapsed={collapsed} />
         </div>
 
         {visibleAdminItems.length > 0 && (
           <div className="space-y-2">
-            <SectionLabel>Admin</SectionLabel>
+            <SectionLabel collapsed={collapsed}>Admin</SectionLabel>
             <NavSection
               items={visibleAdminItems}
               pathname={pathname}
               onNavigate={onNavigate}
+              collapsed={collapsed}
             />
           </div>
         )}
       </div>
 
       {/* User footer */}
-      <div className="border-t border-white/10 px-5 py-4">
-        <UserFooter />
+      <div className={cn("border-t border-white/10 py-4", collapsed ? "px-2" : "px-5")}>
+        {collapsed ? (
+          <div className="flex justify-center">
+            <Avatar
+              src={user?.avatarUrl}
+              name={user ? `${user.firstName} ${user.lastName}` : "User"}
+              size="sm"
+            />
+          </div>
+        ) : (
+          <UserFooter />
+        )}
       </div>
     </div>
   );
@@ -309,7 +343,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
-  const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const drawerRef = useRef<HTMLDivElement>(null);
 
   // Close drawer on ESC
@@ -335,10 +369,23 @@ export default function Sidebar() {
     <>
       {/* ── Desktop fixed sidebar (md+) ── */}
       <aside
-        className="dims-sidebar fixed left-0 top-0 hidden md:block"
+        className={cn(
+          "dims-sidebar fixed left-0 top-0 hidden md:flex md:flex-col transition-all duration-300",
+          sidebarCollapsed && "dims-sidebar-collapsed",
+        )}
+        style={sidebarCollapsed ? { width: "var(--sidebar-collapsed-width)" } : undefined}
         aria-label="Primary"
       >
-        <SidebarContent />
+        <SidebarContent collapsed={sidebarCollapsed} />
+        {/* Collapse toggle */}
+        <button
+          type="button"
+          onClick={toggleSidebarCollapsed}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-dana-blue-800 text-white shadow-md transition-colors hover:bg-dana-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        >
+          {sidebarCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        </button>
       </aside>
 
       {/* ── Mobile drawer backdrop ── */}
