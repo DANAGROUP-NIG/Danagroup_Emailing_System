@@ -1,15 +1,16 @@
 'use client';
 
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Announcement, AnnouncementResponse, CreateAnnouncementInput, UpdateAnnouncementInput, AnnouncementTarget } from '@/types/announcement.types';
+import { announcementsApi } from '@/lib/api/announcements';
+import type { AnnouncementListResponse } from '@/lib/api/announcements';
+import type { Announcement, CreateAnnouncementInput, UpdateAnnouncementInput, AnnouncementTarget } from '@/types/announcement.types';
 export type { AnnouncementTarget };
 import { useToast } from '@/components/ui/Toast';
 
 export interface AnnouncementFilters {
-  subsidiaryId?: string;
-  departmentId?: string;
-  target?: AnnouncementTarget;
+  subsidiaryId?: string | undefined;
+  departmentId?: string | undefined;
+  target?: AnnouncementTarget | undefined;
 }
 
 /**
@@ -26,11 +27,12 @@ export function useAnnouncements(filters: AnnouncementFilters = {}, pageSize = 1
       if (filters.departmentId) params.append('departmentId', filters.departmentId);
       if (filters.target) params.append('target', filters.target);
 
-      const res = await api.get<AnnouncementResponse>(`/api/announcements?${params.toString()}`);
-      return res.data;
+      const res = await announcementsApi.list(Object.fromEntries(params));
+      return res.data as AnnouncementListResponse;
     },
-    getNextPageParam: (lastPage) => {
-      return lastPage.hasNextPage ? lastPage.page + 1 : undefined;
+    getNextPageParam: (lastPage: AnnouncementListResponse) => {
+      const hasNextPage = lastPage.page * lastPage.limit < lastPage.total;
+      return hasNextPage ? lastPage.page + 1 : undefined;
     },
     initialPageParam: 1,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -51,7 +53,7 @@ export function usePinnedAnnouncements(filters: AnnouncementFilters = {}) {
       if (filters.departmentId) params.append('departmentId', filters.departmentId);
       if (filters.target) params.append('target', filters.target);
 
-      const res = await api.get<AnnouncementResponse>(`/api/announcements?${params.toString()}`);
+      const res = await announcementsApi.list(Object.fromEntries(params));
       return res.data.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -65,7 +67,7 @@ export function useAnnouncement(announcementId: string) {
   return useQuery({
     queryKey: ['announcement', announcementId],
     queryFn: async () => {
-      const res = await api.get<Announcement>(`/api/announcements/${announcementId}`);
+      const res = await announcementsApi.getById(announcementId);
       return res.data;
     },
     enabled: !!announcementId,
@@ -82,7 +84,7 @@ export function useCreateAnnouncement() {
 
   return useMutation({
     mutationFn: async (data: CreateAnnouncementInput) => {
-      const res = await api.post<Announcement>('/api/announcements', data);
+      const res = await announcementsApi.create(data);
       return res.data;
     },
     onSuccess: () => {
@@ -90,10 +92,11 @@ export function useCreateAnnouncement() {
       queryClient.invalidateQueries({ queryKey: ['announcements', 'pinned'] });
       showToast({ title: 'Announcement posted', variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : 'An error occurred';
       showToast({
         title: 'Failed to post announcement',
-        description: error?.response?.data?.message || 'An error occurred',
+        description: msg,
         variant: 'error',
       });
     },
@@ -109,7 +112,7 @@ export function useUpdateAnnouncement(announcementId: string) {
 
   return useMutation({
     mutationFn: async (data: UpdateAnnouncementInput) => {
-      const res = await api.patch<Announcement>(`/api/announcements/${announcementId}`, data);
+      const res = await announcementsApi.update(announcementId, data);
       return res.data;
     },
     onSuccess: (announcement) => {
@@ -118,10 +121,11 @@ export function useUpdateAnnouncement(announcementId: string) {
       queryClient.invalidateQueries({ queryKey: ['announcements', 'pinned'] });
       showToast({ title: 'Announcement updated', variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : 'An error occurred';
       showToast({
         title: 'Failed to update announcement',
-        description: error?.response?.data?.message || 'An error occurred',
+        description: msg,
         variant: 'error',
       });
     },
@@ -137,17 +141,18 @@ export function useDeleteAnnouncement() {
 
   return useMutation({
     mutationFn: async (announcementId: string) => {
-      await api.delete(`/api/announcements/${announcementId}`);
+      await announcementsApi.delete(announcementId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements', 'pinned'] });
       showToast({ title: 'Announcement deleted', variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : 'An error occurred';
       showToast({
         title: 'Failed to delete announcement',
-        description: error?.response?.data?.message || 'An error occurred',
+        description: msg,
         variant: 'error',
       });
     },
@@ -162,8 +167,8 @@ export function useToggleAnnouncementPin(announcementId: string) {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (isPinned: boolean) => {
-      const res = await api.patch<Announcement>(`/api/announcements/${announcementId}/pin`, { isPinned });
+    mutationFn: async () => {
+      const res = await announcementsApi.togglePin(announcementId);
       return res.data;
     },
     onSuccess: (announcement) => {
@@ -172,10 +177,11 @@ export function useToggleAnnouncementPin(announcementId: string) {
       queryClient.invalidateQueries({ queryKey: ['announcements', 'pinned'] });
       showToast({ title: announcement.isPinned ? 'Pinned to top' : 'Unpinned', variant: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const msg = error instanceof Error ? error.message : 'An error occurred';
       showToast({
         title: 'Failed to update announcement',
-        description: error?.response?.data?.message || 'An error occurred',
+        description: msg,
         variant: 'error',
       });
     },

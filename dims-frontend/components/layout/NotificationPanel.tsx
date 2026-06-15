@@ -91,10 +91,10 @@ function LoadingSkeleton() {
 }
 
 interface NotificationPanelProps {
-  userId?: string;
+  userId?: string | undefined;
 }
 
-export default function NotificationPanel({ userId }: NotificationPanelProps) {
+export default function NotificationPanel({ userId: _userId }: NotificationPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();

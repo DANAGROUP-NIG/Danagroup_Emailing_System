@@ -18,7 +18,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Select from '@radix-ui/react-select';
 import { ColumnDef } from '@tanstack/react-table';
 import type { Department } from '@/types/user.types';
-import { mailApi } from '@/lib/api';
+import { departmentsApi } from '@/lib/api/departments';
 
 function DepartmentFormModal({
   isOpen,
@@ -27,7 +27,7 @@ function DepartmentFormModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialDept?: Department;
+  initialDept?: Department | undefined;
 }) {
   const [formData, setFormData] = useState(
     initialDept || { name: '', subsidiaryId: '' }
@@ -102,8 +102,8 @@ function AdminDepartmentsPageContent() {
   const { data: deptsData, isLoading } = useQuery<Department[]>({
     queryKey: ['departments'],
     queryFn: async () => {
-      const response = await mailApi.getDepartments?.() || { data: [] };
-      const result = Array.isArray(response) ? response : response.data || [];
+      const response = await departmentsApi.list();
+      const result = Array.isArray(response.data) ? response.data : [];
       return result as Department[];
     },
   });

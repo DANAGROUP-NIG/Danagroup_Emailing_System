@@ -15,7 +15,7 @@ export function getInitials(firstName?: string, lastName?: string): string {
 
 /** Deterministically pick one of 6 dana-blue/dana-red tint pairs from a name. */
 function getFallbackColor(name: string): string {
-  const palette = [
+  const palette: string[] = [
     "bg-dana-blue-600 text-white",
     "bg-dana-blue-400 text-white",
     "bg-dana-blue-800 text-white",
@@ -27,7 +27,9 @@ function getFallbackColor(name: string): string {
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
   }
-  return palette[hash % palette.length];
+  const index = hash % palette.length;
+  const result = palette[index];
+  return result ?? "bg-dana-blue-600 text-white";
 }
 
 // ─── Size map ────────────────────────────────────────────────────────────────
@@ -49,13 +51,13 @@ const statusClasses = {
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface AvatarProps {
-  src?: string;
-  avatarUrl?: string;
+  src?: string | undefined;
+  avatarUrl?: string | undefined;
   name: string;
-  initials?: string;
+  initials?: string | undefined;
   size?: keyof typeof sizeClasses;
   status?: keyof typeof statusClasses;
-  className?: string;
+  className?: string | undefined;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────

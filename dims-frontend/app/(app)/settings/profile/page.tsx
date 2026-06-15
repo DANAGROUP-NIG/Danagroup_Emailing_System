@@ -42,8 +42,8 @@ export default function SettingsProfilePage() {
   const { data: user, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: async () => {
-      const response = await api.get<User>('/users/me');
-      return response.data;
+      const response = await api.get<{ data: User }>('/auth/me');
+      return response.data.data;
     },
   });
 

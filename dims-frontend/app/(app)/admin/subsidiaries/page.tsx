@@ -10,7 +10,7 @@ import { useCreateSubsidiary, useUpdateSubsidiary } from '@/hooks/useAdmin';
 import { Plus, Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import type { Subsidiary } from '@/types/user.types';
-import { mailApi } from '@/lib/api';
+import { departmentsApi } from '@/lib/api/departments';
 
 function SubsidiaryFormModal({
   isOpen,
@@ -19,7 +19,7 @@ function SubsidiaryFormModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialSub?: Subsidiary;
+  initialSub?: Subsidiary | undefined;
 }) {
   const [formData, setFormData] = useState(
     initialSub || { name: '', domain: '', description: '' }
@@ -87,8 +87,8 @@ function AdminSubsidiariesPageContent() {
   const { data: subsData, isLoading } = useQuery<Subsidiary[]>({
     queryKey: ['subsidiaries'],
     queryFn: async () => {
-      const response = await mailApi.getSubsidiaries?.() || { data: [] };
-      const result = Array.isArray(response) ? response : response.data || [];
+      const response = await departmentsApi.listSubsidiaries();
+      const result = Array.isArray(response.data) ? response.data : [];
       return result as Subsidiary[];
     },
   });

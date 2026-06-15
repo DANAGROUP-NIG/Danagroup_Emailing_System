@@ -2,7 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatDistanceToNow, startOfDay, isToday, isYesterday, isThisWeek } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
+import { isToday } from 'date-fns/isToday';
+import { isYesterday } from 'date-fns/isYesterday';
+import { isThisWeek } from 'date-fns/isThisWeek';
 import { useNotifications, useMarkNotificationRead, useMarkAllRead, type NotificationFilter } from '@/hooks/useNotifications';
 import { Bell, Mail, Megaphone, Info, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -42,13 +45,13 @@ function groupNotificationsByDate(notifications: AppNotification[]) {
   notifications.forEach((n) => {
     const date = new Date(n.createdAt);
     if (isToday(date)) {
-      groups['Today'].push(n);
+      groups['Today']?.push(n);
     } else if (isYesterday(date)) {
-      groups['Yesterday'].push(n);
+      groups['Yesterday']?.push(n);
     } else if (isThisWeek(date)) {
-      groups['This Week'].push(n);
+      groups['This Week']?.push(n);
     } else {
-      groups['Older'].push(n);
+      groups['Older']?.push(n);
     }
   });
 

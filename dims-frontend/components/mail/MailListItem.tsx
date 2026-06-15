@@ -3,7 +3,7 @@
 import { MailListMessage } from '@/types/mail.types';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { cn } from '@/lib/utils';
 import { Star } from 'lucide-react';
 

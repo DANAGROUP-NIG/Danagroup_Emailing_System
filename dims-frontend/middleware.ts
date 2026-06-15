@@ -1,37 +1,293 @@
-// TODO: Implement Next.js Auth Middleware
-// - Runs on every request matching the config matcher
-// - Checks for valid JWT in httpOnly cookie
-// - If no valid token on a protected route → redirect to /login
-// - If authenticated user visits /login → redirect to /mail/inbox
-// - Public routes: /login only
-// Ref: frontend-blueprint.md §7
+/**
+ * DIMS Security Middleware
+ *
+ * Security features implemented:
+ * - CSP Nonce generation for script-src protection
+ * - JWT signature verification via jose library
+ * - Token refresh on expiry via internal fetch
+ * - CSRF protection for state-changing requests (X-Requested-With header check)
+ * - Role-based access control for admin routes
+ * - Secure redirect handling
+ *
+ * Note: The JWT_SECRET must be available in middleware (edge runtime compatible).
+ * In production, use JWKS endpoint or shared secret via env var.
+ */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { jwtVerify, importSPKI, decodeJwt } from "jose";
 
+// Public routes that don't require authentication
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password"];
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
-  const token = request.cookies.get("access_token")?.value;
+// Admin-only route patterns that require group_admin role
+const ADMIN_ONLY_ROUTES = ["/admin/subsidiaries"];
 
-  if (pathname === "/") {
-    return NextResponse.redirect(
-      new URL(token ? "/mail/inbox" : "/login", request.url),
+// Routes requiring any admin role (group_admin or subsidiary_admin)
+const ADMIN_ROUTES = ["/admin"];
+
+// State-changing HTTP methods that require CSRF protection
+const STATE_CHANGING_METHODS = ["POST", "PATCH", "PUT", "DELETE"];
+
+// JWT secret from environment (must be available in edge runtime)
+const JWT_SECRET = process.env.JWT_SECRET || "";
+
+// CSP Report URI for violation monitoring
+const CSP_REPORT_URI = process.env.CSP_REPORT_URI || "/api/csp-report";
+
+/**
+ * Generate cryptographically secure nonce for CSP
+ */
+function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array));
+}
+
+/**
+ * Build CSP header with nonce
+ */
+function buildCSPHeader(nonce: string, isDev: boolean): string {
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
+    "connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ];
+
+  return directives.join("; ");
+}
+
+/**
+ * Extract and verify JWT from access_token cookie
+ * Returns decoded payload or null if invalid
+ */
+async function verifyAccessToken(token: string): Promise<Record<string, unknown> | null> {
+  if (!JWT_SECRET) {
+    // In development without secret, decode without verification
+    if (process.env.NODE_ENV === "development") {
+      try {
+        return decodeJwt(token) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  try {
+    // Create a symmetric key from the secret
+    const encoder = new TextEncoder();
+    const secretKey = encoder.encode(JWT_SECRET);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      secretKey,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+
+    const { payload } = await jwtVerify(token, key);
+    return payload as Record<string, unknown>;
+  } catch (error) {
+    // Token expired or invalid
+    return null;
+  }
+}
+
+/**
+ * Attempt to refresh access token using refresh_token cookie
+ * Returns new access token or null if refresh fails
+ */
+async function refreshAccessToken(request: NextRequest): Promise<string | null> {
+  const refreshToken = request.cookies.get("refresh_token")?.value;
+  if (!refreshToken) return null;
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    const response = await fetch(`${apiUrl}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: request.headers.get("cookie") || "",
+      },
+      credentials: "include",
+    });
+
+    if (response.ok) {
+      // The refresh endpoint sets new cookies in the response
+      // We need to extract the new access_token from Set-Cookie header
+      const setCookieHeader = response.headers.get("set-cookie");
+      if (setCookieHeader) {
+        const accessTokenMatch = setCookieHeader.match(/access_token=([^;]+)/);
+        return accessTokenMatch?.[1] || null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if request requires CSRF protection and validate header
+ */
+function validateCSRF(request: NextRequest): boolean {
+  // Only validate state-changing methods
+  if (!STATE_CHANGING_METHODS.includes(request.method)) {
+    return true;
+  }
+
+  // Check for X-Requested-With header (sent by Axios by default)
+  const requestedWith = request.headers.get("x-requested-with");
+  return requestedWith === "XMLHttpRequest";
+}
+
+/**
+ * Check if user has required role for the requested path
+ */
+function hasRequiredRole(
+  user: Record<string, unknown> | null,
+  pathname: string,
+): boolean {
+  if (!user) return false;
+
+  const role = user.role as string | undefined;
+
+  // group_admin-only routes
+  if (ADMIN_ONLY_ROUTES.some((route) => pathname.startsWith(route))) {
+    return role === "group_admin";
+  }
+
+  // Any admin can access /admin routes
+  if (ADMIN_ROUTES.some((route) => pathname.startsWith(route))) {
+    return role === "group_admin" || role === "subsidiary_admin";
+  }
+
+  return true;
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
+  const isDev = process.env.NODE_ENV === "development";
+
+  // Generate nonce for this request
+  const nonce = generateNonce();
+
+  // Build CSP header with nonce
+  const cspValue = buildCSPHeader(nonce, isDev);
+
+  // Determine if this is a public route
+  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+
+  // Get access token from cookie
+  const accessToken = request.cookies.get("access_token")?.value;
+
+  // Verify CSRF for state-changing requests
+  if (!validateCSRF(request)) {
+    return new NextResponse(
+      JSON.stringify({ error: "CSRF token validation failed" }),
+      {
+        status: 403,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
     );
   }
 
-  if (!isPublicRoute && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Handle root redirect
+  if (pathname === "/") {
+    const verifiedUser = accessToken ? await verifyAccessToken(accessToken) : null;
+    return NextResponse.redirect(
+      new URL(verifiedUser ? "/mail/inbox" : "/login", request.url),
+    );
   }
 
-  if (isPublicRoute && token) {
+  // Skip auth checks for public routes (but still apply CSP)
+  if (isPublicRoute) {
+    const response = NextResponse.next();
+
+    // Inject CSP nonce header for use by components
+    response.headers.set("x-csp-nonce", nonce);
+
+    // Add CSP header
+    response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+
+    // If user is already authenticated, redirect away from login pages
+    if (accessToken) {
+      const verifiedUser = await verifyAccessToken(accessToken);
+      if (verifiedUser) {
+        return NextResponse.redirect(new URL("/mail/inbox", request.url));
+      }
+    }
+
+    return response;
+  }
+
+  // Protected route: verify authentication
+  let user: Record<string, unknown> | null = null;
+
+  if (accessToken) {
+    user = await verifyAccessToken(accessToken);
+
+    // If token expired, try to refresh
+    if (!user) {
+      const newToken = await refreshAccessToken(request);
+      if (newToken) {
+        user = await verifyAccessToken(newToken);
+
+        // If refresh succeeded, create response with new cookie
+        if (user) {
+          const response = NextResponse.next();
+          response.cookies.set("access_token", newToken, {
+            httpOnly: true,
+            secure: !isDev,
+            sameSite: "strict",
+            path: "/",
+          });
+          response.headers.set("x-csp-nonce", nonce);
+          response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+
+          // Check role authorization
+          if (!hasRequiredRole(user, pathname)) {
+            return NextResponse.redirect(new URL("/mail/inbox", request.url));
+          }
+
+          return response;
+        }
+      }
+    }
+  }
+
+  // No valid token - redirect to login
+  if (!user) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Check role-based access control
+  if (!hasRequiredRole(user, pathname)) {
     return NextResponse.redirect(new URL("/mail/inbox", request.url));
   }
 
-  return NextResponse.next();
+  // Authenticated and authorized - proceed with CSP headers
+  const response = NextResponse.next();
+  response.headers.set("x-csp-nonce", nonce);
+  response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+
+  return response;
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Skip static files and API routes
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

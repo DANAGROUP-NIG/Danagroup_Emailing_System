@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Upload } from 'lucide-react';
 import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { validateFileSecurity, stripExifMetadata, formatFileSize } from '@/lib/fileValidation';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -54,21 +55,23 @@ export default function AttachmentUploader({
     [onChange],
   );
 
-  const validateFile = (file: File) => {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return `File type not allowed: ${file.name}`;
-    }
+  const validateFile = useCallback(
+    async (file: File): Promise<string | null> => {
+      // Check total size first (quick check before expensive validation)
+      if (totalSize + file.size > MAX_TOTAL_SIZE) {
+        return `Total attachment size exceeds ${formatFileSize(MAX_TOTAL_SIZE)} limit`;
+      }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return `File too large: ${file.name} (max 20MB)`;
-    }
+      // Run comprehensive security validation
+      const validation = await validateFileSecurity(file, ALLOWED_TYPES, MAX_FILE_SIZE);
+      if (!validation.valid) {
+        return validation.error || `Security validation failed: ${file.name}`;
+      }
 
-    if (totalSize + file.size > MAX_TOTAL_SIZE) {
-      return 'Total attachment size exceeds 50MB limit';
-    }
-
-    return null;
-  };
+      return null;
+    },
+    [totalSize],
+  );
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -86,7 +89,16 @@ export default function AttachmentUploader({
       setUploadedFiles((prev) => [...prev, optimisticFile]);
 
       try {
-        const uploaded = await filesApi.uploadAttachment(file, (progress) => {
+        // Strip EXIF metadata from images before upload (security/privacy)
+        const fileToUpload = await stripExifMetadata(file);
+
+        // Create File object from Blob if EXIF was stripped (images)
+        const uploadFile =
+          fileToUpload instanceof File
+            ? fileToUpload
+            : new File([fileToUpload], file.name, { type: file.type });
+
+        const res = await filesApi.upload(uploadFile, (progress: number) => {
           setUploadedFiles((prev) =>
             prev.map((current) =>
               current.id === tempId ? { ...current, progress } : current,
@@ -94,6 +106,7 @@ export default function AttachmentUploader({
           );
         });
 
+        const uploaded = res.data.data;
         setUploadedFiles((prev) => {
           const next = prev.map((current) =>
             current.id === tempId
@@ -112,26 +125,28 @@ export default function AttachmentUploader({
           syncFiles(next);
           return next;
         });
-      } catch (error: any) {
-        const message =
-          error?.response?.data?.message || `Failed to upload ${file.name}`;
-        setErrorMessage(Array.isArray(message) ? message[0] : message);
-        onError?.(Array.isArray(message) ? message[0] : message);
+      } catch (error: unknown) {
+        const axiosErr = error as { response?: { data?: { message?: string | string[] } } };
+        const rawMsg = axiosErr?.response?.data?.message;
+        const message = Array.isArray(rawMsg) ? rawMsg[0] ?? `Failed to upload ${file.name}` : rawMsg || `Failed to upload ${file.name}`;
+        setErrorMessage(message);
+        onError?.(message);
 
         setUploadedFiles((prev) =>
           prev.filter((current) => current.id !== tempId),
         );
       }
     },
-    [onError, syncFiles, totalSize],
+    [onError, syncFiles],
   );
 
   const addFiles = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
 
+      // Validate all files before uploading
       for (const file of fileArray) {
-        const validationError = validateFile(file);
+        const validationError = await validateFile(file);
         if (validationError) {
           setErrorMessage(validationError);
           onError?.(validationError);
@@ -144,7 +159,7 @@ export default function AttachmentUploader({
         await uploadFile(file);
       }
     },
-    [onError, uploadFile],
+    [onError, uploadFile, validateFile],
   );
 
   const removeFile = useCallback(
@@ -155,7 +170,7 @@ export default function AttachmentUploader({
       }
 
       if (!target.isUploading) {
-        await filesApi.deleteAttachment(id);
+        await filesApi.delete(id);
       }
 
       setUploadedFiles((prev) => {

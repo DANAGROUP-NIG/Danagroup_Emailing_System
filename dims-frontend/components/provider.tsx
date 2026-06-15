@@ -5,16 +5,34 @@ import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
 
+if (process.env.NODE_ENV !== "production") {
+  // Dynamic import so axe-core is never bundled into production builds
+  import("@axe-core/react").then(({ default: axe }) => {
+    import("react").then((React) => {
+      import("react-dom").then((ReactDOM) => {
+        axe(React, ReactDOM, 1000);
+      });
+    });
+  });
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
-  // We use useState to ensure the QueryClient is only created once 
-  // and doesn't get re-initialized on every re-render.
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000, // 1 minute
-      },
-    },
-  }));
+  // QueryClient is created once per session to ensure stable cache
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+            gcTime: 5 * 60_000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: "always",
+          },
+          mutations: { retry: 0 },
+        },
+      })
+  );
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

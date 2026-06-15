@@ -1,7 +1,6 @@
 'use client';
 
-import { formatDistanceToNow } from 'date-fns';
-import DOMPurify from 'isomorphic-dompurify';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { Pin, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { useState } from 'react';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
@@ -12,10 +11,11 @@ import { useToggleAnnouncementPin, useDeleteAnnouncement } from '@/hooks/useAnno
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import type { Announcement } from '@/types/announcement.types';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml, containsDangerousHtml } from '@/lib/sanitize';
 
 interface AnnouncementCardProps {
   announcement: Announcement;
-  onEdit?: (announcement: Announcement) => void;
+  onEdit?: ((announcement: Announcement) => void) | undefined;
 }
 
 export default function AnnouncementCard({ announcement, onEdit }: AnnouncementCardProps) {
@@ -27,7 +27,15 @@ export default function AnnouncementCard({ announcement, onEdit }: AnnouncementC
   const isAuthorOrAdmin = user?.id === announcement.author.id || user?.role === 'group_admin' || user?.role === 'subsidiary_admin';
   const authorInitials = getInitials(announcement.author.firstName, announcement.author.lastName);
   const authorName = `${announcement.author.firstName} ${announcement.author.lastName}`;
-  const sanitizedBody = DOMPurify.sanitize(announcement.body);
+
+  // Use strict sanitizer to prevent XSS attacks
+  const sanitizedBody = sanitizeHtml(announcement.body);
+
+  // Log warning if dangerous content was detected (development only)
+  if (process.env.NODE_ENV !== 'production' && containsDangerousHtml(announcement.body)) {
+    // eslint-disable-next-line no-console
+    console.warn('[Security] Potentially dangerous HTML detected in announcement body and sanitized');
+  }
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this announcement?')) {
@@ -36,7 +44,7 @@ export default function AnnouncementCard({ announcement, onEdit }: AnnouncementC
   };
 
   const handleTogglePin = async () => {
-    await togglePin.mutateAsync(!announcement.isPinned);
+    await togglePin.mutateAsync();
   };
 
   return (
@@ -66,8 +74,8 @@ export default function AnnouncementCard({ announcement, onEdit }: AnnouncementC
         {isAuthorOrAdmin && (
           <DropdownMenu.Root open={showMenu} onOpenChange={setShowMenu}>
             <DropdownMenu.Trigger asChild>
-              <Button variant="ghost" size="sm" className="p-1">
-                <MoreVertical size={18} />
+              <Button variant="ghost" size="sm" aria-label="Announcement actions" className="p-1">
+                <MoreVertical size={18} aria-hidden="true" />
               </Button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content align="end" className="w-48 bg-card border border-border rounded-md shadow-dana-md p-1 z-50">

@@ -44,20 +44,12 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
     .join(' • ');
 
   return (
-    <div
+    <article
       className={cn(
         'dims-card group relative flex flex-col rounded-lg border border-border bg-card p-4',
         'shadow-dana transition-all duration-200',
-        'hover:shadow-dana-md hover:-translate-y-1 cursor-pointer'
+        'hover:shadow-dana-md hover:-translate-y-1'
       )}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
     >
       {/* Avatar + Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -68,16 +60,22 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
           size="md"
         />
         <button
+          type="button"
           onClick={handleClick}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-primary/10 text-primary"
-          aria-label="View profile"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-primary/10 text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`View ${fullName}'s profile`}
         >
-          <ArrowRight size={18} />
+          <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 mb-3" onClick={handleClick}>
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex-1 min-w-0 mb-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        aria-label={`Open ${fullName}'s profile`}
+      >
         <h3 className="text-sm font-semibold text-foreground truncate">
           {fullName}
         </h3>
@@ -92,7 +90,7 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
         <p className="text-xs text-muted-foreground truncate mt-1">
           {user.email}
         </p>
-      </div>
+      </button>
 
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border">
@@ -102,7 +100,7 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
           variant="primary"
           className="flex-1"
         >
-          <Mail size={16} className="mr-1" />
+          <Mail size={16} className="mr-1" aria-hidden="true" />
           <span className="hidden sm:inline">Send Mail</span>
           <span className="sm:hidden">Mail</span>
         </Button>
@@ -115,6 +113,6 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
           Profile
         </Button>
       </div>
-    </div>
+    </article>
   );
 }

@@ -16,8 +16,8 @@ export default function SettingsNotificationsPage() {
   const { data: user, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: async () => {
-      const response = await api.get<User>('/users/me');
-      return response.data;
+      const response = await api.get<{ data: User }>('/auth/me');
+      return response.data.data;
     },
   });
 
@@ -25,8 +25,8 @@ export default function SettingsNotificationsPage() {
 
   useEffect(() => {
     if (user) {
-      setEmailDigest(user.emailDigest || 'daily');
-      setInAppSounds(user.inAppSounds !== false);
+      setEmailDigest('daily');
+      setInAppSounds(true);
     }
   }, [user]);
 
@@ -38,7 +38,7 @@ export default function SettingsNotificationsPage() {
       });
       setIsDirty(false);
       alert('Notification preferences updated');
-    } catch (error) {
+    } catch {
       alert('Failed to update preferences');
     }
   };

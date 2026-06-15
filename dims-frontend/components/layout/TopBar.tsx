@@ -4,18 +4,26 @@
 // uses `calc(100vh - 64px)` so this height must not change.
 
 import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, MailPlus, Menu, Settings, HelpCircle, User } from "lucide-react";
+import { LogOut, MailPlus, Menu, Settings, HelpCircle, User, Loader2 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import Image from "next/image";
 
 import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { useUIStore } from "@/store/uiStore";
+import { useLogout } from "@/hooks/useAuth";
 import NotificationPanel from "@/components/layout/NotificationPanel";
 import Avatar from "@/components/ui/Avatar";
-import SearchBar from "@/components/mail/SearchBar";
 import { cn } from "@/lib/utils";
+import type { SocketConnectionStatus } from "@/hooks/useSocket";
+
+const SearchBar = dynamic(() => import("@/components/mail/SearchBar"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-9 w-full max-w-sm animate-pulse rounded-md bg-accent" aria-hidden="true" />
+  ),
+});
 
 // ─── Route meta map ───────────────────────────────────────────────────────────
 
@@ -34,13 +42,23 @@ const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function TopBar() {
+interface TopBarProps {
+  connectionStatus?: SocketConnectionStatus;
+}
+
+export default function TopBar({ connectionStatus }: TopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+  const logoutMutation = useLogout();
   const openCompose = useMailStore((s) => s.openCompose);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+
+  const showReconnecting = connectionStatus === "reconnecting";
+
+  const handleLogout = () => {
+    void logoutMutation.mutateAsync();
+  };
 
   const routeMeta = useMemo(
     () =>
@@ -85,6 +103,18 @@ export default function TopBar() {
 
       {/* ── Right actions ── */}
       <div className="flex items-center gap-2 ml-auto">
+        {/* Reconnecting indicator */}
+        {showReconnecting && (
+          <div
+            className="hidden sm:flex items-center gap-1.5 rounded-full bg-warning-light px-2.5 py-1 text-xs font-medium text-warning"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            <span>Reconnecting...</span>
+          </div>
+        )}
+
         {/* Compose — icon-only on <lg, full button on lg+ */}
         <button
           type="button"
@@ -160,7 +190,7 @@ export default function TopBar() {
               <DropdownMenu.Separator className="my-1 h-px bg-border" />
 
               <DropdownMenu.Item
-                onSelect={() => void logout()}
+                onSelect={handleLogout}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger outline-none transition-colors hover:bg-danger-light focus:bg-danger-light"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />

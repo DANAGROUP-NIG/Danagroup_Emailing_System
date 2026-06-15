@@ -3,6 +3,7 @@
 // global-error.tsx must wrap its own <html><body> — it replaces the root layout
 // on catastrophic render failures.
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -11,8 +12,31 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    // Replace with Sentry.captureException(error) when Sentry is configured
-    console.error("[DIMS] Unhandled root error:", error);
+    // Log to console in dev for immediate visibility
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.error("[DIMS] Unhandled root error:", error);
+    }
+
+    // Send to Sentry immediately - this is a critical error
+    Sentry.captureException(error, {
+      level: "fatal",
+      tags: {
+        error_boundary: "global",
+        error_digest: error.digest,
+        severity: "critical",
+      },
+      extra: {
+        digest: error.digest,
+        location: typeof window !== "undefined" ? window.location.href : undefined,
+        userAgent: typeof window !== "undefined" ? navigator.userAgent : undefined,
+      },
+    });
+
+    // Flush Sentry to ensure error is sent before potential page reload
+    Sentry.flush(2000).catch(() => {
+      // Silently ignore flush errors
+    });
   }, [error]);
 
   return (

@@ -3,17 +3,37 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import * as Sentry from "@sentry/nextjs";
 import logo from "@/assets/logo.png";
+import { getLogger } from "@/lib/logger";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
+const logger = getLogger({ component: "error-boundary", scope: "root" });
+
 export default function RootError({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    // Replace with Sentry.captureException(error) when Sentry is configured
-    console.error("[DIMS] Root segment error:", error);
+    // Log structured error for server-side visibility
+    logger.error(
+      { error: error.message, digest: error.digest, stack: error.stack },
+      "Root segment error captured"
+    );
+
+    // Send to Sentry for error tracking
+    Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        error_boundary: "root",
+        error_digest: error.digest,
+      },
+      extra: {
+        digest: error.digest,
+        location: typeof window !== "undefined" ? window.location.href : undefined,
+      },
+    });
   }, [error]);
 
   return (

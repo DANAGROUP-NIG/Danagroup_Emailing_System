@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
@@ -26,18 +26,18 @@ interface MailListProps {
 type MailListRow = {
   id: string;
   threadId: string | null;
-  messageId?: string;
+  messageId?: string | undefined;
   selectionId: string;
   isDraft: boolean;
   isStarred: boolean;
   isUnread: boolean;
   senderName: string;
-  toSummary?: string;
-  ccSummary?: string;
-  bccSummary?: string;
+  toSummary?: string | undefined;
+  ccSummary?: string | undefined;
+  bccSummary?: string | undefined;
   subject: string;
   bodyPreview: string;
-  date?: string;
+  date?: string | undefined;
 };
 
 export default function MailList({ viewMode, searchParams }: MailListProps) {
@@ -113,6 +113,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
+              aria-label="Select all messages"
               className="h-4 w-4 rounded border-border"
               checked={
                 items.length > 0 && selectedMessageIds.length === items.length
@@ -125,7 +126,8 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                   {selectedMessageIds.length}
                 </span>
                 <button
-                  className="rounded p-1.5 text-destructive hover:bg-slate-100"
+                  aria-label={viewMode === "trash" ? "Permanently delete selected" : "Move selected to trash"}
+                  className="rounded p-1.5 text-destructive hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => {
                     selectedMessageIds.forEach((id) => {
                       if (viewMode === "trash") {
@@ -138,7 +140,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                     resetSelection();
                   }}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             ) : (
@@ -168,6 +170,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
               <div className="flex w-full items-start gap-3">
                 <input
                   type="checkbox"
+                  aria-label={`Select message from ${item.senderName}`}
                   checked={selectedMessageIds.includes(item.selectionId)}
                   onChange={() => toggleMessageSelection(item.selectionId)}
                   onClick={(e) => e.stopPropagation()}
@@ -248,16 +251,22 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           },
                         });
                       }}
-                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
-                      title={
+                      aria-label={
                         (item.messageId
                           ? (starOverrides[item.messageId] ?? item.isStarred)
                           : item.isStarred)
-                          ? "Unstar"
-                          : "Star"
+                          ? "Unstar message"
+                          : "Star message"
                       }
+                      aria-pressed={
+                        item.messageId
+                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                          : item.isStarred
+                      }
+                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Star
+                        aria-hidden="true"
                         className={`h-4 w-4 ${
                           item.messageId &&
                           (starOverrides[item.messageId] ?? item.isStarred)
@@ -277,10 +286,10 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           restoreMail.mutate(item.messageId);
                         }
                       }}
-                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Restore"
+                      aria-label="Restore message from trash"
+                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     </button>
                   ) : null}
 
@@ -303,10 +312,10 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
 
                       deleteMail.mutate(item.messageId);
                     }}
-                    className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                    title={viewMode === "trash" ? "Delete forever" : "Move to trash"}
+                    aria-label={viewMode === "trash" ? "Delete message forever" : "Move message to trash"}
+                    className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -369,7 +378,7 @@ function MailListSkeleton() {
   );
 }
 
-function RecipientLine({ label, value }: { label: string; value?: string }) {
+function RecipientLine({ label, value }: { label: string; value?: string | undefined }) {
   if (!value) {
     return null;
   }

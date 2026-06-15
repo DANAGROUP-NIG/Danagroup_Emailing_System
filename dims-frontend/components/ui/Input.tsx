@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-  helperText?: string;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  fullWidth?: boolean;
-  as?: 'input' | 'textarea';
-  rows?: number;
+  label?: string | undefined;
+  error?: string | undefined;
+  helperText?: string | undefined;
+  leftIcon?: React.ReactNode | undefined;
+  rightIcon?: React.ReactNode | undefined;
+  fullWidth?: boolean | undefined;
+  as?: 'input' | 'textarea' | undefined;
+  rows?: number | undefined;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -122,7 +122,7 @@ export default Input;
 export interface ComposeInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  errors?: { message?: string };
+  errors?: { message?: string } | undefined;
 }
 
 export const ComposeInput = React.forwardRef<

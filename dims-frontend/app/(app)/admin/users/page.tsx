@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { AdminGuard } from '@/components/admin/AdminGuard';
-import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
@@ -19,10 +19,15 @@ import {
 import { MoreVertical, Plus, Mail } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Select from '@radix-ui/react-select';
-import { formatDistanceToNow } from 'date-fns';
-import type { User } from '@/types/user.types';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
+import type { User, UserRole } from '@/types/user.types';
 import { ColumnDef } from '@tanstack/react-table';
-import { mailApi } from '@/lib/api';
+import { apiClient } from '@/lib/api';
+
+const DataTable = dynamic(
+  () => import('@/components/admin/DataTable').then((m) => m.DataTable),
+  { loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" /> },
+) as typeof import('@/components/admin/DataTable').DataTable;
 
 function UserFormModal({
   isOpen,
@@ -31,25 +36,43 @@ function UserFormModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  initialUser?: User;
+  initialUser?: User | undefined;
 }) {
-  const [formData, setFormData] = useState(
-    initialUser || {
-      firstName: '',
-      lastName: '',
-      email: '',
-      role: 'employee' as const,
-      jobTitle: '',
-      subsidiaryId: '',
-      departmentId: '',
-    }
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: UserRole;
+    jobTitle: string;
+    subsidiaryId: string;
+    departmentId: string;
+  }>(
+    initialUser
+      ? {
+          firstName: initialUser.firstName,
+          lastName: initialUser.lastName,
+          email: initialUser.email,
+          role: initialUser.role,
+          jobTitle: initialUser.jobTitle ?? '',
+          subsidiaryId: initialUser.subsidiaryId ?? '',
+          departmentId: initialUser.departmentId ?? '',
+        }
+      : {
+          firstName: '',
+          lastName: '',
+          email: '',
+          role: 'employee',
+          jobTitle: '',
+          subsidiaryId: '',
+          departmentId: '',
+        }
   );
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(!initialUser);
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const { data: subsidiariesData } = useSubsidiaries();
-  const { data: departmentsData } = useDepartments(formData.subsidiaryId);
+  useDepartments(formData.subsidiaryId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +126,7 @@ function UserFormModal({
         />
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label htmlFor="user-subsidiary" className="block text-sm font-medium text-foreground mb-2">
             Subsidiary
           </label>
           <Select.Root
@@ -112,7 +135,7 @@ function UserFormModal({
               setFormData({ ...formData, subsidiaryId: value, departmentId: '' })
             }
           >
-            <Select.Trigger className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+            <Select.Trigger id="user-subsidiary" aria-label="Select subsidiary" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <Select.Value placeholder="Select subsidiary..." />
             </Select.Trigger>
             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
@@ -126,12 +149,12 @@ function UserFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Role</label>
+          <label htmlFor="user-role" className="block text-sm font-medium text-foreground mb-2">Role</label>
           <Select.Root
             value={formData.role}
-            onValueChange={(value: any) => setFormData({ ...formData, role: value })}
+            onValueChange={(value: string) => setFormData({ ...formData, role: value as UserRole })}
           >
-            <Select.Trigger className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+            <Select.Trigger id="user-role" aria-label="Select role" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <Select.Value />
             </Select.Trigger>
             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
@@ -177,9 +200,11 @@ function AdminUsersPageContent() {
   const { data: usersData, isLoading } = useQuery<User[]>({
     queryKey: ['users', selectedSubsidiary],
     queryFn: async () => {
-      const response = await mailApi.getUsers?.() || { data: [] };
-      const result = Array.isArray(response) ? response : response.data || [];
-      return result as User[];
+      const response = await apiClient.get<{ data: User[] }>('/admin/users', {
+        params: selectedSubsidiary ? { subsidiaryId: selectedSubsidiary } : {},
+      });
+      const result = response.data?.data;
+      return Array.isArray(result) ? result : [];
     },
   });
 
@@ -337,12 +362,13 @@ function AdminUsersPageContent() {
       <div className="flex gap-4">
         <Input
           placeholder="Search users..."
+          aria-label="Search users"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1"
         />
         <Select.Root value={selectedSubsidiary} onValueChange={setSelectedSubsidiary}>
-          <Select.Trigger className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm min-w-48">
+          <Select.Trigger aria-label="Filter by subsidiary" className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
             <Select.Value placeholder="All subsidiaries" />
           </Select.Trigger>
           <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
@@ -366,7 +392,7 @@ function AdminUsersPageContent() {
           setIsFormOpen(false);
           setEditingUser(undefined);
         }}
-        initialUser={editingUser}
+        {...(editingUser ? { initialUser: editingUser } : {})}
       />
     </div>
   );

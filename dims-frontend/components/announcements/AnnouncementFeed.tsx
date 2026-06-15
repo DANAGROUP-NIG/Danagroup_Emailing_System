@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
 import AnnouncementCard from './AnnouncementCard';
 import { useAnnouncements, usePinnedAnnouncements } from '@/hooks/useAnnouncements';
@@ -63,7 +63,7 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Target Filter */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Target</label>
+            <label htmlFor="filter-target" className="block text-sm font-medium text-foreground mb-2">Target</label>
             <Select.Root
               value={filters.target || 'all'}
               onValueChange={(value) =>
@@ -72,10 +72,10 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
                   target: (value === 'all' ? undefined : value) as AnnouncementTarget | undefined,
                   subsidiaryId: value === 'all' ? undefined : prev.subsidiaryId,
                   departmentId: value === 'all' ? undefined : prev.departmentId,
-                }))
+                }) as AnnouncementFilters)
               }
             >
-              <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+              <Select.Trigger id="filter-target" aria-label="Filter by target" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <Select.Value />
                 <Select.Icon>
                   <ChevronDown size={16} />
@@ -101,12 +101,12 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
           {/* Subsidiary Filter */}
           {filters.target && filters.target !== 'all' && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Subsidiary</label>
+              <label htmlFor="filter-subsidiary" className="block text-sm font-medium text-foreground mb-2">Subsidiary</label>
               <Select.Root
                 value={filters.subsidiaryId || ''}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, subsidiaryId: value || undefined }))}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, subsidiaryId: value || undefined }) as AnnouncementFilters)}
               >
-                <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+                <Select.Trigger id="filter-subsidiary" aria-label="Filter by subsidiary" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                   <Select.Value placeholder="Select subsidiary..." />
                   <Select.Icon>
                     <ChevronDown size={16} />
@@ -126,12 +126,12 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
           {/* Department Filter */}
           {filters.target === 'department' && (
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Department</label>
+              <label htmlFor="filter-department" className="block text-sm font-medium text-foreground mb-2">Department</label>
               <Select.Root
                 value={filters.departmentId || ''}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, departmentId: value || undefined }))}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, departmentId: value || undefined }) as AnnouncementFilters)}
               >
-                <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+                <Select.Trigger id="filter-department" aria-label="Filter by department" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                   <Select.Value placeholder="Select department..." />
                   <Select.Icon>
                     <ChevronDown size={16} />
@@ -166,7 +166,7 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
                 <AnnouncementCard
                   key={announcement.id}
                   announcement={announcement}
-                  onEdit={onEditAnnouncement}
+                  {...(onEditAnnouncement ? { onEdit: onEditAnnouncement } : {})}
                 />
               ))}
             </div>
@@ -195,7 +195,7 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
               <AnnouncementCard
                 key={announcement.id}
                 announcement={announcement}
-                onEdit={onEditAnnouncement}
+                {...(onEditAnnouncement ? { onEdit: onEditAnnouncement } : {})}
               />
             ))}
           </div>

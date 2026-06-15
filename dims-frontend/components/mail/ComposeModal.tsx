@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { X, Send, Loader2 } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
 import { useToast } from "@/components/ui/Toast";
@@ -12,18 +12,6 @@ import AttachmentUploader, { UploadedAttachment } from "./AttachmentUploader";
 import { ComposeInput } from "../ui/Input";
 import { Message } from "@/types/mail.types";
 import type { ComposeData } from "@/types/mail.types";
-
-// TODO: Implement ComposeModal Component
-// - Floating compose modal (Gmail-style, bottom-right)
-// - Controlled via mailStore (isComposeOpen, composeDefaults, closeCompose)
-// - Fields: To (RecipientInput), CC, BCC, Subject, Body (rich text), Attachments
-// - Rich text editor: TipTap or Quill
-// - Save as Draft: POST /api/mail/draft
-// - Send: POST /api/mail/send
-// - Attachment uploader: AttachmentUploader component
-// - Reply mode: pre-fills threadId, recipient, subject with "Re:"
-// - Forward mode: pre-fills subject with "Fwd:", body with original message
-
 
 const parseEmailList = (value?: string) =>
   (value ?? "")
@@ -106,6 +94,8 @@ const mapComposeValuesToPayload = (
 });
 
 export default function ComposeModal() {
+  const titleId = useId();
+  const bodyId = useId();
   const { showToast } = useToast();
   const { isComposeOpen, closeCompose, composeDraftId, composeDefaults, setComposeDraftId } =
     useMailStore();
@@ -197,9 +187,42 @@ export default function ComposeModal() {
       hasDraftContent,
       isComposeOpen,
       saveDraft,
+      showToast,
     ],
   );
 
+
+  // Function to handle saving before closing
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleCloseAndSaveDraft = useCallback(async () => {
+    if (isClosingRef.current) {
+      return;
+    }
+
+    isClosingRef.current = true;
+    setIsClosing(true);
+    const values = getValues();
+
+    if (hasDraftContent(values)) {
+      try {
+        await saveDraftIfNeeded(values, true);
+      } catch (err) {
+        showToast({ title: "Could not save draft", variant: "error" });
+        isClosingRef.current = false;
+        setIsClosing(false);
+        return;
+      }
+    }
+
+    reset();
+    setUploadedAttachments([]);
+    lastSavedSignatureRef.current = "";
+    currentDraftIdRef.current = null;
+    isClosingRef.current = false;
+    setIsClosing(false);
+    closeCompose();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeCompose, getValues, hasDraftContent, reset, saveDraftIfNeeded, showToast]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -207,7 +230,7 @@ export default function ComposeModal() {
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isComposeOpen, composeDraftId, draftData]);
+  }, [isComposeOpen, handleCloseAndSaveDraft]);
 
   useEffect(() => {
     if (!isComposeOpen || isClosing || isSendingRef.current) {
@@ -252,19 +275,19 @@ export default function ComposeModal() {
     // If we are editing an EXISTING draft
     if (composeDraftId && draftData) {
       const toField = draftData.recipients
-        ?.filter((r: any) => r.type === 'to')
+        ?.filter((r: Message["recipients"][number]) => r.type === 'to')
         .map(getRecipientAddress)
         .filter(Boolean)
         .join(', ') || '';
         
       const ccField = draftData.recipients
-        ?.filter((r: any) => r.type === 'cc')
+        ?.filter((r: Message["recipients"][number]) => r.type === 'cc')
         .map(getRecipientAddress)
         .filter(Boolean)
         .join(', ') || '';
 
       const bccField = draftData.recipients
-        ?.filter((r: any) => r.type === 'bcc')
+        ?.filter((r: Message["recipients"][number]) => r.type === 'bcc')
         .map(getRecipientAddress)
         .filter(Boolean)
         .join(', ') || '';
@@ -308,42 +331,7 @@ export default function ComposeModal() {
     
   }, [buildDraftPayload, composeDefaults, draftData, isComposeOpen, composeDraftId, reset]);
 
-
-
-  
-
-  // Function to handle saving before closing
-  const handleCloseAndSaveDraft = async () => {
-    if (isClosingRef.current) {
-      return;
-    }
-
-    isClosingRef.current = true;
-    setIsClosing(true);
-    const values = getValues();
-
-    if (hasDraftContent(values)) {
-      try {
-        await saveDraftIfNeeded(values, true);
-      } catch (err) {
-        showToast({ title: "Could not save draft", variant: "error" });
-        isClosingRef.current = false;
-        setIsClosing(false);
-        return;
-      }
-    }
-
-    reset();
-    setUploadedAttachments([]);
-    lastSavedSignatureRef.current = "";
-    currentDraftIdRef.current = null;
-    isClosingRef.current = false;
-    setIsClosing(false);
-    closeCompose();
-  };
-
   // Transformation Logic
-  // Change 'data: ComposeFormValues' to 'data: any'
   const onSubmit = (data: ComposeFormValues) => {
     isSendingRef.current = true;
     const payload = {
@@ -364,11 +352,12 @@ export default function ComposeModal() {
         lastSavedSignatureRef.current = "";
         closeCompose();
       },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
         isSendingRef.current = false;
-        const errorMessage = err.response?.data?.message || 'Failed to send';
+        const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+        const errorMessage = axiosErr.response?.data?.message || 'Failed to send';
         showToast({
-          title: Array.isArray(errorMessage) ? errorMessage[0] : errorMessage,
+          title: Array.isArray(errorMessage) ? (errorMessage[0] ?? 'Failed to send') : (errorMessage || 'Failed to send'),
           variant: "error",
         });
       },
@@ -393,21 +382,28 @@ export default function ComposeModal() {
       <div className=" flex justify-center items-center h-screen w-[100vw] z-[100]">
         {/* Header same as before */}
         
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 fixed top-[10%] flex-col z-[100] bg-white max-h-[80vh] min-w-[60vw] rounded-lg">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="flex flex-1 fixed top-[10%] flex-col z-[100] bg-white max-h-[80vh] min-w-[60vw] rounded-lg"
+        >
 
           <div className="flex justify-between items-center p-2 bg-dana-red-100/30 rounded-t-lg h-[12vh] lg:h-[14vh] border-b-dana-blue-500/60 border-b-4">
-            <span className="text-sm font-bold px-2">
+            <span id={titleId} className="text-sm font-bold px-2">
               {composeDefaults?.mode === "reply"
                 ? "Reply"
                 : composeDefaults?.mode === "forward"
                   ? "Forward"
                   : "New Message"}
             </span>
-            <button 
-              type="button" 
-              onClick={handleCloseAndSaveDraft} 
+            <button
+              type="button"
+              aria-label="Close and save draft"
+              onClick={handleCloseAndSaveDraft}
               disabled={isClosing}
-              className="hover:bg-red-100 p-1 rounded"
+              className="hover:bg-red-100 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {isClosing ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
             </button>
@@ -449,12 +445,18 @@ export default function ComposeModal() {
               errors={errors.subject}
             />
 
+            <label htmlFor={bodyId} className="text-xs font-medium text-muted-foreground">
+              Message body
+            </label>
             <textarea
               {...register("body")}
+              id={bodyId}
+              aria-describedby={errors.body ? `${bodyId}-err` : undefined}
+              aria-invalid={errors.body ? true : undefined}
               placeholder="Write your message..."
-              className="min-h-[210px] w-full flex-1 resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none"
+              className="min-h-[210px] w-full flex-1 resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            {errors.body && <span className="text-xs text-red-500 px-1">{errors.body.message}</span>}
+            {errors.body && <span id={`${bodyId}-err`} role="alert" className="text-xs text-red-500 px-1">{errors.body.message}</span>}
 
             <AttachmentUploader
               onChange={setUploadedAttachments}
@@ -467,8 +469,13 @@ export default function ComposeModal() {
           {/* Footer with Submit Button */}
          
           <div className="flex w-full relative justify-between py-2 h-[12vh] lg:h-[14vh] border-t-dana-blue-500/60 border-t-4 bg-dana-red-100/30 rounded-b-lg">
-            <button type="submit" disabled={isPending} className="flex w-[100px] gap-2 absolute right-8 bg-gradient-to-br from-dana-blue-600 via-dana-blue-400 to-dana-red-500 text-white py-2 px-4 rounded hover:bg-dana-red-600 focus:outline-none focus:ring-2 focus:ring-dana-red-300">
-              {isPending ? <Loader2 className="animate-spin" /> : <Send />} 
+            <button
+              type="submit"
+              aria-label={isPending ? "Sending message…" : "Send message"}
+              disabled={isPending}
+              className="flex w-[100px] gap-2 absolute right-8 bg-gradient-to-br from-dana-blue-600 via-dana-blue-400 to-dana-red-500 text-white py-2 px-4 rounded hover:bg-dana-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Send aria-hidden="true" />}
               <span>Send</span>
             </button>
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import AnnouncementFeed from '@/components/announcements/AnnouncementFeed';
@@ -11,7 +11,6 @@ import type { Announcement } from '@/types/announcement.types';
 
 export default function AnnouncementsPage() {
   const user = useAuthStore((state) => state.user);
-  const router = useRouter();
   const searchParams = useSearchParams();
   
   const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -76,7 +75,7 @@ export default function AnnouncementsPage() {
         <AnnouncementComposer
           isOpen={isComposerOpen}
           onClose={handleCloseComposer}
-          announcement={editingAnnouncement}
+          {...(editingAnnouncement ? { announcement: editingAnnouncement } : {})}
         />
       )}
     </div>

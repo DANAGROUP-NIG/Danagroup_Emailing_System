@@ -34,10 +34,6 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
-  accessToken?: string;
-  refreshToken?: string;
-  emailDigest?: 'daily' | 'weekly' | 'never';
-  inAppSounds?: boolean;
 }
 
 

@@ -1,8 +1,7 @@
 'use client';
 
-import { FileText, Image, File, X } from 'lucide-react';
+import { FileText, ImageIcon, File, X } from 'lucide-react';
 import { Attachment } from '@/types/mail.types';
-import { cn } from '@/lib/utils';
 
 interface AttachmentListProps {
   attachments: Attachment[];
@@ -12,7 +11,7 @@ interface AttachmentListProps {
 
 function getFileIcon(mimeType: string) {
   if (mimeType.startsWith('image/')) {
-    return <Image className="h-4 w-4 text-blue-600" />;
+    return <ImageIcon className="h-4 w-4 text-blue-600" />;
   }
   if (mimeType.includes('pdf')) {
     return <FileText className="h-4 w-4 text-red-600" />;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
@@ -10,6 +10,7 @@ import ComposeModal from "@/components/mail/ComposeModal";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { useMe, useAuthSync } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
@@ -21,26 +22,28 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const shouldReduceMotion = useReducedMotion();
   const user = useAuthStore((s) => s.user);
-  const checkingAuth = useAuthStore((s) => s.checkingAuth);
-  const checkAuth = useAuthStore((s) => s.checkAuth);
+  const { isPending: isLoadingUser, error } = useMe();
   const [hydrated, setHydrated] = useState(false);
 
+  // Sync auth store with server state
+  useAuthSync();
+
   // Initialise WebSocket for the authenticated user
-  useSocket(user?.id);
+  const { connectionStatus } = useSocket(user);
 
   useEffect(() => {
-    Promise.resolve(useAuthStore.persist.rehydrate())
-      .then(() => checkAuth())
-      .finally(() => setHydrated(true));
-  }, [checkAuth]);
+    // Rehydrate the Zustand store from persist
+    Promise.resolve(useAuthStore.persist.rehydrate()).finally(() => setHydrated(true));
+  }, []);
 
   useEffect(() => {
-    if (!hydrated || checkingAuth) return;
-    if (!user) router.replace("/login");
-  }, [checkingAuth, hydrated, router, user]);
+    if (!hydrated || isLoadingUser) return;
+    if (!user || error) router.replace("/login");
+  }, [isLoadingUser, hydrated, router, user, error]);
 
-  if (!hydrated || checkingAuth) {
+  if (!hydrated || isLoadingUser) {
     return <AppShellSkeleton />;
   }
 
@@ -56,15 +59,15 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Content area shifted by sidebar width on md+ */}
       <div className="flex min-h-screen flex-col md:pl-[var(--sidebar-width)]">
-        <TopBar />
+        <TopBar connectionStatus={connectionStatus} />
         <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+              exit={shouldReduceMotion ? {} : { opacity: 0, y: -8 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: "easeInOut" }}
             >
               {children}
             </motion.div>

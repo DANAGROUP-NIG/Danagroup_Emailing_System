@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/Toast';
-import { mailApi } from '@/lib/api';
+import { usersApi } from '@/lib/api/users';
+import { departmentsApi } from '@/lib/api/departments';
+import apiClient from '@/lib/api/client';
 import type { User, Department, Subsidiary } from '@/types/user.types';
 
 // ============ Users ============
@@ -13,7 +15,7 @@ export function useCreateUser() {
 
   return useMutation({
     mutationFn: async (data: Partial<User> & { sendWelcomeEmail?: boolean }) => {
-      const response = await mailApi.createUser?.(data) || { data: {} };
+      const response = await usersApi.create(data as unknown as Parameters<typeof usersApi.create>[0]);
       return response.data;
     },
     onSuccess: () => {
@@ -32,7 +34,7 @@ export function useUpdateUser() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
-      const response = await mailApi.updateUser?.(id, data) || { data: {} };
+      const response = await usersApi.update(id, data as unknown as Parameters<typeof usersApi.update>[1]);
       return response.data;
     },
     onSuccess: (_, { id }) => {
@@ -52,8 +54,7 @@ export function useDeactivateUser() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await mailApi.deactivateUser?.(id) || { data: {} };
-      return response.data;
+      await usersApi.deactivate(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -70,7 +71,7 @@ export function useResetUserPassword() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await mailApi.resetUserPassword?.(id) || { data: {} };
+      const response = await apiClient.post(`/users/${id}/reset-password`);
       return response.data;
     },
     onSuccess: () => {
@@ -93,7 +94,7 @@ export function useCreateDepartment() {
 
   return useMutation({
     mutationFn: async (data: Partial<Department>) => {
-      const response = await mailApi.createDepartment?.(data) || { data: {} };
+      const response = await departmentsApi.create(data as Parameters<typeof departmentsApi.create>[0]);
       return response.data;
     },
     onSuccess: () => {
@@ -112,7 +113,7 @@ export function useUpdateDepartment() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Department> }) => {
-      const response = await mailApi.updateDepartment?.(id, data) || { data: {} };
+      const response = await departmentsApi.update(id, data as Parameters<typeof departmentsApi.update>[1]);
       return response.data;
     },
     onSuccess: () => {
@@ -131,7 +132,7 @@ export function useDeleteDepartment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await mailApi.deleteDepartment?.(id);
+      await departmentsApi.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
@@ -151,7 +152,7 @@ export function useCreateSubsidiary() {
 
   return useMutation({
     mutationFn: async (data: Partial<Subsidiary>) => {
-      const response = await mailApi.createSubsidiary?.(data) || { data: {} };
+      const response = await departmentsApi.createSubsidiary(data as Parameters<typeof departmentsApi.createSubsidiary>[0]);
       return response.data;
     },
     onSuccess: () => {
@@ -170,7 +171,7 @@ export function useUpdateSubsidiary() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Subsidiary> }) => {
-      const response = await mailApi.updateSubsidiary?.(id, data) || { data: {} };
+      const response = await departmentsApi.updateSubsidiary(id, data as Parameters<typeof departmentsApi.updateSubsidiary>[1]);
       return response.data;
     },
     onSuccess: () => {

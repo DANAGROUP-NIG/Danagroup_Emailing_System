@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
-import type { AppNotification, PaginatedResponse } from '@/types/api.types';
+import { notificationsApi } from '@/lib/api/notifications';
+import type { AppNotification, BackendPageResponse } from '@/types/api.types';
 
 export type NotificationFilter = 'all' | 'unread' | 'mail' | 'announcements' | 'system';
 
@@ -15,18 +15,18 @@ export function useNotifications(options?: UseNotificationsOptions) {
   return useInfiniteQuery({
     queryKey: ['notifications', options?.filter || 'all'],
     queryFn: async ({ pageParam = 1 }) => {
-      const response = await api.get<PaginatedResponse<AppNotification>>('/notifications', {
-        params: {
-          page: pageParam,
-          limit: 20,
-          ...(options?.filter && options.filter !== 'all' && { filter: options.filter }),
-        },
+      const response = await notificationsApi.list({
+        page: pageParam as number,
+        limit: 20,
       });
-      return response.data;
+      return response.data as BackendPageResponse<AppNotification>;
     },
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.page < lastPage.lastPage ? lastPage.page + 1 : undefined,
+    getNextPageParam: (lastPage: BackendPageResponse<AppNotification>) => {
+      const hasMore = lastPage.page * lastPage.limit < lastPage.total;
+      return hasMore ? lastPage.page + 1 : undefined;
+    },
     initialPageParam: 1,
+    staleTime: 30_000,
   });
 }
 
@@ -37,7 +37,7 @@ export function useUnreadCount() {
   return useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: async () => {
-      const response = await api.get<{ count: number }>('/notifications/unread-count');
+      const response = await notificationsApi.unreadCount();
       return response.data.count;
     },
     refetchInterval: 30000, // Refetch every 30s as fallback to WS
@@ -51,7 +51,7 @@ export function useMarkNotificationRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      await api.patch(`/notifications/${notificationId}/read`);
+      await notificationsApi.markRead(notificationId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -67,7 +67,7 @@ export function useMarkAllRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      await api.patch('/notifications/read-all');
+      await notificationsApi.markAllRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });

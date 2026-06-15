@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/provider";
+import { WebVitals } from "@/components/WebVitals";
 
 const rubik = Rubik({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   variable: "--font-rubik",
   display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -59,6 +61,7 @@ export default function RootLayout({
     <html lang="en" className={rubik.variable} suppressHydrationWarning>
       <body className="font-rubik antialiased">
         <Providers>
+          <WebVitals />
           {children}
         </Providers>
       </body>

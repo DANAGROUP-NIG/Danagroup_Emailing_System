@@ -1,14 +1,7 @@
-// TODO: Implement EmployeeProfile Component
-// Props: userId: string
-// - Full profile view fetched from GET /api/users/:id
-// - Shows: large avatar, full name, job title, department, subsidiary, email, phone
-// - "Send Mail" button opens ComposeModal pre-filled with this user
-// - Back button to return to directory listing
-
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Mail, Phone, MapPin, Building2, Users, Calendar, Briefcase } from 'lucide-react';
+import { Mail, Building2, Calendar, Briefcase } from 'lucide-react';
 import { useUser } from '@/hooks/useDirectory';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';

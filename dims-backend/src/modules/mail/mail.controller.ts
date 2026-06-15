@@ -164,6 +164,12 @@ export class MailController {
     return this.mailService.toggleStar(id, user.userId, dto.isStarred);
   }
 
+  @Delete("trash/empty")
+  @ApiOperation({ summary: "Permanently delete all messages in trash" })
+  async emptyAll(@CurrentUser() user: { userId: string }) {
+    return this.mailService.emptyAllTrash(user.userId);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Move a message to trash" })
   async delete(
@@ -189,12 +195,6 @@ export class MailController {
     @Param("id") id: string,
   ) {
     return this.mailService.restoreFromTrash(id, user.userId);
-  }
-
-  @Delete("trash/empty")
-  @ApiOperation({ summary: "Permanently delete all messages in trash" })
-  async emptyAll(@CurrentUser() user: { userId: string }) {
-    return this.mailService.emptyAllTrash(user.userId);
   }
 
   @Get("messages/:id")

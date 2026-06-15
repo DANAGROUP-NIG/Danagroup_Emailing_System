@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
-import DOMPurify from "isomorphic-dompurify";
 import { useMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
@@ -12,15 +11,14 @@ import { Message } from "@/types/mail.types";
 import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
+import { sanitizeHtml, containsDangerousHtml } from "@/lib/sanitize";
 
 export default function MailMessage({ 
   message, 
   isCollapsed: initialCollapsed = false,
-  isConsecutive = false,
 }: { 
   message: Message; 
   isCollapsed?: boolean
-  isConsecutive?: boolean
 }) {
   const { user } = useAuthStore();
   const { openCompose } = useMailStore();
@@ -51,7 +49,15 @@ export default function MailMessage({
 
   const isUnread = myRecipient?.isRead === false;
 
-  const sanitizedBody = DOMPurify.sanitize(message.bodyHtml || message.body);
+  // Use strict sanitizer to prevent XSS attacks
+  const rawBody = message.bodyHtml || message.body || "";
+  const sanitizedBody = sanitizeHtml(rawBody);
+
+  // Log warning if dangerous content was detected (development only)
+  if (process.env.NODE_ENV !== "production" && containsDangerousHtml(rawBody)) {
+    // eslint-disable-next-line no-console
+    console.warn("[Security] Potentially dangerous HTML detected in email body and sanitized");
+  }
   
   const fullName = message.sender?.name || message.sender?.email || "Unknown sender";
   const senderEmail = message.sender?.email || "unknown@danagroup.internal";
@@ -93,14 +99,15 @@ export default function MailMessage({
   return (
     <div className={`group border-b border-border bg-background transition-all ${!isCollapsed ? "pb-6" : ""}`}>
       {/* Header / Collapsed View */}
-      <div 
-        
-        className="flex items-center justify-between p-4 hover:bg-muted/30"
-      >
-        <div 
+      <div className="flex items-center justify-between p-4 hover:bg-muted/30">
+        <button
+          type="button"
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? `Expand message from ${fullName}` : `Collapse message from ${fullName}`}
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex cursor-pointer  min-w-0 items-center gap-3">
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          {isCollapsed ? <ChevronRight className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
           
           <div className="flex flex-col min-w-0">
             <span className={`truncate text-sm ${isUnread ? "font-bold" : "font-medium"}`}>
@@ -112,7 +119,7 @@ export default function MailMessage({
               </span>
             )}
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-4">
           <span className="shrink-0 text-xs text-muted-foreground">
@@ -125,23 +132,25 @@ export default function MailMessage({
           <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
             <button
               type="button"
-              className="p-1.5 hover:bg-muted rounded"
-              title="Reply"
+              aria-label="Reply to message"
+              className="p-1.5 hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={handleReply}
             >
-              <Reply className="h-4 w-4" />
+              <Reply className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="p-1.5 hover:bg-muted rounded"
-              title="Forward"
+              aria-label="Forward message"
+              className="p-1.5 hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={handleForward}
             >
-              <Forward className="h-4 w-4" />
+              <Forward className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
               type="button"
               disabled={!myRecipient || starMail.isPending}
+              aria-label={myRecipient ? (myRecipient.isStarred ? "Unstar message" : "Star message") : "Only recipient messages can be starred"}
+              aria-pressed={myRecipient?.isStarred === true}
               onClick={() => {
                 if (!myRecipient) return;
 
@@ -150,19 +159,18 @@ export default function MailMessage({
                   isStarred: !myRecipient.isStarred,
                 });
               }}
-              className={`p-1.5 hover:bg-muted rounded disabled:cursor-not-allowed disabled:opacity-50 ${myRecipient?.isStarred === true ? "text-amber-400" : ""}`}
-              title={myRecipient ? (myRecipient.isStarred ? "Unstar" : "Star") : "Only recipient messages can be starred"}
+              className={`p-1.5 hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${myRecipient?.isStarred === true ? "text-amber-400" : ""}`}
             >
-              <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} />
+              <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} aria-hidden="true" />
             </button>
             <button
               type="button"
+              aria-label="Move message to trash"
               disabled={deleteMail.isPending}
               onClick={() => deleteMail.mutate(message.id)}
-              className="p-1.5 hover:bg-muted rounded text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-              title="Move to trash"
+              className="p-1.5 hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-destructive disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -196,8 +204,9 @@ export default function MailMessage({
                     type="button"
                     onClick={async () => {
                       const response = await filesApi.getDownloadUrl(file.id);
-                      if (response?.url) {
-                        window.open(response.url, "_blank", "noopener,noreferrer");
+                      const url = response?.data?.data?.url;
+                      if (url) {
+                        window.open(url, "_blank", "noopener,noreferrer");
                       }
                     }}
                     className="flex items-center gap-2 rounded-md border p-2 text-left text-xs hover:bg-muted"

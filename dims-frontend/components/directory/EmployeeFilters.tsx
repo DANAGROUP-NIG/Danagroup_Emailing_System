@@ -38,7 +38,7 @@ export default function EmployeeFilters({
   const { data: subsidiaries, isLoading: subsidariesLoading } =
     useSubsidiaries();
   const { data: departments, isLoading: departmentsLoading } = useDepartments(
-    filters.subsidiaryId
+    filters.subsidiary
   );
 
   // Sync debounced search to filters
@@ -55,15 +55,15 @@ export default function EmployeeFilters({
   const handleSubsidiaryChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      subsidiaryId: value || undefined,
-      departmentId: undefined, // Reset department when subsidiary changes
+      subsidiary: value || undefined,
+      department: undefined, // Reset department when subsidiary changes
     });
   };
 
   const handleDepartmentChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      departmentId: value || undefined,
+      department: value || undefined,
     });
   };
 
@@ -75,7 +75,7 @@ export default function EmployeeFilters({
   };
 
   const hasActiveFilters =
-    filters.q || filters.subsidiaryId || filters.departmentId || filters.role;
+    filters.q || filters.subsidiary || filters.department || filters.role;
 
   const handleClearFilters = () => {
     setSearchInput('');
@@ -101,7 +101,7 @@ export default function EmployeeFilters({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Subsidiary Select */}
         <Select
-          value={filters.subsidiaryId || ''}
+          value={filters.subsidiary || ''}
           onValueChange={handleSubsidiaryChange}
           disabled={subsidariesLoading || isLoading}
         >
@@ -120,9 +120,9 @@ export default function EmployeeFilters({
 
         {/* Department Select */}
         <Select
-          value={filters.departmentId || ''}
+          value={filters.department || ''}
           onValueChange={handleDepartmentChange}
-          disabled={departmentsLoading || isLoading || !filters.subsidiaryId}
+          disabled={departmentsLoading || isLoading || !filters.subsidiary}
         >
           <SelectTrigger>
             <SelectValue placeholder="All Departments" />
@@ -176,10 +176,10 @@ export default function EmployeeFilters({
         <div className="text-xs text-muted-foreground">
           Showing filtered results
           {filters.q && ` (${filters.q})`}
-          {filters.subsidiaryId &&
-            ` • ${subsidiaries?.find((s) => s.id === filters.subsidiaryId)?.name}`}
-          {filters.departmentId &&
-            ` • ${departments?.find((d) => d.id === filters.departmentId)?.name}`}
+          {filters.subsidiary &&
+            ` • ${subsidiaries?.find((s) => s.id === filters.subsidiary)?.name}`}
+          {filters.department &&
+            ` • ${departments?.find((d) => d.id === filters.department)?.name}`}
           {filters.role &&
             ` • ${ROLES.find((r) => r.value === filters.role)?.label}`}
         </div>

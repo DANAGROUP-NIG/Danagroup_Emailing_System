@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils';
-import { mailApi } from '@/lib/api';
+import { usersApi } from '@/lib/api/users';
 import { ParticipantSummary } from '@/types/mail.types';
 import * as Popover from '@radix-ui/react-popover';
 
@@ -32,11 +32,15 @@ export default function RecipientInput({
   // Fetch suggestions from directory API
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
-      mailApi
-        .getRecipientSuggestions(debouncedQuery)
+      usersApi
+        .search({ search: debouncedQuery, limit: 10 })
         .then((res) => {
-          // API returns { data: [...] }
-          const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+          const raw = res.data as unknown;
+          const data: ParticipantSummary[] = Array.isArray(raw)
+            ? raw
+            : Array.isArray((raw as Record<string, unknown>)?.data)
+              ? (raw as { data: ParticipantSummary[] }).data
+              : [];
           setSuggestions(data.slice(0, 10));
           setOpen(true);
           setSelectedIndex(0);
@@ -71,7 +75,8 @@ export default function RecipientInput({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !query && value.length > 0) {
-      removeRecipient(value[value.length - 1].id);
+      const last = value[value.length - 1];
+      if (last) removeRecipient(last.id);
     } else if (e.key === 'ArrowDown' && open && suggestions.length > 0) {
       setSelectedIndex((prev) => (prev + 1) % suggestions.length);
     } else if (e.key === 'ArrowUp' && open && suggestions.length > 0) {

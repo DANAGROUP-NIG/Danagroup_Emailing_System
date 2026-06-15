@@ -6,15 +6,19 @@ import { ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SelectProps {
-  value?: string;
-  onValueChange?: (value: string) => void;
-  disabled?: boolean;
-  children?: React.ReactNode;
+  value?: string | undefined;
+  onValueChange?: ((value: string) => void) | undefined;
+  disabled?: boolean | undefined;
+  children?: React.ReactNode | undefined;
 }
 
 export function Select({ value, onValueChange, disabled, children }: SelectProps) {
   return (
-    <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
+    <RadixSelect.Root
+      {...(value !== undefined ? { value } : {}) as Record<string, never>}
+      {...(onValueChange ? { onValueChange } : {}) as Record<string, never>}
+      {...(disabled !== undefined ? { disabled } : {}) as Record<string, never>}
+    >
       {children}
     </RadixSelect.Root>
   );

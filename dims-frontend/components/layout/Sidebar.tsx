@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import {
   Bell,
+  Bug,
   Building2,
   ChevronDown,
   FolderOpen,
@@ -31,6 +32,7 @@ import type { UserRole } from "@/types/user.types";
 import logo from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { openBugReportEmail } from "@/lib/bugReport";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,7 +96,7 @@ function NavSection({
 }: {
   items: NavItem[];
   pathname: string;
-  onNavigate?: () => void;
+  onNavigate?: (() => void) | undefined;
 }) {
   return (
     <nav className="space-y-0.5" aria-label="Navigation">
@@ -104,7 +106,7 @@ function NavSection({
           <Link
             key={href}
             href={href}
-            onClick={onNavigate}
+            {...(onNavigate ? { onClick: onNavigate } : {})}
             className={cn(
               "flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
               active
@@ -202,6 +204,14 @@ function UserFooter() {
             Settings
           </DropdownMenu.Item>
 
+          <DropdownMenu.Item
+            onSelect={() => openBugReportEmail(user?.id, undefined, undefined, "Issue reported via user menu")}
+            className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent focus:bg-accent"
+          >
+            <Bug className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            Report a bug
+          </DropdownMenu.Item>
+
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
 
           <DropdownMenu.Item
@@ -235,7 +245,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-b border-white/10 px-5 py-4">
         <Link
           href="/mail/inbox"
-          onClick={onNavigate}
+          {...(onNavigate ? { onClick: onNavigate } : {})}
           className="mb-4 flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg"
           aria-label="DIMS — go to inbox"
         >

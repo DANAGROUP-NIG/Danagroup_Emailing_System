@@ -1,9 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -13,7 +11,8 @@ import {
 } from 'cmdk';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
-import { mailApi } from '@/lib/api';
+import { searchApi } from '@/lib/api';
+import type { SearchResult } from '@/types/api.types';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface SearchBarProps {
@@ -24,7 +23,7 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any>({ mails: [], users: [] });
+  const [results, setResults] = useState<{ mails: SearchResult[]; users: SearchResult[] }>({ mails: [], users: [] });
   const debouncedQuery = useDebounce(query, 300);
 
   // Cmd+K / Ctrl+K to focus
@@ -46,13 +45,12 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
       Promise.all([
-        mailApi.searchMessages(debouncedQuery).catch(() => []),
-        mailApi.getRecipientSuggestions(debouncedQuery).catch(() => []),
-      ]).then(([mails, users]) => {
-        setResults({
-          mails: Array.isArray(mails) ? mails : mails?.data || [],
-          users: Array.isArray(users) ? users : users?.data || [],
-        });
+        searchApi.search({ q: debouncedQuery, type: 'mail', limit: 8 }).catch(() => null),
+        searchApi.search({ q: debouncedQuery, type: 'users', limit: 5 }).catch(() => null),
+      ]).then(([mailRes, userRes]) => {
+        const mailResults = mailRes?.data?.data?.results ?? [];
+        const userResults = userRes?.data?.data?.results ?? [];
+        setResults({ mails: mailResults, users: userResults });
       });
     } else {
       setResults({ mails: [], users: [] });
@@ -92,16 +90,14 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
 
           {results.mails.length > 0 && (
             <CommandGroup heading="Mails">
-              {results.mails.map((mail: any) => (
+              {results.mails.map((mail) => (
                 <CommandItem
-                  key={mail.id || mail.threadId}
-                  onSelect={() => handleSelectMail(mail.threadId || mail.id)}
+                  key={mail.id}
+                  onSelect={() => handleSelectMail(mail.url)}
                 >
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{mail.subject}</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {mail.sender?.name || mail.sender?.email}
-                    </span>
+                    <span className="text-sm font-medium">{mail.title}</span>
+                    <span className="text-xs text-muted-foreground truncate">{mail.subtitle}</span>
                   </div>
                 </CommandItem>
               ))}
@@ -110,18 +106,18 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
 
           {results.users.length > 0 && (
             <CommandGroup heading="Contacts">
-              {results.users.map((user: any) => (
+              {results.users.map((user) => (
                 <CommandItem
                   key={user.id}
                   onSelect={() => {
-                    // Could navigate to compose with this contact
+                    router.push(user.url);
                     setOpen(false);
                     setQuery('');
                   }}
                 >
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium">{user.name}</span>
-                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                    <span className="text-sm font-medium">{user.title}</span>
+                    <span className="text-xs text-muted-foreground">{user.subtitle}</span>
                   </div>
                 </CommandItem>
               ))}

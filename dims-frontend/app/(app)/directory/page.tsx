@@ -14,8 +14,8 @@ export default function DirectoryPage() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState<DirectoryFilters>({
     q: searchParams.get('q') || undefined,
-    subsidiaryId: searchParams.get('subsidiary') || undefined,
-    departmentId: searchParams.get('department') || undefined,
+    subsidiary: searchParams.get('subsidiary') || undefined,
+    department: searchParams.get('department') || undefined,
     role: searchParams.get('role') || undefined,
   });
 
@@ -28,14 +28,14 @@ export default function DirectoryPage() {
   } = useDirectoryUsers(filters);
 
   const allUsers = data?.pages.flatMap((page) => page.data) || [];
-  const totalCount = data?.pages[0]?.total || 0;
+  const totalCount = data?.pages[0]?.pagination?.total || 0;
 
   // Infinite scroll observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (
-          entries[0].isIntersecting &&
+          entries[0]?.isIntersecting &&
           hasNextPage &&
           !isFetching &&
           !isLoading
@@ -57,8 +57,8 @@ export default function DirectoryPage() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (filters.q) params.set('q', filters.q);
-    if (filters.subsidiaryId) params.set('subsidiary', filters.subsidiaryId);
-    if (filters.departmentId) params.set('department', filters.departmentId);
+    if (filters.subsidiary) params.set('subsidiary', filters.subsidiary);
+    if (filters.department) params.set('department', filters.department);
     if (filters.role) params.set('role', filters.role);
 
     const newUrl =

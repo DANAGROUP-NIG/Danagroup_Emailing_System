@@ -4,8 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, List, Link2, Undo2, Redo2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Bold, Italic, List, Link2, Undo2, Redo2, type LucideProps } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
@@ -49,7 +48,7 @@ export function RichTextEditor({
     onClick,
     title,
   }: {
-    icon: React.ComponentType<any>;
+    icon: React.ComponentType<LucideProps>;
     isActive?: boolean;
     onClick: () => void;
     title: string;

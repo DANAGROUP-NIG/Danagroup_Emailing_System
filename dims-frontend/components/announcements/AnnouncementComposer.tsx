@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,11 +11,14 @@ import * as Select from '@radix-ui/react-select';
 import { X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { RichTextEditor } from '@/components/mail/RichTextEditor';
 import { useCreateAnnouncement, useUpdateAnnouncement } from '@/hooks/useAnnouncements';
 import { useSubsidiaries, useDepartments } from '@/hooks/useDirectory';
 import type { Announcement, AnnouncementTarget } from '@/types/announcement.types';
-import { cn } from '@/lib/utils';
+
+const RichTextEditor = dynamic(
+  () => import('@/components/mail/RichTextEditor').then((m) => m.RichTextEditor),
+  { ssr: false, loading: () => <div className="h-32 animate-pulse rounded-md bg-muted" /> },
+);
 
 const announcementSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -36,7 +40,6 @@ interface AnnouncementComposerProps {
 export function AnnouncementComposer({ isOpen, onClose, announcement }: AnnouncementComposerProps) {
   const {
     register,
-    control,
     watch,
     reset,
     handleSubmit,
@@ -76,11 +79,13 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
 
   const onSubmit = async (data: AnnouncementFormData) => {
     try {
+      const { subsidiaryId: _sid, departmentId: _did, isPinned: _pin, ...rest } = data;
       const payload = {
-        ...data,
+        ...rest,
         body: editorContent,
-        subsidiaryId: data.target === 'all' ? undefined : data.subsidiaryId,
-        departmentId: data.target === 'department' ? data.departmentId : undefined,
+        ...(_pin !== undefined ? { isPinned: _pin } : {}),
+        ...(rest.target !== 'all' && _sid ? { subsidiaryId: _sid } : {}),
+        ...(rest.target === 'department' && _did ? { departmentId: _did } : {}),
       };
 
       if (isEditing) {

@@ -19,7 +19,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateAvatar = useUpdateAvatar();
@@ -59,8 +59,8 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
       setSelectedFile(null);
       setPreview(null);
       setShowCropModal(false);
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
+    } catch (_error) {
+      // Upload failure is surfaced via TanStack Query's error state on updateAvatar
     }
   };
 

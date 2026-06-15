@@ -10,10 +10,9 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import { useState } from 'react';
-import { ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
 
 interface DataTableProps<T> {
   columns: ColumnDef<T>[];

@@ -3,7 +3,6 @@
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { EmployeeProfile } from '@/components/directory/EmployeeProfile';
-import { Button } from '@/components/ui/Button';
 
 export default function EmployeeProfilePage() {
   const params = useParams();
