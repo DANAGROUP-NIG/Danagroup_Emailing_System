@@ -76,7 +76,7 @@ export class MailService {
     private readonly userService: UsersService,
   ) {}
 
-  private handleError(method: string, error: any) {
+  private handleError(method: string, error: Error & { stack?: string }) {
     // Do not mask NestJS known exceptions (BadRequestException, etc.)
     console.error(`MailService.${method} failed:`, {
       message: error.message,

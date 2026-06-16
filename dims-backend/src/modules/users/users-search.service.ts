@@ -20,11 +20,6 @@ export class UsersSearchService {
     private readonly mailService: MailService, // Assuming you have a MailService to query mails
   ) {}
 
-  // TODO: Implement search(query, type, requesterId): SearchResult[]
-  //   - type: 'mail' | 'users' | 'all'
-  //   - For mail: query dims-messages where requesterId is sender or recipient
-  //   - For users: query dims-users (all active users)
-  //   - Returns unified SearchResult[] { type, id, title, subtitle, url }
   async unifiedSearch(
     query: string,
     type: "mail" | "users" | "all" = "all",
@@ -47,7 +42,7 @@ export class UsersSearchService {
         url: `/dashboard/users/${h._id}`,
       }));
       results.push(...userResults);
-      total += (hits.total as any).value || 0;
+      total += (hits.total as { value: number }).value || 0;
     }
 
     // 2. SEARCH MAIL via MailService (Database Query)

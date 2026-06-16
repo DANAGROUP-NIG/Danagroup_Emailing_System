@@ -23,26 +23,29 @@ export class SearchService {
     this.logger.log("Initializing Elasticsearch indexes...");
     try {
       await this.ensureIndexExists(this.USER_INDEX);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
       this.logger.warn(
-        `ensureIndexExists(${this.USER_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+        `ensureIndexExists(${this.USER_INDEX}) failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
       return;
     }
     try {
       await this.ensureIndexExists(this.MESSAGE_INDEX);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
       this.logger.warn(
-        `ensureIndexExists(${this.MESSAGE_INDEX}) failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+        `ensureIndexExists(${this.MESSAGE_INDEX}) failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
       return;
     }
     this.logger.log("Starting initial data sync...");
     try {
       await this.syncUsersToIndex();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
       this.logger.warn(
-        `syncUsersToIndex failed: [${err?.name}] ${err?.message || "(no message)"} status=${err?.meta?.statusCode ?? "?"}`,
+        `syncUsersToIndex failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
       return;
     }
@@ -96,6 +99,7 @@ export class SearchService {
               },
             },
           },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
         mappings: {
           properties: {
@@ -196,7 +200,7 @@ export class SearchService {
     } catch (error) {
       // Catch the missing index error so the app doesn't crash
       if (
-        (error as any).meta?.body?.error?.type === "index_not_found_exception"
+        (error as { meta?: { body?: { error?: { type?: string } } } }).meta?.body?.error?.type === "index_not_found_exception"
       ) {
         console.warn(
           `Elasticsearch index "${this.USER_INDEX}" not found. Returning empty.`,
@@ -207,9 +211,7 @@ export class SearchService {
     }
   }
 
-  // TODO: Implement indexMessage(message): void
-  //   - Index in 'dims-messages' index: id, subject, body, senderId, recipientIds, sentAt
-  async indexMessage(message: any) {
+  async indexMessage(message: { id: string; subject: string; body: string; senderId: string; sentAt?: Date; recipients?: Array<{ recipientId?: string; id?: string }> }) {
     try {
       return await this.es.index<MessageSearchBody>({
         index: this.MESSAGE_INDEX,
@@ -220,20 +222,19 @@ export class SearchService {
           body: message.body,
           senderId: message.senderId,
           recipientIds:
-            message.recipients?.map((r: any) => r.recipientId || r.id) || [],
+            message.recipients?.map((r) => r.recipientId || r.id) || [],
           sentAt: message.sentAt || new Date(),
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { name?: string; message?: string };
       this.logger.warn(
-        `indexMessage(${message?.id}) skipped: [${error?.name ?? "Error"}] ${error?.message || "(no message)"}`,
+        `indexMessage(${message?.id}) skipped: [${e?.name ?? "Error"}] ${e?.message || "(no message)"}`,
       );
       return null;
     }
   }
 
-  // TODO: Implement indexUser(user): void
-  //   - Index in 'dims-users' index: id, firstName, lastName, email, jobTitle, department, subsidiary
   async indexUser(user: User) {
     return this.es.index<UserSearchBody>({
       index: this.USER_INDEX,
@@ -256,7 +257,6 @@ export class SearchService {
     });
   }
 
-  // TODO: Implement deleteUser(userId): void
   async deleteUser(userId: string) {
     return this.es
       .delete({
@@ -267,7 +267,6 @@ export class SearchService {
       .catch(() => console.warn(`User ${userId} not found in ES for deletion`));
   }
 
-  // TODO: Implement deleteMessage(messageId): void
   async deleteMessage(messageId: string) {
     return this.es
       .delete({

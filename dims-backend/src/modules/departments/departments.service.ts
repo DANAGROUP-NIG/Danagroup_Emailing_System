@@ -50,8 +50,8 @@ export class DepartmentsService {
     try {
       const department = this.deptRepo.create(dto);
       return await this.deptRepo.save(department);
-    } catch (error: any) {
-      if (error?.code === "23505") {
+    } catch (error: unknown) {
+      if ((error as { code?: string })?.code === "23505") {
         throw new ConflictException(
           "A department with this name already exists in the subsidiary",
         );
@@ -102,8 +102,8 @@ export class DepartmentsService {
     try {
       const subsidiary = this.subsidiaryRepo.create(dto);
       return await this.subsidiaryRepo.save(subsidiary);
-    } catch (error: any) {
-      if (error?.code === "23505") {
+    } catch (error: unknown) {
+      if ((error as { code?: string })?.code === "23505") {
         throw new ConflictException(
           "A subsidiary with this name or domain already exists",
         );

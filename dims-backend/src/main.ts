@@ -45,7 +45,7 @@ async function bootstrap() {
     app.use(
       session({
         store: new RedisStore({ client: redisClient, prefix: "sess:" }),
-        secret: process.env.SESSION_SECRET || "super-secret",
+        secret: process.env.SESSION_SECRET || (() => { throw new Error('SESSION_SECRET environment variable is required'); })(),
         resave: false,
         saveUninitialized: false,
         name: "dims_sid", // Custom cookie name
@@ -116,8 +116,10 @@ async function bootstrap() {
 
     const port = process.env.PORT ?? 3000;
     await app.listen(port, "0.0.0.0");
-    console.log(`✅ DIMS API running on http://localhost:${port}/api`);
-    console.log(`✅ Swagger docs at http://localhost:${port}/api/docs`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`✅ DIMS API running on http://localhost:${port}/api`);
+      console.log(`✅ Swagger docs at http://localhost:${port}/api/docs`);
+    }
   } catch (error) {
     console.error("❌ Failed to start application:", error);
     process.exit(1);

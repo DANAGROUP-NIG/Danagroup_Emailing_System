@@ -14,6 +14,8 @@ import { withSentryConfig } from "@sentry/nextjs";
  */
 const getCSPHeader = (nonce = "") => {
   const isDev = process.env.NODE_ENV === "development";
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "";
+  const wsConnectExtra = wsUrl ? wsUrl.replace(/^ws:/, "ws:").replace(/^wss:/, "wss:") : "";
 
   // CSP directives with rationale:
   // default-src 'self' - Only allow resources from same origin
@@ -35,7 +37,7 @@ const getCSPHeader = (nonce = "") => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
-    "connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000",
+    `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra ? ` ${wsConnectExtra}` : ""}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
@@ -92,9 +94,8 @@ const nextConfig = {
     const cspValue = getCSPHeader();
 
     const securityHeaders = [
-      // CSP - Report-Only mode for first deploy (change to Content-Security-Policy after validation)
       {
-        key: "Content-Security-Policy-Report-Only",
+        key: "Content-Security-Policy",
         value: cspValue,
       },
       // X-Frame-Options: DENY - Prevents clickjacking (legacy header, CSP frame-ancestors is primary)

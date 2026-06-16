@@ -1,5 +1,4 @@
 import type { Announcement } from "@/types/mail.types";
-import type { User } from "@/types/user.types";
 
 export const mockAnnouncement = (
   overrides?: Partial<Announcement>

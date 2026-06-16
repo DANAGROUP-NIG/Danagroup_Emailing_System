@@ -144,15 +144,15 @@ export const handlers = [
 
   http.post(`${API_URL}/mail/send`, async ({ request }) => {
     const body = await request.json();
+    const typedBody = body as { subject?: string; body?: string };
     const message = mockThreadMessage({
-      subject: (body as any).subject || "No Subject",
-      body: (body as any).body || "",
+      subject: typedBody.subject || "No Subject",
+      body: typedBody.body || "",
     });
     return HttpResponse.json(createApiResponse(message));
   }),
 
-  http.post(`${API_URL}/mail/draft`, async ({ request }) => {
-    const body = await request.json();
+  http.post(`${API_URL}/mail/draft`, async () => {
     const draft = mockDrafts[0];
     return HttpResponse.json(createApiResponse(draft));
   }),
@@ -290,15 +290,16 @@ export const handlers = [
 
   http.post(`${API_URL}/announcements`, async ({ request }) => {
     const body = await request.json();
+    const typedBody = body as Partial<Announcement>;
     const newAnnouncement: Announcement = {
       id: "new-ann-1",
       authorId: mockAdminUser().id,
-      title: (body as any).title || "New Announcement",
-      body: (body as any).body || "",
-      target: (body as any).target || "all",
-      isPinned: (body as any).isPinned || false,
+      title: typedBody.title || "New Announcement",
+      body: typedBody.body || "",
+      target: typedBody.target || "all",
+      isPinned: typedBody.isPinned || false,
       createdAt: new Date().toISOString(),
-      ...(body as Partial<Announcement>),
+      ...typedBody,
     };
     return HttpResponse.json(createApiResponse(newAnnouncement));
   }),

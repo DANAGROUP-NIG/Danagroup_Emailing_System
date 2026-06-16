@@ -48,11 +48,6 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
-  // TODO: Implement POST /auth/login
-  // - Validate credentials via AuthService.login
-  // - Set httpOnly access_token cookie
-  // - Set httpOnly refresh_token cookie
-  // - Return user object
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseGuards(AuthGuard("local"))
@@ -97,8 +92,6 @@ export class AuthController {
     });
   }
 
-  // TODO: Implement POST /auth/logout
-  // - Clear access_token and refresh_token cookies
   @UseGuards(AuthGuard("jwt"))
   @Post("logout")
   @HttpCode(HttpStatus.OK)
@@ -109,7 +102,7 @@ export class AuthController {
     type: MessageResponseDto,
   })
   async logout(
-    @CurrentUser() user: any,
+    @CurrentUser() user: { userId: string; email: string; role: string },
     @Body() refreshTokenDto: RefreshTokenDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -127,9 +120,6 @@ export class AuthController {
     return new ApiResponseDto(true, "Logged out successfully");
   }
 
-  // TODO: Implement POST /auth/refresh
-  // - Accept refresh token from cookie or body
-  // - Return new access_token
   @Public()
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
@@ -144,8 +134,6 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // TODO: Implement
-
     const refreshToken =
       refreshTokenDto.refreshToken || req.cookies?.refresh_token;
 
@@ -164,9 +152,6 @@ export class AuthController {
     return new ApiResponseDto(true, "Token refreshed");
   }
 
-  // TODO: Implement GET /auth/me
-  // - Protected route (JWT guard)
-  // - Returns current authenticated user
   @UseGuards(AuthGuard("jwt"))
   @Get("me")
   @ApiBearerAuth()
@@ -175,8 +160,7 @@ export class AuthController {
     description: "Current authenticated user",
     type: CurrentUserResponseDto,
   })
-  async me(@CurrentUser() user: any) {
-    // TODO: Implement
+  async me(@CurrentUser() user: { userId: string; email: string; role: string }) {
     const fullUser = await this.usersService.findById(user.userId);
     return new ApiResponseDto(true, "User fetched", fullUser);
   }

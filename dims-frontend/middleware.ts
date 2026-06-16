@@ -14,7 +14,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { jwtVerify, importSPKI, decodeJwt } from "jose";
+import { jwtVerify, decodeJwt } from "jose";
 
 // Public routes that don't require authentication
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password"];
@@ -31,9 +31,6 @@ const STATE_CHANGING_METHODS = ["POST", "PATCH", "PUT", "DELETE"];
 // JWT secret from environment (must be available in edge runtime)
 const JWT_SECRET = process.env.JWT_SECRET || "";
 
-// CSP Report URI for violation monitoring
-const CSP_REPORT_URI = process.env.CSP_REPORT_URI || "/api/csp-report";
-
 /**
  * Generate cryptographically secure nonce for CSP
  */
@@ -47,13 +44,16 @@ function generateNonce(): string {
  * Build CSP header with nonce
  */
 function buildCSPHeader(nonce: string, isDev: boolean): string {
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "";
+  const wsConnectExtra = wsUrl ? ` ${wsUrl}` : "";
+
   const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
-    "connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000",
+    `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
@@ -243,7 +243,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     response.headers.set("x-csp-nonce", nonce);
 
     // Add CSP header
-    response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+    response.headers.set("Content-Security-Policy", cspValue);
 
     // If user is already authenticated, redirect away from login pages
     if (accessToken) {
@@ -278,7 +278,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
             path: "/",
           });
           response.headers.set("x-csp-nonce", nonce);
-          response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+          response.headers.set("Content-Security-Policy", cspValue);
 
           // Check role authorization
           if (!hasRequiredRole(user, pathname)) {
@@ -306,7 +306,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // Authenticated and authorized - proceed with CSP headers
   const response = NextResponse.next();
   response.headers.set("x-csp-nonce", nonce);
-  response.headers.set("Content-Security-Policy-Report-Only", cspValue);
+  response.headers.set("Content-Security-Policy", cspValue);
 
   return response;
 }

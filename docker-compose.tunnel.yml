@@ -18,6 +18,18 @@
 
 services:
 
+  # ─── Frontend: pass tunnel WebSocket URL into CSP connect-src ───────────────
+  # For quick tunnels the URL is random so we use wss://*.trycloudflare.com.
+  # For named tunnels set CLOUDFLARE_HOSTNAME=https://your-name.yourdomain.com
+  frontend:
+    environment:
+      - NEXT_PUBLIC_WS_URL=${CLOUDFLARE_HOSTNAME:+wss://}${CLOUDFLARE_HOSTNAME:-}
+
+  # ─── Backend: allow tunnel origin in CORS ────────────────────────────────────
+  api:
+    environment:
+      - FRONTEND_URL=http://localhost:3000,${CLOUDFLARE_HOSTNAME:-http://localhost:3000}
+
   # ─── Quick Tunnel (random *.trycloudflare.com URL, zero config) ────────────
   cloudflared:
     image: cloudflare/cloudflared:latest

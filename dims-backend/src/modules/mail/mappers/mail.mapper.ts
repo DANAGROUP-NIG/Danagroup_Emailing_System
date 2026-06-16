@@ -3,12 +3,20 @@ import { Message } from "../entities/message.entity";
 import { Thread } from "../entities/thread.entity";
 import { UserThreadState } from "../entities/UserThreadState.entity";
 
+type UserSummary = {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string | null;
+};
+
 type ThreadWithOptionalState = Thread & {
   userState?: UserThreadState | null;
 };
 
 export class MailMapper {
-  static toSenderSummary(user: any) {
+  static toSenderSummary(user: UserSummary | null | undefined) {
     if (!user) {
       return null;
     }
@@ -53,7 +61,7 @@ export class MailMapper {
     );
   }
 
-  static toParticipant(user: any) {
+  static toParticipant(user: UserSummary | null | undefined) {
     if (!user) {
       return null;
     }

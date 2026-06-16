@@ -262,7 +262,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       socketRef.current = null;
       setConnectionStatus("disconnected");
     };
-  }, [queryClient, userId, subsidiaryId, departmentId]);
+  }, [queryClient, userId, subsidiaryId, departmentId, notifyNewMail, notifyAnnouncement]);
 
   return {
     socket: socketRef.current,
