@@ -71,7 +71,7 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6">
+    <div data-testid="user-profile" className="w-full max-w-3xl mx-auto space-y-6">
       {/* Header Band */}
       <div className="relative bg-gradient-to-r from-primary to-primary-hover rounded-lg overflow-hidden">
         <div className="p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-end">

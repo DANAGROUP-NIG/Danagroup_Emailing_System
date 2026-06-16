@@ -196,6 +196,20 @@ export default function NotificationPanel({ userId: _userId }: NotificationPanel
                   Mark all read
                 </button>
               )}
+              {allNotifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Clear all notifications? This will mark all as read.')) {
+                      markAllRead.mutate();
+                    }
+                  }}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Clear all notifications"
+                >
+                  Clear all
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

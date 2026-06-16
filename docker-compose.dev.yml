@@ -14,10 +14,11 @@ services:
       - /app/.next
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+      - NEXT_PUBLIC_API_URL=/api
+      - NEXT_PUBLIC_WS_URL=ws://localhost:3000
       - NEXT_PUBLIC_APP_NAME=DIMS (Dev)
       - INTERNAL_API_ORIGIN=http://api:8000
+      - JWT_SECRET=${JWT_SECRET}
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=1000

@@ -5,16 +5,8 @@ import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
 
-if (process.env.NODE_ENV !== "production") {
-  // Dynamic import so axe-core is never bundled into production builds
-  import("@axe-core/react").then(({ default: axe }) => {
-    import("react").then((React) => {
-      import("react-dom").then((ReactDOM) => {
-        axe(React, ReactDOM, 1000);
-      });
-    });
-  });
-}
+// @axe-core/react disabled — conflicts with React 18 ES module exports
+// Use browser DevTools Lighthouse or axe DevTools extension for a11y auditing
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   // QueryClient is created once per session to ensure stable cache

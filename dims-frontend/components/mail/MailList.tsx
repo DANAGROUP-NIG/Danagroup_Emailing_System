@@ -107,7 +107,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
+    <div data-testid="mail-list" className="flex h-full flex-col overflow-hidden bg-white">
       <div className="shrink-0 border-b border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

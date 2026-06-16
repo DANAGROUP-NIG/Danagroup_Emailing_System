@@ -69,7 +69,7 @@ export default function EmployeeGrid({
 
   return (
     <>
-      <div className={gridColsClass}>
+      <div data-testid="directory-list" className={gridColsClass}>
         {users.map((user) => (
           <EmployeeCard key={user.id} user={user} />
         ))}

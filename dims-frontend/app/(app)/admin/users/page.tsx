@@ -130,9 +130,9 @@ function UserFormModal({
             Subsidiary
           </label>
           <Select.Root
-            value={formData.subsidiaryId || ''}
+            value={formData.subsidiaryId || 'placeholder'}
             onValueChange={(value) =>
-              setFormData({ ...formData, subsidiaryId: value, departmentId: '' })
+              setFormData({ ...formData, subsidiaryId: value === 'placeholder' ? '' : value, departmentId: '' })
             }
           >
             <Select.Trigger id="user-subsidiary" aria-label="Select subsidiary" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
@@ -200,7 +200,7 @@ function AdminUsersPageContent() {
   const { data: usersData, isLoading } = useQuery<User[]>({
     queryKey: ['users', selectedSubsidiary],
     queryFn: async () => {
-      const response = await apiClient.get<{ data: User[] }>('/admin/users', {
+      const response = await apiClient.get<{ data: User[] }>('/users', {
         params: selectedSubsidiary ? { subsidiaryId: selectedSubsidiary } : {},
       });
       const result = response.data?.data;
@@ -339,7 +339,7 @@ function AdminUsersPageContent() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div data-testid="admin-panel" className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -367,12 +367,15 @@ function AdminUsersPageContent() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1"
         />
-        <Select.Root value={selectedSubsidiary} onValueChange={setSelectedSubsidiary}>
+        <Select.Root
+          value={selectedSubsidiary || 'all'}
+          onValueChange={(value) => setSelectedSubsidiary(value === 'all' ? '' : value)}
+        >
           <Select.Trigger aria-label="Filter by subsidiary" className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            <Select.Value placeholder="All subsidiaries" />
+            <Select.Value />
           </Select.Trigger>
           <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-            <Select.Item value="">All subsidiaries</Select.Item>
+            <Select.Item value="all">All subsidiaries</Select.Item>
             {subsidiariesData?.map((sub) => (
               <Select.Item key={sub.id} value={sub.id}>
                 {sub.name}

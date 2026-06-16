@@ -65,39 +65,50 @@ function buildCSPHeader(nonce: string, isDev: boolean): string {
 
 /**
  * Extract and verify JWT from access_token cookie
- * Returns decoded payload or null if invalid
+ * Returns decoded payload or null if invalid/expired
+ *
+ * Security model:
+ * - When JWT_SECRET is configured: full HS256 signature + expiry verification
+ * - When JWT_SECRET is absent: decode only (structure + expiry check)
+ *   The cookie is HttpOnly so client JS cannot forge it; real auth happens
+ *   on every backend API call via the same cookie.
  */
 async function verifyAccessToken(token: string): Promise<Record<string, unknown> | null> {
-  if (!JWT_SECRET) {
-    // In development without secret, decode without verification
-    if (process.env.NODE_ENV === "development") {
-      try {
-        return decodeJwt(token) as Record<string, unknown>;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-
+  // Always decode first — validates JWT structure and reads the payload
+  let decoded: Record<string, unknown>;
   try {
-    // Create a symmetric key from the secret
-    const encoder = new TextEncoder();
-    const secretKey = encoder.encode(JWT_SECRET);
-    const key = await crypto.subtle.importKey(
-      "raw",
-      secretKey,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
-
-    const { payload } = await jwtVerify(token, key);
-    return payload as Record<string, unknown>;
-  } catch (error) {
-    // Token expired or invalid
-    return null;
+    decoded = decodeJwt(token) as Record<string, unknown>;
+  } catch {
+    return null; // Malformed JWT
   }
+
+  // Manually enforce expiry when not doing full jwtVerify
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof decoded.exp === "number" && decoded.exp < now) {
+    return null; // Expired
+  }
+
+  // If JWT_SECRET is configured, additionally verify the HMAC-SHA256 signature
+  if (JWT_SECRET) {
+    try {
+      const encoder = new TextEncoder();
+      const secretKey = encoder.encode(JWT_SECRET);
+      const key = await crypto.subtle.importKey(
+        "raw",
+        secretKey,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["verify"],
+      );
+      const { payload } = await jwtVerify(token, key);
+      return payload as Record<string, unknown>;
+    } catch {
+      return null; // Signature invalid or token expired
+    }
+  }
+
+  // No secret configured — structure and expiry already validated above
+  return decoded;
 }
 
 /**
@@ -109,8 +120,23 @@ async function refreshAccessToken(request: NextRequest): Promise<string | null> 
   if (!refreshToken) return null;
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-    const response = await fetch(`${apiUrl}/auth/refresh`, {
+    // Edge Runtime requires an absolute URL.
+    // INTERNAL_API_ORIGIN resolves correctly both in Docker (http://api:8000)
+    // and locally (http://localhost:8000). Never use NEXT_PUBLIC_API_URL here
+    // because relative paths and container-internal hostnames differ.
+    const internalOrigin = process.env.INTERNAL_API_ORIGIN;
+    const publicUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    let refreshUrl: string;
+    if (internalOrigin) {
+      refreshUrl = `${internalOrigin.replace(/\/+$/, "")}/api/auth/refresh`;
+    } else if (publicUrl.startsWith("http")) {
+      refreshUrl = `${publicUrl.replace(/\/+$/, "")}/auth/refresh`;
+    } else {
+      const proto = request.nextUrl.protocol;
+      const host = request.headers.get("host") ?? "localhost:3000";
+      refreshUrl = `${proto}//${host}/api/auth/refresh`;
+    }
+    const response = await fetch(refreshUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

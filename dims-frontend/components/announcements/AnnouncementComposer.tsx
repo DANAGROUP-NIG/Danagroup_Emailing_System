@@ -202,9 +202,9 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Subsidiary</label>
                 <Select.Root
-                  value={subsidiaryId || ''}
+                  value={subsidiaryId || 'select-placeholder'}
                   onValueChange={(value) => {
-                    setValue('subsidiaryId', value);
+                    setValue('subsidiaryId', value === 'select-placeholder' ? '' : value);
                     setValue('departmentId', '');
                   }}
                 >
@@ -230,8 +230,8 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Department</label>
                 <Select.Root
-                  value={watch('departmentId') || ''}
-                  onValueChange={(value) => setValue('departmentId', value)}
+                  value={watch('departmentId') || 'select-placeholder'}
+                  onValueChange={(value) => setValue('departmentId', value === 'select-placeholder' ? '' : value)}
                 >
                   <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
                     <Select.Value placeholder="Select department..." />

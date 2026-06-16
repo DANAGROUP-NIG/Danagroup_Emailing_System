@@ -55,7 +55,7 @@ export default function EmployeeFilters({
   const handleSubsidiaryChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      subsidiary: value || undefined,
+      subsidiary: value === 'all' ? undefined : value,
       department: undefined, // Reset department when subsidiary changes
     });
   };
@@ -63,14 +63,14 @@ export default function EmployeeFilters({
   const handleDepartmentChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      department: value || undefined,
+      department: value === 'all' ? undefined : value,
     });
   };
 
   const handleRoleChange = (value: string) => {
     onFiltersChange({
       ...filters,
-      role: value || undefined,
+      role: value === 'all' ? undefined : value,
     });
   };
 
@@ -101,7 +101,7 @@ export default function EmployeeFilters({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Subsidiary Select */}
         <Select
-          value={filters.subsidiary || ''}
+          value={filters.subsidiary || 'all'}
           onValueChange={handleSubsidiaryChange}
           disabled={subsidariesLoading || isLoading}
         >
@@ -109,7 +109,7 @@ export default function EmployeeFilters({
             <SelectValue placeholder="All Subsidiaries" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Subsidiaries</SelectItem>
+            <SelectItem value="all">All Subsidiaries</SelectItem>
             {subsidiaries?.map((sub) => (
               <SelectItem key={sub.id} value={sub.id}>
                 {sub.name}
@@ -120,7 +120,7 @@ export default function EmployeeFilters({
 
         {/* Department Select */}
         <Select
-          value={filters.department || ''}
+          value={filters.department || 'all'}
           onValueChange={handleDepartmentChange}
           disabled={departmentsLoading || isLoading || !filters.subsidiary}
         >
@@ -128,7 +128,7 @@ export default function EmployeeFilters({
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Departments</SelectItem>
+            <SelectItem value="all">All Departments</SelectItem>
             {departments?.map((dept) => (
               <SelectItem key={dept.id} value={dept.id}>
                 {dept.name}
@@ -139,7 +139,7 @@ export default function EmployeeFilters({
 
         {/* Role Select */}
         <Select
-          value={filters.role || ''}
+          value={filters.role || 'all'}
           onValueChange={handleRoleChange}
           disabled={isLoading}
         >
@@ -147,7 +147,7 @@ export default function EmployeeFilters({
             <SelectValue placeholder="All Roles" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Roles</SelectItem>
+            <SelectItem value="all">All Roles</SelectItem>
             {ROLES.map((role) => (
               <SelectItem key={role.value} value={role.value}>
                 {role.label}

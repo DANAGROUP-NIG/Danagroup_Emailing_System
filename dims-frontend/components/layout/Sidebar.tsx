@@ -382,9 +382,9 @@ export default function Sidebar() {
           type="button"
           onClick={toggleSidebarCollapsed}
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-dana-blue-800 text-white shadow-md transition-colors hover:bg-dana-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          className="absolute -right-4 top-24 z-50 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/30 bg-dana-blue-700 text-white shadow-lg transition-all hover:bg-dana-blue-600 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
-          {sidebarCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+          {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </aside>
 

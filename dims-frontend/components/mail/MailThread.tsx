@@ -15,7 +15,7 @@ export default function MailThread({ threadId }: { threadId: string }) {
   const subject = messages[0]?.subject || "No Subject";
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-slate-50/30 p-4 lg:p-8">
+    <div data-testid="thread-view" className="flex h-full flex-col overflow-y-auto bg-slate-50/30 p-4 lg:p-8">
       <div className="mx-auto w-full max-w-4xl space-y-6">
         <div className="mb-8 border-b pb-6">
           <h1 className="text-2xl font-bold text-foreground">{subject}</h1>

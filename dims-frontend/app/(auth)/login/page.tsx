@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +37,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
 
   const {
@@ -67,7 +68,8 @@ export default function LoginPage() {
         } else {
           localStorage.removeItem("rememberedEmail");
         }
-        router.push("/mail/inbox");
+        const redirectTo = searchParams.get("redirect") ?? "/mail/inbox";
+        router.replace(redirectTo);
       } else {
         showToast({
           title: "Login failed",
