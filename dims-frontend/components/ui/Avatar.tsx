@@ -50,14 +50,13 @@ const statusClasses = {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-export interface AvatarProps {
+export interface AvatarProps extends React.HTMLAttributes<HTMLSpanElement> {
   src?: string | undefined;
   avatarUrl?: string | undefined;
   name: string;
   initials?: string | undefined;
   size?: keyof typeof sizeClasses;
   status?: keyof typeof statusClasses;
-  className?: string | undefined;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -70,13 +69,14 @@ export function Avatar({
   size = "md",
   status,
   className,
+  ...htmlProps
 }: AvatarProps) {
   const initials = initialsProp ?? getInitials(...(name.split(" ") as [string?, string?]));
   const resolvedSrc = src ?? avatarUrl;
   const fallbackColor = getFallbackColor(name);
 
   return (
-    <span className={cn("relative inline-flex shrink-0", className)}>
+    <span {...htmlProps} className={cn("relative inline-flex shrink-0", className)}>
       <RadixAvatar.Root
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-full select-none",

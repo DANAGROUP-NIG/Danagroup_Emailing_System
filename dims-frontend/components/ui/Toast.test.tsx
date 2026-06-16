@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import { ToastProvider, useToast } from "./Toast";
 import React from "react";
 
@@ -74,13 +74,11 @@ describe("Toast", () => {
     expect(screen.getByText("Test Toast")).toBeInTheDocument();
 
     // Fast-forward time to trigger auto-dismiss
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(4500);
     });
 
-    await waitFor(() => {
-      expect(screen.queryByText("Test Toast")).not.toBeInTheDocument();
-    });
+    expect(screen.queryByText("Test Toast")).not.toBeInTheDocument();
   });
 
   it("should render different variants", async () => {

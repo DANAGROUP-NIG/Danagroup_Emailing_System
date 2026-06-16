@@ -1,5 +1,4 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { env } from "@/lib/env";
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -9,7 +8,7 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
 let refreshPromise: Promise<void> | null = null;
 
 export function resolveApiUrl(): string {
-  const configuredUrl = env.NEXT_PUBLIC_API_URL?.trim();
+  const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
   if (configuredUrl && /^https?:\/\//i.test(configuredUrl)) {
     // Strip trailing slash to avoid double-slash issues
@@ -20,12 +19,12 @@ export function resolveApiUrl(): string {
     return configuredUrl.replace(/\/+$/, "");
   }
 
-  // Fallback — use /api so requests go through the Next.js rewrite proxy
-  return "/api";
+  // Fallback — direct to backend default
+  return "http://localhost:8000/api";
 }
 
 export function resolveSocketUrl(): string | undefined {
-  const configuredUrl = env.NEXT_PUBLIC_WS_URL?.trim();
+  const configuredUrl = process.env.NEXT_PUBLIC_WS_URL?.trim();
 
   if (configuredUrl && /^(wss?:)?\/\//i.test(configuredUrl)) {
     return configuredUrl;

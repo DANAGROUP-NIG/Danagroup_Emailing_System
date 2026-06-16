@@ -31,6 +31,7 @@ export default function Modal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
         <Dialog.Content
+          aria-modal="true"
           aria-labelledby="modal-title"
           aria-describedby={undefined}
           className={[

@@ -128,7 +128,7 @@ describe("useAuth hooks", () => {
 
       // Wait for sync to complete
       await waitFor(() => {
-        expect(useAuthStore.getState().user).toBeDefined();
+        expect(useAuthStore.getState().user).not.toBeNull();
       });
 
       expect(useAuthStore.getState().isAuthenticated).toBe(true);

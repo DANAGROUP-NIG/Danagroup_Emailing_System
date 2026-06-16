@@ -38,6 +38,7 @@ export default function MailListItem({
 
   return (
     <div
+      data-testid="mail-thread-item"
       onClick={onClick}
       className={cn(
         'mail-list-item flex cursor-pointer items-center gap-3 border-b border-input px-4 py-3 transition-colors hover:bg-gray-50',

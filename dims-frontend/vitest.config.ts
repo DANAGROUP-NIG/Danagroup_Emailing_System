@@ -13,6 +13,7 @@ export default defineConfig({
       "node_modules",
       ".next",
       "dist",
+      "e2e/**",
       "**/*.e2e.{ts,tsx}",
       "**/playwright/**",
     ],

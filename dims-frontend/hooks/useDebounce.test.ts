@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useDebounce } from "./useDebounce";
 
 describe("useDebounce", () => {
@@ -31,7 +31,7 @@ describe("useDebounce", () => {
     expect(result.current).toBe("initial");
 
     // Fast-forward time
-    vi.advanceTimersByTime(500);
+    act(() => { vi.advanceTimersByTime(500); });
 
     // Now value should be updated
     expect(result.current).toBe("updated");
@@ -47,16 +47,16 @@ describe("useDebounce", () => {
 
     // First update
     rerender({ value: "first", delay: 500 });
-    vi.advanceTimersByTime(300);
+    act(() => { vi.advanceTimersByTime(300); });
     expect(result.current).toBe("initial");
 
     // Second update (resets timer)
     rerender({ value: "second", delay: 500 });
-    vi.advanceTimersByTime(300);
+    act(() => { vi.advanceTimersByTime(300); });
     expect(result.current).toBe("initial");
 
     // Complete the delay
-    vi.advanceTimersByTime(200);
+    act(() => { vi.advanceTimersByTime(200); });
     expect(result.current).toBe("second");
   });
 
@@ -71,7 +71,7 @@ describe("useDebounce", () => {
     rerender({ value: 42, delay: 300 });
     expect(result.current).toBe(0);
 
-    vi.advanceTimersByTime(300);
+    act(() => { vi.advanceTimersByTime(300); });
     expect(result.current).toBe(42);
   });
 
@@ -89,7 +89,7 @@ describe("useDebounce", () => {
     rerender({ value: updatedObj, delay: 200 });
     expect(result.current).toBe(initialObj);
 
-    vi.advanceTimersByTime(200);
+    act(() => { vi.advanceTimersByTime(200); });
     expect(result.current).toBe(updatedObj);
   });
 
@@ -107,7 +107,7 @@ describe("useDebounce", () => {
     rerender({ value: updatedArr, delay: 200 });
     expect(result.current).toBe(initialArr);
 
-    vi.advanceTimersByTime(200);
+    act(() => { vi.advanceTimersByTime(200); });
     expect(result.current).toBe(updatedArr);
   });
 
@@ -121,7 +121,7 @@ describe("useDebounce", () => {
     );
 
     rerender({ value: null, delay: 200 });
-    vi.advanceTimersByTime(200);
+    act(() => { vi.advanceTimersByTime(200); });
     expect(result.current).toBeNull();
   });
 
@@ -136,7 +136,7 @@ describe("useDebounce", () => {
     rerender({ value: "updated", delay: 100 });
 
     // With new shorter delay
-    vi.advanceTimersByTime(100);
+    act(() => { vi.advanceTimersByTime(100); });
     expect(result.current).toBe("updated");
   });
 
@@ -152,7 +152,7 @@ describe("useDebounce", () => {
     unmount();
 
     // Timer should be cleaned up, so advancing time shouldn't cause issues
-    vi.advanceTimersByTime(500);
+    act(() => { vi.advanceTimersByTime(500); });
     expect(result.current).toBe("initial");
   });
 });

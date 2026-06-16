@@ -24,7 +24,7 @@ describe("MailListItem", () => {
 
     render(<MailListItem thread={thread} onClick={handleClick} />);
 
-    await userEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByTestId("mail-thread-item"));
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
@@ -32,14 +32,14 @@ describe("MailListItem", () => {
     const thread = mockMailThreadSummary();
     render(<MailListItem thread={thread} isSelected={true} />);
 
-    expect(screen.getByRole("button")).toHaveClass("selected");
+    expect(screen.getByTestId("mail-thread-item")).toHaveClass("selected");
   });
 
   it("should show unread state", () => {
     const thread = mockMailThreadSummary({ unreadCount: 2 });
     render(<MailListItem thread={thread} />);
 
-    expect(screen.getByRole("button")).toHaveClass("unread");
+    expect(screen.getByTestId("mail-thread-item")).toHaveClass("unread");
   });
 
   it("should show unread count badge", () => {
@@ -74,7 +74,7 @@ describe("MailListItem", () => {
 
     render(<MailListItem thread={thread} onClick={handleClick} />);
 
-    const item = screen.getByRole("button");
+    const item = screen.getByTestId("mail-thread-item");
     item.focus();
 
     await userEvent.keyboard("{Enter}");

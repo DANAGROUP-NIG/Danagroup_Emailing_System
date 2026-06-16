@@ -86,13 +86,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, fullWidth, className }))}
         {...props}
       >
-        {isLoading ? (
-          <Spinner size="sm" className="text-current" />
+        {asChild ? (
+          children
         ) : (
-          leftIcon
+          <>
+            {isLoading ? (
+              <Spinner size="sm" className="text-current" />
+            ) : (
+              leftIcon
+            )}
+            {children}
+            {!isLoading && rightIcon}
+          </>
         )}
-        {children}
-        {!isLoading && rightIcon}
       </Comp>
     );
   },
