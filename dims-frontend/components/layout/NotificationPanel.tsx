@@ -134,7 +134,7 @@ export default function NotificationPanel({ userId: _userId }: NotificationPanel
       setIsOpen(false);
 
       if (notification.type === 'new_mail') {
-        router.push(`/mail/inbox${notification.referenceId ? `?thread=${notification.referenceId}` : ''}`);
+        router.push(notification.referenceId ? `/mail/inbox/${notification.referenceId}` : '/mail/inbox');
       } else if (notification.type === 'announcement') {
         router.push(`/announcements?id=${notification.referenceId}`);
       }

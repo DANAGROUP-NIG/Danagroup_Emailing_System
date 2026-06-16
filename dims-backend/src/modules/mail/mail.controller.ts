@@ -213,4 +213,13 @@ export class MailController {
   ) {
     return this.mailService.permanentlyDelete(id, user.userId);
   }
+
+  @Delete("drafts/:id")
+  @ApiOperation({ summary: "Delete a draft message" })
+  async deleteDraft(
+    @CurrentUser() user: { userId: string },
+    @Param("id", new ParseUUIDPipe()) id: string,
+  ) {
+    return this.mailService.deleteDraft(id, user.userId);
+  }
 }

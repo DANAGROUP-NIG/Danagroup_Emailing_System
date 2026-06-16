@@ -18,6 +18,10 @@ async function bootstrap() {
       logger: ["error", "warn", "log", "debug"], // Enable debug logs
     });
 
+    // Trust the first proxy (nginx / Cloudflare tunnel) so that
+    // req.ip, req.secure, and X-Forwarded-* headers are resolved correctly.
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+
     //Initialize ioredis client
     // const redisClient = new Redis({
     //   host: process.env.REDIS_HOST || 'localhost',

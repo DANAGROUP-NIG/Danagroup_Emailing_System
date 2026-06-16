@@ -1,27 +1,42 @@
 "use client";
 
-import { useMail } from "@/hooks/useMail";
+import { useThread } from "@/hooks/useMail";
 import { Skeleton } from "@/components/ui/Skeleton";
 import MailMessage from "./MailMessage";
+import { Mail } from "lucide-react";
 
 export default function MailThread({ threadId }: { threadId: string }) {
-  const { useThread } = useMail();
   const { data: threadData, isLoading, error } = useThread(threadId);
 
   if (isLoading) return <MailThreadSkeleton />;
-  if (error || !threadData) return <div className="p-8 text-center text-destructive">Error loading thread.</div>;
+  if (error || !threadData) return (
+    <div className="flex h-full items-center justify-center">
+      <div className="text-center">
+        <Mail className="mx-auto h-10 w-10 text-destructive/40 mb-3" />
+        <p className="text-sm text-destructive">Error loading thread.</p>
+      </div>
+    </div>
+  );
 
   const messages = threadData.messages || [];
   const subject = messages[0]?.subject || "No Subject";
+  const messageCount = messages.length;
 
   return (
-    <div data-testid="thread-view" className="flex h-full flex-col overflow-y-auto bg-slate-50/30 p-4 lg:p-8">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <div className="mb-8 border-b pb-6">
-          <h1 className="text-2xl font-bold text-foreground">{subject}</h1>
+    <div data-testid="thread-view" className="flex h-full flex-col bg-[#f5f6fa]">
+      {/* Sticky subject header */}
+      <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-lg font-semibold text-slate-800 leading-snug">{subject}</h1>
+          {messageCount > 1 && (
+            <p className="mt-0.5 text-xs text-slate-500">{messageCount} messages in this thread</p>
+          )}
         </div>
+      </div>
 
-        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-4 py-5 lg:px-8">
+        <div className="mx-auto max-w-3xl space-y-3">
           {messages.map((message, index: number) => (
             <MailMessage
               key={message.id}
@@ -37,37 +52,29 @@ export default function MailThread({ threadId }: { threadId: string }) {
 
 function MailThreadSkeleton() {
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-slate-50/30 p-4 lg:p-8">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <div className="mb-8 space-y-3 border-b pb-6">
-          <Skeleton className="h-8 w-72" />
-          <Skeleton className="h-4 w-44" />
+    <div className="flex h-full flex-col bg-[#f5f6fa]">
+      <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
+        <div className="mx-auto max-w-3xl space-y-2">
+          <Skeleton className="h-6 w-80" />
+          <Skeleton className="h-3 w-32" />
         </div>
-
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="border-b border-slate-100 p-6 last:border-b-0"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-start gap-3">
-                  <Skeleton className="mt-1 h-4 w-4 rounded" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-56" />
-                  </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-5 lg:px-8">
+        <div className="mx-auto max-w-3xl space-y-3">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+                <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
                 </div>
-                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20 shrink-0" />
               </div>
-
-              <div className="mt-6 space-y-3 pl-7">
+              <div className="px-5 py-5 space-y-2.5">
                 <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-[94%]" />
-                <Skeleton className="h-4 w-[88%]" />
-                {index === 2 ? (
-                  <Skeleton className="mt-4 h-28 w-full rounded-xl" />
-                ) : null}
+                <Skeleton className="h-4 w-[92%]" />
+                <Skeleton className="h-4 w-[80%]" />
               </div>
             </div>
           ))}

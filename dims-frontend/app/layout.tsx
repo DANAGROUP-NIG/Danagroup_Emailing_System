@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/provider";
@@ -35,10 +35,12 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
   },
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://dims.danagroup.internal"
+  ),
   formatDetection: {
     telephone: false,
   },
-  themeColor: "#2e348f",
   openGraph: {
     title: "DIMS — Dana Internal Mail & Intranet System",
     description: "Enterprise email and intranet platform for Dana Group",
@@ -53,6 +55,10 @@ export const metadata: Metadata = {
       },
     ],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2e348f",
 };
 
 export default function RootLayout({

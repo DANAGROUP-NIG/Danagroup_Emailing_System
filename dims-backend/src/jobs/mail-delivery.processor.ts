@@ -95,7 +95,7 @@ export class MailDeliveryProcessor extends WorkerHost {
         type: "new_mail",
         title: `New mail from ${senderName || message.sender?.email || "Unknown sender"}`,
         body: message.subject,
-        referenceId: message.id,
+        referenceId: message.threadId,
         eventPayload: {
           event: "new_mail",
           data: {

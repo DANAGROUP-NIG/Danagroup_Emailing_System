@@ -5,7 +5,20 @@ import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
-import { supportedMailFolders, useMail } from "@/hooks/useMail";
+import {
+  supportedMailFolders,
+  useInbox,
+  useSent,
+  useDrafts,
+  useStarred,
+  useTrash,
+  useDeleteDraft,
+  useMarkRead,
+  useStarMail,
+  useDeleteMail,
+  useRestoreMail,
+  usePermanentDeleteMail,
+} from "@/hooks/useMail";
 import { useMailStore } from "@/store/mailStore";
 import type {
   DraftMessage,
@@ -47,32 +60,47 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   const { openCompose } = useMailStore();
   const { selectedMessageIds, toggleMessageSelection, resetSelection } =
     useMailStore();
-  const page = searchParams?.page || 1;
   const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>(
     {},
   );
 
-  const mailApi = useMail();
-  const folderHooks = {
-    inbox: mailApi.useInbox,
-    sent: mailApi.useSent,
-    drafts: mailApi.useDrafts,
-    starred: mailApi.useStarred,
-    trash: mailApi.useTrash,
+  const inboxQuery = useInbox();
+  const sentQuery = useSent();
+  const draftsQuery = useDrafts();
+  const starredQuery = useStarred();
+  const trashQuery = useTrash();
+
+  const folderQueries = {
+    inbox: inboxQuery,
+    sent: sentQuery,
+    drafts: draftsQuery,
+    starred: starredQuery,
+    trash: trashQuery,
   };
-  const { mutate: markAsRead } = mailApi.useMarkRead();
-  const starMail = mailApi.useStarMail();
-  const deleteMail = mailApi.useDeleteMail();
-  const restoreMail = mailApi.useRestoreMail();
-  const permanentDeleteMail = mailApi.usePermanentDeleteMail();
+
+  const { mutate: markAsRead } = useMarkRead();
+  const starMail = useStarMail();
+  const deleteMail = useDeleteMail();
+  const restoreMail = useRestoreMail();
+  const permanentDeleteMail = usePermanentDeleteMail();
+  const deleteDraft = useDeleteDraft();
   const isSupportedFolder = supportedMailFolders.includes(viewMode);
   const activeFolderQuery = isSupportedFolder
-    ? folderHooks[viewMode as keyof typeof folderHooks](page)
+    ? folderQueries[viewMode as keyof typeof folderQueries]
     : { data: undefined, isLoading: false };
 
+  const flatData = useMemo(() => {
+    const d = activeFolderQuery.data as { pages?: Array<{ data: unknown[] }> } | undefined;
+    if (!d) return undefined;
+    if (d.pages) {
+      return { data: d.pages.flatMap((p) => p.data) };
+    }
+    return d;
+  }, [activeFolderQuery.data]);
+
   const items = useMemo(
-    () => normalizeMailRows(viewMode, activeFolderQuery.data),
-    [activeFolderQuery.data, viewMode],
+    () => normalizeMailRows(viewMode, flatData),
+    [flatData, viewMode],
   );
 
   const toggleSelectAll = () => {
@@ -251,6 +279,13 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           },
                         });
                       }}
+                      title={
+                        (item.messageId
+                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                          : item.isStarred)
+                          ? "Unstar"
+                          : "Star"
+                      }
                       aria-label={
                         (item.messageId
                           ? (starOverrides[item.messageId] ?? item.isStarred)
@@ -286,6 +321,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           restoreMail.mutate(item.messageId);
                         }
                       }}
+                      title="Restore"
                       aria-label="Restore message from trash"
                       className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
@@ -298,10 +334,16 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                     disabled={
                       !item.messageId ||
                       deleteMail.isPending ||
-                      permanentDeleteMail.isPending
+                      permanentDeleteMail.isPending ||
+                      deleteDraft.isPending
                     }
                     onClick={() => {
                       if (!item.messageId) {
+                        return;
+                      }
+
+                      if (item.isDraft) {
+                        deleteDraft.mutate(item.messageId);
                         return;
                       }
 
@@ -312,7 +354,8 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
 
                       deleteMail.mutate(item.messageId);
                     }}
-                    aria-label={viewMode === "trash" ? "Delete message forever" : "Move message to trash"}
+                    title={item.isDraft ? "Delete draft" : viewMode === "trash" ? "Delete forever" : "Move to trash"}
+                    aria-label={item.isDraft ? "Delete draft" : viewMode === "trash" ? "Delete message forever" : "Move message to trash"}
                     className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />

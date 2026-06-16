@@ -34,7 +34,8 @@ export type MailboxChangedPayload = {
     | "moved_to_trash"
     | "restored_from_trash"
     | "permanently_deleted"
-    | "trash_emptied";
+    | "trash_emptied"
+  | "draft_deleted";
   messageId?: string;
   messageIds?: string[];
   threadId?: string;

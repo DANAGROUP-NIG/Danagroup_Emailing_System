@@ -1345,6 +1345,33 @@ export class MailService {
     }
   }
 
+  async deleteDraft(draftId: string, userId: string) {
+    try {
+      const draft = await this.messageRepo.findOne({
+        where: { id: draftId, senderId: userId, isDraft: true },
+      });
+
+      if (!draft) {
+        throw new NotFoundException("Draft not found");
+      }
+
+      const threadId = draft.threadId;
+      await this.messageRepo.delete(draftId);
+      await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+
+      this.emitMailboxChanged(userId, {
+        action: "draft_deleted",
+        messageId: draftId,
+        threadId,
+        folders: ["drafts"],
+      });
+
+      return { messageId: draftId, status: "draft_deleted" };
+    } catch (error) {
+      this.handleError("deleteDraft", error);
+    }
+  }
+
   async emptyAllTrash(userId: string) {
     try {
       const recipientRows = await this.recipientRepo.find({
@@ -1766,6 +1793,7 @@ export class MailService {
         { userId },
       )
       .where("message.threadId = :threadId", { threadId })
+      .andWhere("message.isDraft = false")
       .andWhere(
         new Brackets((qb) => {
           qb.where(
@@ -1788,6 +1816,7 @@ export class MailService {
         .leftJoinAndSelect("recipient.recipient", "recipientUser")
         .leftJoinAndSelect("message.attachments", "attachment")
         .where("message.threadId = :threadId", { threadId })
+        .andWhere("message.isDraft = false")
         .andWhere(
           new Brackets((qb) => {
             qb.where(

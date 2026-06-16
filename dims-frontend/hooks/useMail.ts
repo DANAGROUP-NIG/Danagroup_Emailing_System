@@ -394,6 +394,44 @@ export function useEmptyTrash() {
   });
 }
 
+export function useDeleteDraft() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (draftId) => {
+      await mailApi.deleteDraft(draftId);
+    },
+    onMutate: async (draftId) => {
+      await queryClient.cancelQueries({ queryKey: mailKeys.folder("drafts") });
+
+      const previousData = queryClient.getQueryData<
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+      >(mailKeys.folder("drafts"));
+
+      if (previousData) {
+        const newPages = previousData.pages.map((page) => ({
+          ...page,
+          data: page.data.filter((item) => (item as DraftMessage).id !== draftId),
+        }));
+        queryClient.setQueryData(mailKeys.folder("drafts"), {
+          ...previousData,
+          pages: newPages,
+        });
+      }
+
+      return { previousData };
+    },
+    onError: (_err, _draftId, context) => {
+      const ctx = context as { previousData?: InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> } | undefined;
+      if (ctx?.previousData) {
+        queryClient.setQueryData(mailKeys.folder("drafts"), ctx.previousData);
+      }
+    },
+    onSettled: invalidateMail,
+  });
+}
+
 export function usePermanentDeleteMail() {
   const invalidateMail = useInvalidateMail();
   return useMutation<Message, Error, string>({

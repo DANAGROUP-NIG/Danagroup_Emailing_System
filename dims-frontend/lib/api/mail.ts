@@ -64,4 +64,7 @@ export const mailApi = {
 
   permanentDelete: (id: string) =>
     apiClient.delete(`/mail/messages/${id}/permanent`),
+
+  deleteDraft: (id: string) =>
+    apiClient.delete(`/mail/drafts/${id}`),
 };

@@ -36,6 +36,8 @@ services:
       - NEXT_PUBLIC_WS_URL=ws://localhost:3000
       - "NEXT_PUBLIC_APP_NAME=DIMS — Dana Internal Mail"
       - INTERNAL_API_ORIGIN=http://api:8000
+    ports:
+      - "3001:3000"  # Direct Next.js access (full stack via nginx on :3000)
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
       interval: 30s
@@ -60,6 +62,8 @@ services:
     environment:
       - PORT=8000
       - DB_SSL=false
+    ports:
+      - "8000:8000"  # Direct API access (full stack via nginx on :3000)
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8000/api/health"]
       interval: 30s
@@ -89,6 +93,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Avoids colliding with a local Postgres instance
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dims_user} -d ${DB_NAME:-dims_db}"]
       interval: 10s
@@ -105,6 +111,8 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -147,6 +155,8 @@ services:
       - cluster.name=dims-cluster
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
       interval: 30s

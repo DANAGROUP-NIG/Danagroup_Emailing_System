@@ -4,49 +4,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 
-/**
- * Content Security Policy (CSP) Configuration
- * - Report-only mode for initial deployment to monitor violations
- * - Nonce-based script-src for inline scripts (nonce injected via middleware)
- * - Strict default-src to prevent unauthorized resource loading
- * - frame-ancestors 'none' prevents clickjacking
- * - object-src 'none' prevents plugin-based attacks
- */
-const getCSPHeader = (nonce = "") => {
-  const isDev = process.env.NODE_ENV === "development";
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "";
-  const wsConnectExtra = wsUrl ? wsUrl.replace(/^ws:/, "ws:").replace(/^wss:/, "wss:") : "";
-
-  // CSP directives with rationale:
-  // default-src 'self' - Only allow resources from same origin
-  // script-src 'self' - Scripts only from self + nonce for inline scripts
-  // style-src 'self' 'unsafe-inline' - Self + inline styles needed for Tailwind + Google Fonts
-  // font-src 'self' https://fonts.gstatic.com - Self-hosted + Google Fonts
-  // img-src 'self' data: blob: - Self + data URIs for avatars + external image hosts
-  // connect-src 'self' ws:// wss:// - API calls + WebSocket connections
-  // frame-ancestors 'none' - Prevent clickjacking (redundant with X-Frame-Options)
-  // form-action 'self' - Forms only submit to same origin
-  // base-uri 'self' - Prevent base tag manipulation
-  // object-src 'none' - No plugins (Flash, PDF, etc.)
-
-  const nonceDirective = nonce ? `'nonce-${nonce}'` : "";
-
-  return [
-    "default-src 'self'",
-    `script-src 'self' ${nonceDirective} ${isDev ? "'unsafe-eval'" : ""}`.trim(),
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
-    `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra ? ` ${wsConnectExtra}` : ""}`,
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-    "base-uri 'self'",
-    "object-src 'none'",
-  ].join("; ");
-};
 
 const nextConfig = {
   output: "standalone",
+  allowedDevOrigins: ["*.trycloudflare.com"],
+  experimental: {
+    serverComponentsExternalPackages: ["pino", "pino-pretty", "thread-stream"],
+  },
   async rewrites() {
     const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -91,13 +55,12 @@ const nextConfig = {
   },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
-    const cspValue = getCSPHeader();
 
+    // NOTE: Content-Security-Policy is intentionally omitted here.
+    // It is set per-request by middleware.ts with a cryptographic nonce so that
+    // Next.js inline scripts (__NEXT_DATA__, chunk loaders) get the correct nonce.
+    // A static nonce-less CSP here would conflict and block those scripts.
     const securityHeaders = [
-      {
-        key: "Content-Security-Policy",
-        value: cspValue,
-      },
       // X-Frame-Options: DENY - Prevents clickjacking (legacy header, CSP frame-ancestors is primary)
       { key: "X-Frame-Options", value: "DENY" },
       // X-Content-Type-Options: nosniff - Prevents MIME type sniffing
