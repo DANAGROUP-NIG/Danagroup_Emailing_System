@@ -293,8 +293,30 @@ export async function setupAuthMocks(
       });
     }
 
-    // Fallback — pass through (shouldn't hit in CI)
-    return route.continue();
+    // POST /auth/refresh
+    if (url.includes("/auth/refresh") && method === "POST") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
+    }
+
+    // POST /files/avatar or any other file upload
+    if (url.includes("/files") && method === "POST") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { avatarUrl: "" } }),
+      });
+    }
+
+    // Fallback — return 404 so the page load is never blocked by a hanging request
+    return route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Not found (mock fallback)" }),
+    });
   });
 
   // Inject the cookie so middleware sees the user as authenticated
