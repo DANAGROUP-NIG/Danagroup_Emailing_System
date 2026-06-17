@@ -32,8 +32,8 @@ export default function AuthLayout({
               <Image
                 src={logo}
                 alt="Dana Group logo"
-                width={44}
-                height={44}
+                width={144}
+                height={28}
                 className="object-contain"
               />
               <span className="text-lg font-semibold tracking-wide">
@@ -67,8 +67,8 @@ export default function AuthLayout({
             <Image
               src={logo}
               alt="Dana Group logo"
-              width={32}
-              height={32}
+              width={112}
+              height={22}
               className="object-contain"
             />
             <span className="text-sm font-semibold text-foreground">

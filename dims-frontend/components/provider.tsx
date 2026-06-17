@@ -8,7 +8,13 @@ import { ToastProvider } from "@/components/ui/Toast";
 // @axe-core/react disabled — conflicts with React 18 ES module exports
 // Use browser DevTools Lighthouse or axe DevTools extension for a11y auditing
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  children,
+  nonce,
+}: {
+  children: React.ReactNode;
+  nonce?: string;
+}) {
   // QueryClient is created once per session to ensure stable cache
   const [queryClient] = useState(
     () =>
@@ -27,7 +33,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      {...(nonce ? { nonce } : {})}
+    >
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           {children}

@@ -265,9 +265,9 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
         >
           <div className={cn("rounded-lg bg-white", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
             {collapsed ? (
-              <Image src={logo} width={32} height={32} alt="Dana Group logo" priority className="object-contain" />
+              <Image src={logo} width={32} height={6} alt="Dana Group logo" priority className="object-contain" />
             ) : (
-              <Image src={logo} width={140} height={36} alt="Dana Group logo" priority />
+              <Image src={logo} width={140} height={27} alt="Dana Group logo" priority />
             )}
           </div>
         </Link>

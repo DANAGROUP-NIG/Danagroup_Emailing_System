@@ -49,7 +49,9 @@ function buildCSPHeader(nonce: string, isDev: boolean): string {
 
   const directives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    // 'strict-dynamic' propagates trust from nonced scripts to chunks they load dynamically.
+    // 'unsafe-inline' is a CSP1/2 fallback only — CSP3 browsers ignore it when nonce is set.
+    `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
@@ -208,6 +210,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // Build CSP header with nonce
   const cspValue = buildCSPHeader(nonce, isDev);
 
+  // Forward nonce in request headers so Next.js reads it during SSR and adds
+  // nonce="..." to every inline <script> it generates (hydration, chunk loader, etc.)
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", cspValue);
+
   // Determine if this is a public route
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
@@ -237,12 +245,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   // Skip auth checks for public routes (but still apply CSP)
   if (isPublicRoute) {
-    const response = NextResponse.next();
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-    // Inject CSP nonce header for use by components
     response.headers.set("x-csp-nonce", nonce);
-
-    // Add CSP header
     response.headers.set("Content-Security-Policy", cspValue);
 
     // If user is already authenticated, redirect away from login pages
@@ -270,7 +275,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
         // If refresh succeeded, create response with new cookie
         if (user) {
-          const response = NextResponse.next();
+          const response = NextResponse.next({ request: { headers: requestHeaders } });
           response.cookies.set("access_token", newToken, {
             httpOnly: true,
             secure: !isDev,
@@ -304,7 +309,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   }
 
   // Authenticated and authorized - proceed with CSP headers
-  const response = NextResponse.next();
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("x-csp-nonce", nonce);
   response.headers.set("Content-Security-Policy", cspValue);
 
@@ -313,7 +318,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
 export const config = {
   matcher: [
-    // Skip static files, API proxy routes, and image files
-    "/((?!_next/static|_next/image|api/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip static files, API proxy routes, PWA assets, and image files
+    "/((?!_next/static|_next/image|api/|favicon.ico|manifest.json|sw.js|workbox-.*\\.js|fallback-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

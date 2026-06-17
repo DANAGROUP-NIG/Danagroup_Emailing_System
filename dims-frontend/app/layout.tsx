@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import Providers from "@/components/provider";
 import { WebVitals } from "@/components/WebVitals";
@@ -66,10 +67,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const nonce = headers().get("x-nonce") ?? undefined;
+
   return (
     <html lang="en" className={rubik.variable} suppressHydrationWarning>
       <body className="font-rubik antialiased">
-        <Providers>
+        <Providers {...(nonce ? { nonce } : {})}>
           <WebVitals />
           {children}
         </Providers>
