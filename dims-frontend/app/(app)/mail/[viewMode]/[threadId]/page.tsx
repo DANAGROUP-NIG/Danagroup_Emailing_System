@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import MailThread from "@/components/mail/MailThread";
-import Spinner from "@/components/ui/Spinner";
+import { Spinner } from "@/components/ui/Spinner";
 
 export default function ThreadPage({
   params,

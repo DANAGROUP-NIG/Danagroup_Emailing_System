@@ -1,23 +1,14 @@
-
-// TODO: Implement useInbox(page): useQuery(['mail','inbox',page]) → GET /api/mail/inbox
-// TODO: Implement useSent(page): useQuery(['mail','sent',page]) → GET /api/mail/sent
-// TODO: Implement useDrafts(page): useQuery(['mail','drafts',page]) → GET /api/mail/drafts
-// TODO: Implement useThread(threadId): useQuery(['mail','thread',threadId]) → GET /api/mail/thread/:threadId
-// TODO: Implement useMail hook
-// TODO: Invalidate mail queries after successful mail mutations
-// TODO: Implement useSendMail(): useMutation → POST /api/mail/send
-// TODO: Implement useMarkRead(id): useMutation → PATCH /api/mail/:id/read
-// TODO: Implement useStarMail(id): useMutation → PATCH /api/mail/:id/star
-// TODO: Implement useDeleteMail(id): useMutation → DELETE /api/mail/:id
-
-// TODO: Implement useSaveDraft(): useMutation → POST /api/mail/draft
-
-
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/api";
-import type { PaginatedResponse } from "@/types/api.types";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
+import { mailApi } from "@/lib/api/mail";
+import type { PaginatedResponse, BackendPageResponse } from "@/types/api.types";
 import type {
   ComposeData,
   DraftMessage,
@@ -27,8 +18,10 @@ import type {
   ThreadDetail,
 } from "@/types/mail.types";
 
+// ─── Types & Constants ───────────────────────────────────────────────────────
+
 type ApiEnvelope<T> = T | { data: T };
-const MAIL_STALE_TIME = 0;
+
 export const supportedMailFolders: MailFolder[] = [
   "inbox",
   "sent",
@@ -37,214 +30,509 @@ export const supportedMailFolders: MailFolder[] = [
   "trash",
 ];
 
-function unwrapResponse<T>(payload: any): T {
-  return payload?.data ?? payload;
+// Cache configuration
+const LIST_STALE_TIME = 30_000;
+const LIST_GC_TIME = 5 * 60_000;
+const THREAD_STALE_TIME = 0; // Real-time for threads
+
+function unwrapResponse<T>(payload: ApiEnvelope<T>): T {
+  return (payload as { data: T })?.data ?? (payload as T);
 }
 
-/** 
- * Helper for paginated folder fetching 
- */
-async function getMailPage(
-  folder: MailFolder,
-  page = 1,
-): Promise<PaginatedResponse<MailThreadSummary | DraftMessage>> {
-  const response = await api.get(`/mail/${folder}`, {
-    params: { page }
+// ─── Query Key Helpers ───────────────────────────────────────────────────────
+
+export const mailKeys = {
+  all: ["mail"] as const,
+  folder: (folder: MailFolder) => [...mailKeys.all, folder] as const,
+  thread: (id: string | undefined) => [...mailKeys.all, "thread", id] as const,
+  message: (id: string) => ["message", id] as const,
+  search: () => ["search", "mail"] as const,
+};
+
+// ─── Helper: Invalidate Mail Queries ─────────────────────────────────────────
+
+function useInvalidateMail() {
+  const queryClient = useQueryClient();
+  return async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: mailKeys.all }),
+      queryClient.invalidateQueries({ queryKey: mailKeys.search() }),
+    ]);
+  };
+}
+
+// ─── List Hooks (Infinite Query) ─────────────────────────────────────────────
+
+function useMailFolderInfinite(folder: MailFolder) {
+  return useInfiniteQuery<
+    BackendPageResponse<MailThreadSummary | DraftMessage>,
+    Error,
+    InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>,
+    ReturnType<typeof mailKeys.folder>,
+    number
+  >({
+    queryKey: mailKeys.folder(folder),
+    queryFn: async ({ pageParam = 1 }) => {
+      const params = { page: pageParam, limit: 20 };
+      let response;
+      switch (folder) {
+        case "sent":
+          response = await mailApi.getSent(params);
+          break;
+        case "drafts":
+          response = await mailApi.getDrafts(params);
+          break;
+        case "starred":
+          response = await mailApi.getStarred(params);
+          break;
+        case "trash":
+          response = await mailApi.getTrash(params);
+          break;
+        default:
+          response = await mailApi.getInbox(params);
+          break;
+      }
+      return response.data as BackendPageResponse<MailThreadSummary | DraftMessage>;
+    },
+    getNextPageParam: (lastPage) => {
+      const hasMore = lastPage.page * lastPage.limit < lastPage.total;
+      return hasMore ? lastPage.page + 1 : undefined;
+    },
+    initialPageParam: 1,
+    staleTime: LIST_STALE_TIME,
+    gcTime: LIST_GC_TIME,
+    // Default refetch behavior from QueryClient config
   });
-
-  return unwrapResponse(response.data);
 }
 
+export function useInbox() {
+  return useMailFolderInfinite("inbox");
+}
+
+export function useSent() {
+  return useMailFolderInfinite("sent");
+}
+
+export function useDrafts() {
+  return useMailFolderInfinite("drafts");
+}
+
+export function useStarred() {
+  return useMailFolderInfinite("starred");
+}
+
+export function useTrash() {
+  return useMailFolderInfinite("trash");
+}
+
+// ─── Thread & Message Hooks ────────────────────────────────────────────────────
+
+export function useThread(threadId: string | undefined) {
+  return useQuery<ThreadDetail, Error>({
+    queryKey: mailKeys.thread(threadId),
+    queryFn: async () => {
+      if (!threadId) throw new Error("Thread ID is required");
+      const res = await mailApi.getThread(threadId);
+      return unwrapResponse<ThreadDetail>(res.data as ApiEnvelope<ThreadDetail>);
+    },
+    enabled: !!threadId,
+    staleTime: THREAD_STALE_TIME, // Real-time freshness for threads
+  });
+}
+
+export function useMessage(messageId: string) {
+  return useQuery<Message, Error>({
+    queryKey: mailKeys.message(messageId),
+    queryFn: async () => {
+      const res = await mailApi.getMessage(messageId);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    enabled: !!messageId,
+    staleTime: 5 * 60 * 1000, // 5 minutes for individual messages
+  });
+}
+
+// ─── Mutations ─────────────────────────────────────────────────────────────────
+
+export function useSendMail() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, ComposeData>({
+    mutationFn: async (payload) => {
+      const res = await mailApi.send(payload);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useSaveDraft() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, ComposeData>({
+    mutationFn: async (payload) => {
+      const res = await mailApi.saveDraft(payload);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useMarkThreadRead() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<void, Error, string>({
+    mutationFn: async (threadId) => {
+      await mailApi.markThreadRead(threadId);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useMarkRead() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<Message, Error, string>({
+    mutationFn: async (id) => {
+      const res = await mailApi.markRead(id, true);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onMutate: async (messageId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: mailKeys.all });
+
+      // Snapshot previous values
+      const previousData = new Map<
+        MailFolder,
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined
+      >();
+
+      // Optimistically update all folder caches
+      supportedMailFolders.forEach((folder) => {
+        const queryKey = mailKeys.folder(folder);
+        const data = queryClient.getQueryData<
+          InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+        >(queryKey);
+        previousData.set(folder, data);
+
+        if (!data) return;
+
+        const newPages = data.pages.map((page) => ({
+          ...page,
+          data: page.data.map((item) => {
+            // Check if this is a thread summary with the message (MailThreadSummary has latestMessage)
+            if ("latestMessage" in item && item.latestMessage?.id === messageId) {
+              const threadItem = item as MailThreadSummary;
+              return {
+                ...threadItem,
+                latestMessage: threadItem.latestMessage ? { ...threadItem.latestMessage, isRead: true } : null,
+                unreadCount: Math.max(0, (threadItem.unreadCount ?? 1) - 1),
+              };
+            }
+            return item;
+          }),
+        }));
+
+        queryClient.setQueryData(queryKey, {
+          ...data,
+          pages: newPages,
+        });
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _messageId, context) => {
+      // Rollback on error
+      const ctx = context as { previousData?: Map<MailFolder, InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined> } | undefined;
+      if (ctx?.previousData) {
+        ctx.previousData.forEach((data, folder) => {
+          if (data) {
+            queryClient.setQueryData(mailKeys.folder(folder), data);
+          }
+        });
+      }
+    },
+    onSettled: invalidateMail,
+  });
+}
+
+export function useStarMail() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<Message, Error, { id: string; isStarred: boolean }>({
+    mutationFn: async ({ id, isStarred }) => {
+      const res = await mailApi.toggleStar(id, isStarred);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onMutate: async ({ id, isStarred }) => {
+      await queryClient.cancelQueries({ queryKey: mailKeys.all });
+
+      const previousData = new Map<
+        MailFolder,
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined
+      >();
+
+      supportedMailFolders.forEach((folder) => {
+        const queryKey = mailKeys.folder(folder);
+        const data = queryClient.getQueryData<
+          InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+        >(queryKey);
+        previousData.set(folder, data);
+
+        if (!data) return;
+
+        const newPages = data.pages.map((page) => ({
+          ...page,
+          data: page.data.map((item) => {
+            // Check if this is a thread summary (MailThreadSummary has latestMessage)
+            if ("latestMessage" in item && item.latestMessage?.id === id) {
+              const threadItem = item as MailThreadSummary;
+              return {
+                ...threadItem,
+                isStarred,
+              };
+            }
+            return item;
+          }),
+        }));
+
+        queryClient.setQueryData(queryKey, { ...data, pages: newPages });
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
+      const ctx = context as { previousData?: Map<MailFolder, InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined> } | undefined;
+      if (ctx?.previousData) {
+        ctx.previousData.forEach((data, folder) => {
+          if (data) {
+            queryClient.setQueryData(mailKeys.folder(folder), data);
+          }
+        });
+      }
+    },
+    onSettled: invalidateMail,
+  });
+}
+
+export function useDeleteMail() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<Message, Error, string>({
+    mutationFn: async (id) => {
+      const res = await mailApi.moveToTrash(id);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onMutate: async (messageId) => {
+      await queryClient.cancelQueries({ queryKey: mailKeys.all });
+
+      const previousData = new Map<
+        MailFolder,
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined
+      >();
+
+      supportedMailFolders.forEach((folder) => {
+        if (folder === "trash") return; // Don't remove from trash
+
+        const queryKey = mailKeys.folder(folder);
+        const data = queryClient.getQueryData<
+          InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+        >(queryKey);
+        previousData.set(folder, data);
+
+        if (!data) return;
+
+        const newPages = data.pages.map((page) => ({
+          ...page,
+          data: page.data.filter((item) => {
+            // Check if this is a thread summary (MailThreadSummary has latestMessage)
+            if ("latestMessage" in item) {
+              const threadItem = item as MailThreadSummary;
+              return threadItem.latestMessage?.id !== messageId;
+            }
+            return true; // Keep draft messages (they have different structure)
+          }),
+        }));
+
+        queryClient.setQueryData(queryKey, { ...data, pages: newPages });
+      });
+
+      return { previousData };
+    },
+    onError: (_err, _messageId, context) => {
+      const ctx = context as { previousData?: Map<MailFolder, InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined> } | undefined;
+      if (ctx?.previousData) {
+        ctx.previousData.forEach((data, folder) => {
+          if (data) {
+            queryClient.setQueryData(mailKeys.folder(folder), data);
+          }
+        });
+      }
+    },
+    onSettled: invalidateMail,
+  });
+}
+
+export function useRestoreMail() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, string>({
+    mutationFn: async (id) => {
+      const res = await mailApi.restore(id);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useEmptyTrash() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<void, Error, void>({
+    mutationFn: async () => {
+      await mailApi.emptyTrash();
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useDeleteDraft() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (draftId) => {
+      await mailApi.deleteDraft(draftId);
+    },
+    onMutate: async (draftId) => {
+      await queryClient.cancelQueries({ queryKey: mailKeys.folder("drafts") });
+
+      const previousData = queryClient.getQueryData<
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+      >(mailKeys.folder("drafts"));
+
+      if (previousData) {
+        const newPages = previousData.pages.map((page) => ({
+          ...page,
+          data: page.data.filter((item) => (item as DraftMessage).id !== draftId),
+        }));
+        queryClient.setQueryData(mailKeys.folder("drafts"), {
+          ...previousData,
+          pages: newPages,
+        });
+      }
+
+      return { previousData };
+    },
+    onError: (_err, _draftId, context) => {
+      const ctx = context as { previousData?: InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> } | undefined;
+      if (ctx?.previousData) {
+        queryClient.setQueryData(mailKeys.folder("drafts"), ctx.previousData);
+      }
+    },
+    onSettled: invalidateMail,
+  });
+}
+
+export function usePermanentDeleteMail() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, string>({
+    mutationFn: async (id) => {
+      const res = await mailApi.permanentDelete(id);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useBulkMarkRead() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<void, Error, string[]>({
+    mutationFn: async (messageIds) => {
+      await mailApi.markManyRead(messageIds);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useReplyMail() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, { threadId: string; data: ComposeData }>({
+    mutationFn: async ({ threadId, data }) => {
+      const res = await mailApi.send({ ...data, threadId });
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+export function useForwardMail() {
+  const invalidateMail = useInvalidateMail();
+  return useMutation<Message, Error, { messageId: string; data: ComposeData }>({
+    mutationFn: async ({ data }) => {
+      // Forward is essentially a new message with quoted content
+      const res = await mailApi.send(data);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
+// ─── Legacy Compatibility ─────────────────────────────────────────────────────
+
+/**
+ * @deprecated Use discrete hooks instead: useInbox(), useSent(), etc.
+ */
 export function useMail() {
   const queryClient = useQueryClient();
 
   const invalidateMail = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["mail"] }),
-      queryClient.invalidateQueries({ queryKey: ["search", "mail"] }),
+      queryClient.invalidateQueries({ queryKey: mailKeys.all }),
+      queryClient.invalidateQueries({ queryKey: mailKeys.search() }),
     ]);
   };
 
   return {
-    // --- QUERIES ---
     useInbox: (page = 1) =>
       useQuery({
-        queryKey: ["mail", "inbox", page],
-        queryFn: () => getMailPage("inbox", page),
-        staleTime: MAIL_STALE_TIME,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        queryKey: ["mail", "inbox", "legacy", page],
+        queryFn: () => mailApi.getInbox({ page }).then((r) => r.data),
+        staleTime: LIST_STALE_TIME,
       }),
-
     useSent: (page = 1) =>
       useQuery({
-        queryKey: ["mail", "sent", page],
-        queryFn: () => getMailPage("sent", page),
-        staleTime: MAIL_STALE_TIME,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        queryKey: ["mail", "sent", "legacy", page],
+        queryFn: () => mailApi.getSent({ page }).then((r) => r.data),
+        staleTime: LIST_STALE_TIME,
       }),
-
     useDrafts: (page = 1) =>
       useQuery({
-        queryKey: ["mail", "drafts", page],
-        queryFn: () => getMailPage("drafts", page),
-        staleTime: MAIL_STALE_TIME,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        queryKey: ["mail", "drafts", "legacy", page],
+        queryFn: () => mailApi.getDrafts({ page }).then((r) => r.data),
+        staleTime: LIST_STALE_TIME,
       }),
-
     useStarred: (page = 1) =>
       useQuery({
-        queryKey: ["mail", "starred", page],
-        queryFn: () => getMailPage("starred", page),
-        staleTime: MAIL_STALE_TIME,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        queryKey: ["mail", "starred", "legacy", page],
+        queryFn: () => mailApi.getStarred({ page }).then((r) => r.data),
+        staleTime: LIST_STALE_TIME,
       }),
-
     useTrash: (page = 1) =>
       useQuery({
-        queryKey: ["mail", "trash", page],
-        queryFn: () => getMailPage("trash", page),
-        staleTime: MAIL_STALE_TIME,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        queryKey: ["mail", "trash", "legacy", page],
+        queryFn: () => mailApi.getTrash({ page }).then((r) => r.data),
+        staleTime: LIST_STALE_TIME,
       }),
-
-  // Fetches full thread and marks all messages within it as read
-  useThread: (threadId?: string) =>
-    useQuery<ThreadDetail>({
-    queryKey: ["mail", "thread", threadId],
-    queryFn: async () => {
-      if (!threadId) throw new Error("Thread ID is required");
-
-      const res = await api.get(`/mail/threads/${threadId}`);
-
-      if (!res) throw new Error("No data returned from server");
-
-      return res.data.data;
-    },
-    enabled: !!threadId,
-  }),
-
-    // --- MUTATIONS ---
-    
-    // Sending & Drafts
-    useSendMail: () =>
-      useMutation({
-        mutationFn: async (payload: ComposeData) => {
-          const res = await api.post<ApiEnvelope<Message>>("/mail/send", payload);
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    useSaveDraft: () =>
-      useMutation({
-        mutationFn: async (payload: ComposeData) => {
-          const res = await api.post<ApiEnvelope<Message>>("/mail/draft", payload);
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    // Single Message Actions
-    useGetMessage: (messageId: string) => 
-      useQuery<Message>({
-        queryKey: ['message', messageId],
-        queryFn: async () => {
-          // Using your 'api' instance and unwrapResponse for consistency
-          const res = await api.get<ApiEnvelope<Message>>(`/mail/messages/${messageId}`);
-          return unwrapResponse(res.data);
-        },
-        enabled: !!messageId, // Only runs if messageId is truthy
-        staleTime: 300000,    // 5 minutes
-      }),  
-
-    // Thread Actions
-    useMarkThreadRead: () =>
-      useMutation({
-        mutationFn: (threadId: string) => api.patch(`/mail/threads/${threadId}/read`),
-        onSuccess: invalidateMail,
-      }),
-
-    // Single Message Actions
-    useMarkRead: () =>
-      useMutation({
-        mutationFn: async (id: string) => {
-          const res = await api.patch<ApiEnvelope<Message>>(`/mail/messages/${id}/read`, {
-            isRead: true,
-          });
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    useStarMail: () =>
-      useMutation({
-        mutationFn: async ({
-          id,
-          isStarred,
-        }: {
-          id: string;
-          isStarred: boolean;
-        }) => {
-          const res = await api.patch<ApiEnvelope<Message>>(`/mail/${id}/star`, {
-            isStarred,
-          });
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    // Trash & Deletion
-    useDeleteMail: () =>
-      useMutation({
-        mutationFn: async (id: string) => {
-          const res = await api.delete<ApiEnvelope<Message>>(`/mail/${id}`);
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    useRestoreMail: () =>
-      useMutation({
-        mutationFn: async (id: string) => {
-          const res = await api.patch<ApiEnvelope<Message>>(`/mail/${id}/restore`);
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    useEmptyTrash: () =>
-      useMutation({
-        mutationFn: () => api.delete("/mail/trash/empty"),
-        onSuccess: invalidateMail,
-      }),
-
-    usePermanentDeleteMail: () =>
-      useMutation({
-        mutationFn: async (id: string) => {
-          const res = await api.delete<ApiEnvelope<Message>>(
-            `/mail/messages/${id}/permanent`,
-          );
-          return unwrapResponse(res.data);
-        },
-        onSuccess: invalidateMail,
-      }),
-
-    // Bulk Actions
-    useBulkMarkRead: () =>
-      useMutation({
-        mutationFn: (messageIds: string[]) =>
-          api.patch("/mail/messages/read", { messageIds }),
-        onSuccess: invalidateMail,
-      }),
+    useThread: (threadId?: string) => useThread(threadId),
+    useSendMail: () => useSendMail(),
+    useSaveDraft: () => useSaveDraft(),
+    useMarkThreadRead: () => useMarkThreadRead(),
+    useMarkRead: () => useMarkRead(),
+    useStarMail: () => useStarMail(),
+    useDeleteMail: () => useDeleteMail(),
+    useRestoreMail: () => useRestoreMail(),
+    useEmptyTrash: () => useEmptyTrash(),
+    usePermanentDeleteMail: () => usePermanentDeleteMail(),
+    useBulkMarkRead: () => useBulkMarkRead(),
+    useGetMessage: (messageId: string) => useMessage(messageId),
   };
 }

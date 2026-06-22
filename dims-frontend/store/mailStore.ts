@@ -1,16 +1,19 @@
-// TODO: Implement Mail UI Store (Zustand)
-// Ref: frontend-blueprint.md §4.2
-
 import { create } from 'zustand';
 
-type MailFolder = "inbox" | "sent" | "drafts" | "trash";
+import type { MailFolder } from "@/types/mail.types";
 
 export type ComposeMode = "new" | "reply" | "forward";
+
+export interface ComposeRecipient {
+  id: string;
+  name: string;
+  email: string;
+}
 
 export interface ComposeDefaults {
   mode?: ComposeMode;
   threadId?: string;
-  to?: string;
+  to?: string | ComposeRecipient[];
   cc?: string;
   bcc?: string;
   subject?: string;

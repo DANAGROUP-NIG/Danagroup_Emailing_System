@@ -29,9 +29,9 @@ export class CloudinaryService {
   async deleteFile(publicId: string): Promise<void> {
     try {
       await cloudinary.uploader.destroy(publicId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw new Error(
-        `Failed to delete file from Cloudinary: ${error.message}`,
+        `Failed to delete file from Cloudinary: ${(error as Error).message}`,
       );
     }
   }

@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
-import { User } from "./entities/user.entity";
+import { User, UserRole } from "./entities/user.entity";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -41,7 +41,7 @@ export class UsersService {
 
   private readonly logger = new Logger(UsersService.name);
 
-  private handleError(method: string, error: any) {
+  private handleError(method: string, error: Error & { stack?: string }) {
     // Do not mask NestJS known exceptions (BadRequestException, etc.)
     this.logger.error(
       `UsersService.${method} failed: ${error.message}`,
@@ -50,7 +50,7 @@ export class UsersService {
     throw error;
   }
 
-  async updateSessions(id: string, sessions: any[]): Promise<void> {
+  async updateSessions(id: string, sessions: User['sessions']): Promise<void> {
     await this.userRepo.update(id, { sessions });
   }
 
@@ -61,7 +61,6 @@ export class UsersService {
     await this.userRepo.update(id, data);
   }
 
-  // TODO: Implement findAll(filters): paginated list of users
   async findAll(query: QueryUserDto) {
     try {
       const page = Number(query.page) || 1;
@@ -97,7 +96,6 @@ export class UsersService {
       this.handleError("findAll", error);
     }
   }
-  // TODO: Implement findById(id): User
   async findById(id: string): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id },
@@ -110,7 +108,6 @@ export class UsersService {
     return user;
   }
 
-  // TODO: Implement findByEmail(email): User | null (used by AuthService)
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepo.findOne({
       where: { email },
@@ -125,8 +122,6 @@ export class UsersService {
       ],
     });
   }
-  // TODO: Implement search(query): User[] (for RecipientInput autocomplete)
-  // TODO: Implement search(query): User[] (for RecipientInput autocomplete)
   async search(
     query: string,
     filters: { department?: string; subsidiary?: string; role?: string },
@@ -156,7 +151,6 @@ export class UsersService {
     }
   }
 
-  // TODO: Implement create(dto): User (admin only)
   async create(dto: CreateUserDto) {
     // Find the existing department and subsidiary by name
     const department = await this.departRepo.findOneBy({
@@ -184,7 +178,7 @@ export class UsersService {
       const newUser = this.userRepo.create({
         ...dto,
         passwordHash: passwordHash,
-        role: dto.role as any,
+        role: dto.role as UserRole,
         subsidiary: subsidiary,
         department: department,
       });
@@ -206,7 +200,6 @@ export class UsersService {
       this.handleError("create", error);
     }
   }
-  // TODO: Implement update(id, dto): User (admin or self)
   async update(
     id: string,
     dto: UpdateUserDto,
@@ -225,7 +218,7 @@ export class UsersService {
       const updatedUser = await this.userRepo.save({
         ...existingUser,
         ...dto,
-        role: dto.role as any,
+        role: dto.role as UserRole,
         subsidiary: dto.subsidiary ? { id: dto.subsidiary } : undefined,
         department: dto.department ? { id: dto.department } : undefined,
       });
@@ -262,7 +255,6 @@ export class UsersService {
     }
   }
 
-  // TODO: Implement deactivate(id): void (admin only, sets is_active = false)
   async deactivate(id: string): Promise<void> {
     try {
       const user = await this.findById(id);

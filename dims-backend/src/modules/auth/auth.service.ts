@@ -80,10 +80,6 @@ export class AuthService {
     };
   }
 
-  // TODO: Implement validateUser(email, password): Promise<User | null>
-  // - Find user by email from UsersService
-  // - Compare password hash using bcrypt.compare
-  // - Return user without password if valid, null otherwise
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
 
@@ -97,7 +93,7 @@ export class AuthService {
     return result;
   }
 
-  private async generateTokens(user: any) {
+  private async generateTokens(user: Pick<UserShape, 'id' | 'email' | 'role'>) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -117,10 +113,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // TODO: Implement login(user): Promise<{ accessToken, refreshToken, user }>
-  // - Sign JWT access token (payload: { sub: user.id, email, role })
-  // - Sign refresh token with longer expiry (JWT_REFRESH_SECRET)
-  // - Return both tokens + user object
   async login(user: UserShape, userAgent?: string, ip?: string, req?: Request) {
     //Fetch the complete user from the database to get all missing fields
     const fullUser = await this.usersService.findById(user.id);
@@ -159,9 +151,6 @@ export class AuthService {
     };
   }
 
-  // TODO: Implement refresh(refreshToken): Promise<{ accessToken }>
-  // - Verify refresh token with JWT_REFRESH_SECRET
-  // - Issue new access token
   async refresh(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
@@ -210,8 +199,6 @@ export class AuthService {
     }
   }
 
-  // TODO: Implement logout(): void
-  // - Optionally blacklist refresh token in Redis (for full invalidation)
   async logout(
     userId: string,
     accessToken: string,

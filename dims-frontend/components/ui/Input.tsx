@@ -1,66 +1,141 @@
-// TODO: Implement Input Component
-// Props: label?: string, error?: string, leftIcon?: ReactNode, rightIcon?: ReactNode,
-//        ...InputHTMLAttributes
-// - Wraps <input> with .dims-input CSS class
-// - Renders optional label above, error message below in dana-red
-// - Supports left/right icon slots
-import getAutoCompleteValue from "@/utils/getAutoCompleteValue";
-import { forwardRef, InputHTMLAttributes } from "react";
-import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+// components/ui/Input.tsx — Canonical Input
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-interface ComposeInputProp extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  errors?: FieldError;
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string | undefined;
+  error?: string | undefined;
+  helperText?: string | undefined;
+  leftIcon?: React.ReactNode | undefined;
+  rightIcon?: React.ReactNode | undefined;
+  fullWidth?: boolean | undefined;
+  as?: 'input' | 'textarea' | undefined;
+  rows?: number | undefined;
 }
 
-interface InputProp {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      label,
+      error,
+      helperText,
+      leftIcon,
+      rightIcon,
+      fullWidth,
+      id: idProp,
+      as: asProp = 'input',
+      rows,
+      ...props
+    },
+    ref,
+  ) => {
+    const generatedId = React.useId();
+    const id = idProp ?? generatedId;
+    const helpId = `${id}-help`;
+
+    const sharedClassName = cn(
+      "flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-dana-sm",
+      "placeholder:text-muted-foreground",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      "transition-colors",
+      error && "border-danger focus-visible:ring-danger/30",
+      leftIcon && "pl-9",
+      rightIcon && "pr-9",
+      fullWidth && "w-full",
+      asProp === 'input' && "h-10",
+      className,
+    );
+
+    return (
+      <div className={cn("flex flex-col gap-1", fullWidth && "w-full")}>
+        {label && (
+          <label
+            htmlFor={id}
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {label}
+          </label>
+        )}
+
+        <div className="relative flex items-center">
+          {leftIcon && (
+            <span className="pointer-events-none absolute left-3 flex items-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
+              {leftIcon}
+            </span>
+          )}
+
+          {asProp === 'textarea' ? (
+            <textarea
+              id={id}
+              aria-describedby={error || helperText ? helpId : undefined}
+              aria-invalid={error ? true : undefined}
+              rows={rows ?? 3}
+              className={sharedClassName}
+              {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+            />
+          ) : (
+            <input
+              ref={ref}
+              id={id}
+              aria-describedby={error || helperText ? helpId : undefined}
+              aria-invalid={error ? true : undefined}
+              className={sharedClassName}
+              {...props}
+            />
+          )}
+
+          {rightIcon && (
+            <span className="pointer-events-none absolute right-3 flex items-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
+              {rightIcon}
+            </span>
+          )}
+        </div>
+
+        {(error || helperText) && (
+          <p
+            id={helpId}
+            className={cn(
+              "text-xs",
+              error ? "text-danger" : "text-muted-foreground",
+            )}
+          >
+            {error ?? helperText}
+          </p>
+        )}
+      </div>
+    );
+  },
+);
+
+Input.displayName = "Input";
+
+export { Input };
+export default Input;
+
+// ─── ComposeInput ─────────────────────────────────────────────────────────────
+// Thin wrapper kept for backward compat with ComposeModal which uses register spread.
+// Callers: just use <Input {...register('field')} label="..." error={errors.field?.message} />
+
+export interface ComposeInputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  placeholder: string;
-  register: UseFormRegisterReturn;
-  type: string;
-  name?: string;
-  autoComplete?: string;
-  className?: string;
-  disabled?: boolean;
-  errors?: any
+  errors?: { message?: string } | undefined;
 }
 
-export default function Input({label, placeholder, register, type, name, disabled}: InputProp) {
-  const autocompleteValue = getAutoCompleteValue(name, type);
+export const ComposeInput = React.forwardRef<
+  HTMLInputElement,
+  ComposeInputProps
+>(({ label, errors, ...props }, ref) => (
+  <Input
+    ref={ref}
+    label={label}
+    error={errors?.message}
+    fullWidth
+    {...props}
+  />
+));
 
-  // TODO: Implement
-  return (
-    <div >
-      <p className="text-xs mb-1 text-gray-500">{label}</p>
-      <input 
-        {...register} 
-        type={type} 
-        id={name}
-        name={name} 
-        autoComplete={autocompleteValue}
-        disabled={disabled} 
-        className={`border-gray-300 rounded pl-3 focus:outline-none focus:ring-2 focus:ring-dana-blue-300 focus:border-transparent border-[1px] py-2 shadow-sm w-full target:text-gray-400 placeholder:text-xs`}  placeholder={placeholder}/>
-    </div>
-  )
-}
-
-
-
-export const ComposeInput = forwardRef<HTMLInputElement, ComposeInputProp>(function ComposeInput({ label, placeholder, errors, ...props }, ref) {
-  // const autocompleteValue = getAutoCompleteValue(name, type);
-
-  // TODO: Implement
-  return (
-    <div >
-      <p className="text-xs mb-1 text-gray-500">{label}</p>
-      <input
-        {...props} 
-        ref={ref}
-        placeholder={placeholder}
-        className={`w-full shadow-sm border-[1px] py-3 text-sm pl-3 rounded-[5px] border-gray-100 outline-none ${errors ? 'border-red-500' : 'border-gray-100'}`}
-      />
-      {errors && <span className="text-xs text-red-500 px-1">{errors.message}</span>}
-
-    </div>
-  )
-})
+ComposeInput.displayName = "ComposeInput";

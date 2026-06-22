@@ -1,193 +1,216 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { useInView } from 'react-intersection-observer';
 import AnnouncementCard from './AnnouncementCard';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface Announcement {
-  id: string;
-  title: string;
-  body: string;
-  author: string;
-  subsidiary: string;
-  department: string;
-  type: string;
-  date: Date;
-  isPinned: boolean;
-}
+import { useAnnouncements, usePinnedAnnouncements } from '@/hooks/useAnnouncements';
+import { Skeleton } from '@/components/ui/Skeleton';
+import * as Select from '@radix-ui/react-select';
+import { useSubsidiaries, useDepartments } from '@/hooks/useDirectory';
+import type { AnnouncementFilters, AnnouncementTarget } from '@/hooks/useAnnouncements';
+import type { Announcement } from '@/types/announcement.types';
+import { AlertCircle, Check, ChevronDown } from 'lucide-react';
 
 interface AnnouncementFeedProps {
-  announcements: Announcement[];
-  itemsPerPage?: number;
+  onEditAnnouncement?: (announcement: Announcement) => void;
+  initialFilters?: AnnouncementFilters;
 }
 
-export default function AnnouncementFeed({ 
-  announcements, 
-  itemsPerPage = 10 
-}: AnnouncementFeedProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({
-    subsidiary: '',
-    department: '',
-    type: '',
-  });
-
-  // Get unique filter options
-  const subsidiaries = [...new Set(announcements.map(a => a.subsidiary))];
-  const departments = [...new Set(announcements.map(a => a.department))];
-  const types = [...new Set(announcements.map(a => a.type))];
-
-  // Filter and sort announcements
-  const filteredAnnouncements = useMemo(() => {
-    const filtered = announcements.filter(announcement => {
-      const matchSubsidiary = !filters.subsidiary || announcement.subsidiary === filters.subsidiary;
-      const matchDepartment = !filters.department || announcement.department === filters.department;
-      const matchType = !filters.type || announcement.type === filters.type;
-      return matchSubsidiary && matchDepartment && matchType;
-    });
-
-    // Sort: pinned first, then by date (newest first)
-    return filtered.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-  }, [announcements, filters]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedAnnouncements = filteredAnnouncements.slice(
-    startIndex,
-    startIndex + itemsPerPage
+function SkeletonCard() {
+  return (
+    <div className="space-y-4 rounded-lg border border-border bg-card p-4 md:p-6">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-48" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <Skeleton className="h-20 w-full" />
+      <div className="flex items-center gap-2 pt-3 border-t border-border">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+    </div>
   );
+}
 
-  // Reset to page 1 when filters change
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1);
-  };
+export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }: AnnouncementFeedProps) {
+  const [filters, setFilters] = useState<AnnouncementFilters>(initialFilters || {});
+  const { ref: observerRef, inView } = useInView();
 
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(prev - 1, 1));
-  };
+  // Fetch data
+  const { data: announcementsData, fetchNextPage, hasNextPage, isFetching, isLoading } = useAnnouncements(filters);
+  const { data: pinnedData, isLoading: pinnedLoading } = usePinnedAnnouncements(filters);
+  const { data: subsidiariesData } = useSubsidiaries();
+  const { data: departmentsData } = useDepartments(filters.subsidiaryId);
 
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(prev + 1, totalPages));
-  };
+  // Get all announcements
+  const allAnnouncements = announcementsData?.pages.flatMap((page) => page.data) || [];
+
+  // Infinite scroll trigger
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetching) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetching, fetchNextPage]);
+
+  const subsidiaries = subsidiariesData || [];
+  const departments = departmentsData || [];
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Filters */}
-      <div className="mb-8 bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Target Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subsidiary
-            </label>
-            <select
-              value={filters.subsidiary}
-              onChange={(e) => handleFilterChange('subsidiary', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <label htmlFor="filter-target" className="block text-sm font-medium text-foreground mb-2">Target</label>
+            <Select.Root
+              value={filters.target || 'all'}
+              onValueChange={(value) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  target: (value === 'all' ? undefined : value) as AnnouncementTarget | undefined,
+                  subsidiaryId: value === 'all' ? undefined : prev.subsidiaryId,
+                  departmentId: value === 'all' ? undefined : prev.departmentId,
+                }) as AnnouncementFilters)
+              }
             >
-              <option value="">All Subsidiaries</option>
-              {subsidiaries.map(sub => (
-                <option key={sub} value={sub}>{sub}</option>
-              ))}
-            </select>
+              <Select.Trigger id="filter-target" aria-label="Filter by target" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <Select.Value />
+                <Select.Icon>
+                  <ChevronDown size={16} />
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
+                <Select.Item value="all" className="px-3 py-2 hover:bg-primary/10 cursor-pointer flex items-center justify-between">
+                  <Select.ItemText>All Announcements</Select.ItemText>
+                  {filters.target === undefined && <Check size={16} />}
+                </Select.Item>
+                <Select.Item value="subsidiary" className="px-3 py-2 hover:bg-primary/10 cursor-pointer flex items-center justify-between">
+                  <Select.ItemText>Subsidiary</Select.ItemText>
+                  {filters.target === 'subsidiary' && <Check size={16} />}
+                </Select.Item>
+                <Select.Item value="department" className="px-3 py-2 hover:bg-primary/10 cursor-pointer flex items-center justify-between">
+                  <Select.ItemText>Department</Select.ItemText>
+                  {filters.target === 'department' && <Check size={16} />}
+                </Select.Item>
+              </Select.Content>
+            </Select.Root>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Department
-            </label>
-            <select
-              value={filters.department}
-              onChange={(e) => handleFilterChange('department', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Departments</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
+          {/* Subsidiary Filter */}
+          {filters.target && filters.target !== 'all' && (
+            <div>
+              <label htmlFor="filter-subsidiary" className="block text-sm font-medium text-foreground mb-2">Subsidiary</label>
+              <Select.Root
+                value={filters.subsidiaryId || ''}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, subsidiaryId: value || undefined }) as AnnouncementFilters)}
+              >
+                <Select.Trigger id="filter-subsidiary" aria-label="Filter by subsidiary" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <Select.Value placeholder="Select subsidiary..." />
+                  <Select.Icon>
+                    <ChevronDown size={16} />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
+                  {subsidiaries.map((sub) => (
+                    <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 hover:bg-primary/10 cursor-pointer">
+                      {sub.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Announcement Type
-            </label>
-            <select
-              value={filters.type}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Types</option>
-              {types.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
+          {/* Department Filter */}
+          {filters.target === 'department' && (
+            <div>
+              <label htmlFor="filter-department" className="block text-sm font-medium text-foreground mb-2">Department</label>
+              <Select.Root
+                value={filters.departmentId || ''}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, departmentId: value || undefined }) as AnnouncementFilters)}
+              >
+                <Select.Trigger id="filter-department" aria-label="Filter by department" className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <Select.Value placeholder="Select department..." />
+                  <Select.Icon>
+                    <ChevronDown size={16} />
+                  </Select.Icon>
+                </Select.Trigger>
+                <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
+                  {departments.map((dept) => (
+                    <Select.Item key={dept.id} value={dept.id} className="px-3 py-2 hover:bg-primary/10 cursor-pointer">
+                      {dept.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Announcements */}
-      <div className="space-y-4 mb-8">
-        {paginatedAnnouncements.length > 0 ? (
-          paginatedAnnouncements.map(announcement => (
-            <AnnouncementCard key={announcement.id} {...announcement} />
-          ))
+      {/* Pinned Announcements */}
+      {pinnedLoading || (pinnedData && pinnedData.length > 0) && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase">Pinned</h3>
+          {pinnedLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pinnedData?.map((announcement) => (
+                <AnnouncementCard
+                  key={announcement.id}
+                  announcement={announcement}
+                  {...(onEditAnnouncement ? { onEdit: onEditAnnouncement } : {})}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recent Announcements */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase">Recent</h3>
+        {isLoading && allAnnouncements.length === 0 ? (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : allAnnouncements.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium text-foreground">No announcements yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Check back soon for updates</p>
+          </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No announcements found matching your filters.</p>
+          <div className="space-y-4">
+            {allAnnouncements.map((announcement) => (
+              <AnnouncementCard
+                key={announcement.id}
+                announcement={announcement}
+                {...(onEditAnnouncement ? { onEdit: onEditAnnouncement } : {})}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={handlePreviousPage}
-            disabled={currentPage === 1}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </button>
-
-          <div className="flex items-center gap-2">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  page === currentPage
-                    ? 'bg-blue-500 text-white'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </button>
+      {/* Infinite Scroll Trigger */}
+      {isFetching && allAnnouncements.length > 0 && (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={`loading-${i}`} />
+          ))}
         </div>
       )}
-
-      {/* Info */}
-      <div className="text-center mt-6 text-sm text-gray-600">
-        Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredAnnouncements.length)} of {filteredAnnouncements.length} announcements
-      </div>
+      <div ref={observerRef} className="h-1" />
     </div>
   );
 }

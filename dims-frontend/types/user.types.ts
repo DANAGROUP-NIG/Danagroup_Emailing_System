@@ -23,6 +23,8 @@ export interface User {
   email: string;
   role: UserRole;
   jobTitle?: string;
+  phone?: string;
+  bio?: string;
   avatarUrl?: string;
   departmentId?: string;
   department?: Department;
@@ -32,8 +34,6 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
-  accessToken?: string;
-  refreshToken?: string;
 }
 
 

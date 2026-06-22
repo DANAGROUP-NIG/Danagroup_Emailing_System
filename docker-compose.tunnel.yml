@@ -5,27 +5,41 @@
 # QUICK TUNNEL (no Cloudflare account needed):
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.tunnel.yml up
 #   → Watch the logs for: "Your quick Tunnel has been created! Visit it at https://xxxxx.trycloudflare.com"
-#   → The URL changes each restart.
+#   → The URL changes each restart. Login works via the tunnel URL automatically.
 #
 # NAMED TUNNEL (persistent URL, requires Cloudflare account):
 #   1. Install cloudflared locally:  https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
 #   2. Authenticate:                 cloudflared tunnel login
 #   3. Create a tunnel:              cloudflared tunnel create dims-dev
 #   4. Copy the tunnel token and set CLOUDFLARE_TUNNEL_TOKEN in your .env
-#   5. Uncomment the "named tunnel" service below and comment out the "quick tunnel" one.
-#   6. docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.tunnel.yml up
+#   5. Set CLOUDFLARE_HOSTNAME=https://your-name.yourdomain.com in .env
+#   6. Set CLOUDFLARE_WS_URL=wss://your-name.yourdomain.com in .env
+#   7. Uncomment the "named tunnel" service below and comment out the "quick tunnel" one.
+#   8. docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.tunnel.yml up
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
+
+  # ─── Frontend: pass tunnel WebSocket URL ──────────────────────────────────────
+  # Quick tunnels: leave CLOUDFLARE_WS_URL unset — socket.io auto-connects to the
+  # browser's current origin (the tunnel URL), so no explicit URL is needed.
+  # Named tunnels: set CLOUDFLARE_WS_URL=wss://your-name.yourdomain.com in .env
+  frontend:
+    environment:
+      - NEXT_PUBLIC_WS_URL=${CLOUDFLARE_WS_URL:-}
+
+  # ─── Backend: allow tunnel origin in CORS ────────────────────────────────────
+  # https://*.trycloudflare.com covers all quick-tunnel subdomains.
+  # CLOUDFLARE_HOSTNAME covers your named-tunnel domain (if set).
+  api:
+    environment:
+      - FRONTEND_URL=http://localhost:3000,http://localhost:3001,https://*.trycloudflare.com,${CLOUDFLARE_HOSTNAME:-}
 
   # ─── Quick Tunnel (random *.trycloudflare.com URL, zero config) ────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: dims_tunnel
     command: tunnel --no-autoupdate --url http://nginx:80
-    sysctls:
-      net.core.rmem_max: 7340032   # fixes QUIC UDP buffer size warning
-      net.core.wmem_max: 7340032
     depends_on:
       - nginx
     restart: unless-stopped
@@ -39,9 +53,6 @@ services:
   #   command: tunnel --no-autoupdate run
   #   environment:
   #     - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-  #   sysctls:
-  #     net.core.rmem_max: 7340032   # fixes QUIC UDP buffer size warning
-  #     net.core.wmem_max: 7340032
   #   depends_on:
   #     - nginx
   #   restart: unless-stopped

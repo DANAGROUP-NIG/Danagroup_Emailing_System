@@ -1,5 +1,16 @@
 import type { User } from "./user.types";
 
+export interface AttachmentFile {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+  progress: number;
+  uploaded: boolean;
+  error?: string;
+}
+
 export type RecipientType = "to" | "cc" | "bcc";
 
 export interface Attachment {
@@ -127,14 +138,14 @@ export interface ComposeFormState {
 export interface ComposeData {
   subject: string;
   body: string;
-  bodyHtml?: string;
-  attachmentIds?: string[];
-  threadId?: string;
-  draftId?: string;
-  isDraft?: boolean;
-  toEmails?: string[];
-  ccEmails?: string[];
-  bccEmails?: string[];
+  bodyHtml?: string | undefined;
+  attachmentIds?: string[] | undefined;
+  threadId?: string | undefined;
+  draftId?: string | undefined;
+  isDraft?: boolean | undefined;
+  toEmails?: string[] | undefined;
+  ccEmails?: string[] | undefined;
+  bccEmails?: string[] | undefined;
 }
 
 export interface Announcement {

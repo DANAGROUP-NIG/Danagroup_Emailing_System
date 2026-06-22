@@ -13,7 +13,6 @@ import {
   UseInterceptors,
   BadRequestException,
   UploadedFile,
-  InternalServerErrorException,
   Put,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
@@ -42,23 +41,15 @@ export class UsersController {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  // TODO: Implement GET /users — list all active users (paginated)
-  // Query: page, limit, subsidiaryId, departmentId, role
-  // Protected: JWT guard
   @Get()
   @ApiOperation({ summary: "List all users (paginated)" })
-  async findAll(@Query() query: any) {
-    // TODO: Implement
+  async findAll(@Query() query: QueryUserDto) {
     return this.usersService.findAll(query);
   }
 
-  // TODO: Implement GET /users/search — search users by name/email
-  // Query: q (string), limit (default 10)
   @Get("search")
   @ApiOperation({ summary: "Search users by name or email" })
   async search(@Query() queryDto: QueryUserDto) {
-    // TODO: Implement
-
     this.logger.log(`Search query received: ${JSON.stringify(queryDto)}`);
     return await this.searchService.searchUsers(
       queryDto.search || "",
@@ -71,11 +62,9 @@ export class UsersController {
     );
   }
 
-  // TODO: Implement GET /users/:id — get user by ID
   @Get(":id")
   @ApiOperation({ summary: "Get user by ID" })
   async findOne(@Param("id", ParseUUIDPipe) id: string) {
-    // TODO: Implement
     return this.usersService.findById(id);
   }
 
@@ -119,16 +108,13 @@ export class UsersController {
     };
   }
 
-  // TODO: Implement POST /users — create new user (admin only)
   @Post()
   @Roles("group_admin")
   @ApiOperation({ summary: "Create a new user (admin only)" })
   async create(@Body() body: CreateUserDto) {
-    // TODO: Implement
     return this.usersService.create(body);
   }
 
-  // TODO: Implement PATCH /users/:id — update user (admin or self)
   @Patch(":id")
   @ApiOperation({ summary: "Update user profile" })
   async update(
@@ -136,7 +122,6 @@ export class UsersController {
     @Body() body: UpdateUserDto,
     @CurrentUser() currentUser: { userId: string; role: string },
   ) {
-    // TODO: Implement
     return this.usersService.update(
       id,
       body,
@@ -145,12 +130,10 @@ export class UsersController {
     );
   }
 
-  // TODO: Implement DELETE /users/:id — deactivate user (admin only)
   @Delete(":id")
   @Roles("subsidiary_admin", "group_admin")
   @ApiOperation({ summary: "Deactivate a user (admin only)" })
   async deactivate(@Param("id") id: string) {
-    // TODO: Implement
     return this.usersService.deactivate(id);
   }
 }

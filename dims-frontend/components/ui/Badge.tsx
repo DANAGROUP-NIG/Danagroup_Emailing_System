@@ -1,53 +1,57 @@
-// TODO: Implement Badge Component
-// Props: variant: 'default' | 'primary' | 'danger' | 'success' | 'warning' | 'outline',
-//        size?: 'sm' | 'md', children: ReactNode
-// - Small pill badge using class-variance-authority (cva)
-// - primary: dana-blue bg, danger: dana-red bg
-
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
-import { cva, type VariantProps } from 'class-variance-authority'
-
-import { cn } from '@/lib/utils'
+// components/ui/Badge.tsx — Extended Badge
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  'inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
+  "inline-flex items-center justify-center gap-1 rounded-full font-medium w-fit whitespace-nowrap shrink-0 transition-colors [&>svg]:size-3 [&>svg]:pointer-events-none",
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
-        destructive:
-          'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          "border border-transparent bg-muted text-muted-foreground",
+        primary:
+          "border border-transparent bg-primary text-primary-foreground",
+        danger:
+          "border border-transparent bg-danger text-danger-foreground",
+        success:
+          "border border-transparent bg-success text-success-foreground",
+        warning:
+          "border border-transparent bg-warning text-warning-foreground",
+        info:
+          "border border-transparent bg-dana-blue-100 text-dana-blue-800",
         outline:
-          'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+          "border border-border bg-transparent text-foreground",
+      },
+      size: {
+        sm: "px-1.5 py-0 text-[10px]",
+        md: "px-2 py-0.5 text-xs",
+        lg: "px-2.5 py-1 text-sm",
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: "default",
+      size: "md",
     },
   },
-)
+);
 
-function Badge({
-  className,
-  variant,
-  asChild = false,
-  ...props
-}: React.ComponentProps<'span'> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : 'span'
+export interface BadgeProps
+  extends React.ComponentProps<"span">,
+    VariantProps<typeof badgeVariants> {
+  asChild?: boolean;
+}
 
+function Badge({ className, variant, size, asChild = false, ...props }: BadgeProps) {
+  const Comp = asChild ? Slot : "span";
   return (
     <Comp
       data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant, size }), className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Badge, badgeVariants }
-
+export { Badge, badgeVariants };

@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,6 +6,11 @@
 @layer base {
   :root {
     --sidebar-width: 280px;
+    --sidebar-collapsed-width: 68px;
+    /* --dana-radius: 0.9rem — same value as --radius below */
+    --dana-radius: 0.9rem;
+    --radius: 0.9rem;
+
     --background: 210 40% 98%;
     --foreground: 222.2 47.4% 11.2%;
     --card: 0 0% 100%;
@@ -21,24 +24,39 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 226 55% 37%;
-    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 222.2 47.4% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 47.4% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 47.4% 9%;
+    --popover-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 226 55% 55%;
   }
 
   html {
     scroll-behavior: smooth;
   }
 
-  body {
-    background: linear-gradient(135deg, rgb(248 250 252) 0%, rgb(219 234 254) 50%, rgb(165 243 252) 100%);
-    background-attachment: fixed;
-    color: rgb(17 24 39);
-    font-family: "Rubik", sans-serif;
-    -webkit-font-smoothing: antialiased;
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
-  .dark body {
-    background: linear-gradient(135deg, rgb(3 7 18) 0%, rgb(15 23 42) 50%, rgb(20 29 39) 100%);
-    color: rgb(249 250 251);
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: "Rubik", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -52,61 +70,68 @@
   h4 { font-size: 1.25rem; }
 
   p { line-height: 1.625; }
-
-  a {
-    color: rgb(37 99 235);
-    transition: 150ms;
-  }
-
-  a:hover {
-    color: rgb(29 78 216);
-  }
 }
 
 /* ================= COMPONENTS ================= */
 @layer components {
+  /* Button utility classes are superseded by components/ui/Button.tsx.
+     These are kept only as fallback for legacy markup. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-white rounded-lg;
-    background: linear-gradient(to right, rgb(37 99 235), rgb(79 70 229));
-  }
-
-  .btn-primary:hover {
-    background: linear-gradient(to right, rgb(29 78 216), rgb(67 56 202));
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-primary-foreground bg-primary rounded-lg transition-colors hover:bg-primary/90;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-lg;
-    background-color: rgb(229 231 235);
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-foreground bg-muted rounded-lg transition-colors hover:bg-muted/80;
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-lg border;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold rounded-lg border border-primary text-primary transition-colors hover:bg-primary-light;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 font-medium rounded-lg;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 font-medium rounded-lg text-foreground transition-colors hover:bg-accent;
   }
 
   .dims-input {
-    @apply w-full px-4 py-3 text-sm border rounded-lg;
+    @apply w-full px-4 py-3 text-sm border border-input bg-background rounded-lg
+           text-foreground placeholder:text-muted-foreground
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+           disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .dims-card {
-    @apply p-6 bg-white border rounded-xl shadow-sm;
+    @apply p-6 bg-card border border-border rounded-xl shadow-dana-sm;
   }
 
   .dims-sidebar {
     width: var(--sidebar-width);
     background:
       radial-gradient(circle at top right, rgb(76 102 196 / 0.24), transparent 32%),
-      linear-gradient(180deg, rgb(14 25 76) 0%, rgb(27 43 122) 58%, rgb(39 54 132) 100%);
+      linear-gradient(180deg, theme('colors.dana-blue.900') 0%, theme('colors.dana-blue.700') 58%, theme('colors.dana-blue.600') 100%);
     color: white;
     box-shadow: 0 18px 45px rgb(15 23 42 / 0.18);
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .dims-sidebar-collapsed {
+    width: var(--sidebar-collapsed-width);
   }
 
   .badge-unread {
-    @apply inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-dana-blue-700;
+    @apply inline-flex min-w-5 items-center justify-center rounded-full bg-background px-1.5 py-0.5 text-[10px] font-semibold text-dana-blue-700;
+  }
+}
+
+/* ================= REDUCED MOTION ================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -116,24 +141,74 @@
     scrollbar-width: thin;
   }
 
-
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgb(200 200 200);
-    border-radius: 3px;
+    @apply bg-muted rounded;
   }
 
   .text-gradient {
-    background: linear-gradient(to right, rgb(37 99 235), rgb(79 70 229));
+    background: linear-gradient(to right, theme('colors.dana-blue.500'), theme('colors.dana-blue.300'));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+}
 
-  .glass {
-    backdrop-filter: blur(12px);
-    background-color: rgb(255 255 255 / 0.3);
+/* ================= PRINT STYLES ================= */
+@media print {
+  /* Hide interactive UI elements */
+  [role="banner"],
+  [role="navigation"],
+  .sidebar,
+  .topbar,
+  .compose-button,
+  button:not(.print-visible) {
+    display: none;
+  }
+
+  /* Optimize mail thread for print */
+  main {
+    padding: 2rem;
+    max-width: 100%;
+  }
+
+  /* Thread message styling */
+  .mail-message {
+    page-break-inside: avoid;
+    margin-bottom: 2rem;
+    border: 1px solid hsl(var(--border));
+    padding: 1.5rem;
+  }
+
+  .mail-message-header {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .mail-message-body {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Attachment list */
+  .attachment-list {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+  }
+
+  /* Hide decorative elements */
+  .shadow-dana,
+  .shadow-dana-md,
+  .shadow-dana-lg {
+    box-shadow: none;
   }
 }

@@ -1,0 +1,9 @@
+export { default as apiClient, getSocketBaseUrl } from "./client";
+export { authApi } from "./auth";
+export { usersApi } from "./users";
+export { mailApi } from "./mail";
+export { filesApi } from "./files";
+export { announcementsApi } from "./announcements";
+export { notificationsApi } from "./notifications";
+export { departmentsApi } from "./departments";
+export { searchApi } from "./search";

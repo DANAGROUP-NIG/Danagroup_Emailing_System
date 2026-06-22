@@ -32,6 +32,7 @@ Thumbs.db
 # ─── IDE ──────────────────────────────────────────────────────────────────────
 .idea/
 .vscode/
+!.vscode/settings.json
 *.suo
 *.ntvs*
 *.njsproj

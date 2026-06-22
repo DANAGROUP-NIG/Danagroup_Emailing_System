@@ -1,11 +1,24 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
-import { supportedMailFolders, useMail } from "@/hooks/useMail";
+import {
+  supportedMailFolders,
+  useInbox,
+  useSent,
+  useDrafts,
+  useStarred,
+  useTrash,
+  useDeleteDraft,
+  useMarkRead,
+  useStarMail,
+  useDeleteMail,
+  useRestoreMail,
+  usePermanentDeleteMail,
+} from "@/hooks/useMail";
 import { useMailStore } from "@/store/mailStore";
 import type {
   DraftMessage,
@@ -29,18 +42,18 @@ interface MailListProps {
 type MailListRow = {
   id: string;
   threadId: string | null;
-  messageId?: string;
+  messageId?: string | undefined;
   selectionId: string;
   isDraft: boolean;
   isStarred: boolean;
   isUnread: boolean;
   senderName: string;
-  toSummary?: string;
-  ccSummary?: string;
-  bccSummary?: string;
+  toSummary?: string | undefined;
+  ccSummary?: string | undefined;
+  bccSummary?: string | undefined;
   subject: string;
   bodyPreview: string;
-  date?: string;
+  date?: string | undefined;
 };
 
 export default function MailList({ viewMode, searchParams }: MailListProps) {
@@ -50,7 +63,6 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   const { openCompose } = useMailStore();
   const { selectedMessageIds, toggleMessageSelection, resetSelection } =
     useMailStore();
-  const page = searchParams?.page || 1;
   const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>(
     {},
   );
@@ -67,27 +79,43 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   
 
 
-  const mailApi = useMail();
-  const folderHooks = {
-    inbox: mailApi.useInbox,
-    sent: mailApi.useSent,
-    drafts: mailApi.useDrafts,
-    starred: mailApi.useStarred,
-    trash: mailApi.useTrash,
+  const inboxQuery = useInbox();
+  const sentQuery = useSent();
+  const draftsQuery = useDrafts();
+  const starredQuery = useStarred();
+  const trashQuery = useTrash();
+
+  const folderQueries = {
+    inbox: inboxQuery,
+    sent: sentQuery,
+    drafts: draftsQuery,
+    starred: starredQuery,
+    trash: trashQuery,
   };
-  const { mutate: markAsRead } = mailApi.useMarkRead();
-  const starMail = mailApi.useStarMail();
-  const deleteMail = mailApi.useDeleteMail();
-  const restoreMail = mailApi.useRestoreMail();
-  const permanentDeleteMail = mailApi.usePermanentDeleteMail();
+
+  const { mutate: markAsRead } = useMarkRead();
+  const starMail = useStarMail();
+  const deleteMail = useDeleteMail();
+  const restoreMail = useRestoreMail();
+  const permanentDeleteMail = usePermanentDeleteMail();
+  const deleteDraft = useDeleteDraft();
   const isSupportedFolder = supportedMailFolders.includes(viewMode);
   const activeFolderQuery = isSupportedFolder
-    ? folderHooks[viewMode as keyof typeof folderHooks](page)
+    ? folderQueries[viewMode as keyof typeof folderQueries]
     : { data: undefined, isLoading: false };
 
+  const flatData = useMemo(() => {
+    const d = activeFolderQuery.data as { pages?: Array<{ data: unknown[] }> } | undefined;
+    if (!d) return undefined;
+    if (d.pages) {
+      return { data: d.pages.flatMap((p) => p.data) };
+    }
+    return d;
+  }, [activeFolderQuery.data]);
+
   const items = useMemo(
-    () => normalizeMailRows(viewMode, activeFolderQuery.data),
-    [activeFolderQuery.data, viewMode],
+    () => normalizeMailRows(viewMode, flatData),
+    [flatData, viewMode],
   );
 
   const toggleSelectAll = () => {
@@ -125,13 +153,13 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-white">
       <div className="shrink-0 border-b border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              className="h-3 w-3 rounded border-border"
+              className="h-4 w-4 rounded border-border"
               checked={
                 items.length > 0 && selectedMessageIds.length === items.length
               }
@@ -143,7 +171,8 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                   {selectedMessageIds.length}
                 </span>
                 <button
-                  className="rounded p-1.5 text-destructive hover:bg-slate-100"
+                  aria-label={viewMode === "trash" ? "Permanently delete selected" : "Move selected to trash"}
+                  className="rounded p-1.5 text-destructive hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => {
                     selectedMessageIds.forEach((id) => {
                       if (viewMode === "trash") {
@@ -156,7 +185,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                     resetSelection();
                   }}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             ) : (
@@ -186,6 +215,7 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
               <div className="flex w-full items-start gap-3 group">
                 <input
                   type="checkbox"
+                  aria-label={`Select message from ${item.senderName}`}
                   checked={selectedMessageIds.includes(item.selectionId)}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     toggleMessageSelection(item.selectionId);
@@ -286,7 +316,6 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           },
                         });
                       }}
-                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
                       title={
                         (item.messageId
                           ? (starOverrides[item.messageId] ?? item.isStarred)
@@ -294,8 +323,22 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           ? "Unstar"
                           : "Star"
                       }
+                      aria-label={
+                        (item.messageId
+                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                          : item.isStarred)
+                          ? "Unstar message"
+                          : "Star message"
+                      }
+                      aria-pressed={
+                        item.messageId
+                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                          : item.isStarred
+                      }
+                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <Star
+                        aria-hidden="true"
                         className={`h-4 w-4 ${
                           item.messageId &&
                           (starOverrides[item.messageId] ?? item.isStarred)
@@ -315,10 +358,11 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                           restoreMail.mutate(item.messageId);
                         }
                       }}
-                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       title="Restore"
+                      aria-label="Restore message from trash"
+                      className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-dana-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
                     </button>
                   ) : null}
 
@@ -327,10 +371,16 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
                     disabled={
                       !item.messageId ||
                       deleteMail.isPending ||
-                      permanentDeleteMail.isPending
+                      permanentDeleteMail.isPending ||
+                      deleteDraft.isPending
                     }
                     onClick={() => {
                       if (!item.messageId) {
+                        return;
+                      }
+
+                      if (item.isDraft) {
+                        deleteDraft.mutate(item.messageId);
                         return;
                       }
 
@@ -341,10 +391,11 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
 
                       deleteMail.mutate(item.messageId);
                     }}
-                    className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                    title={viewMode === "trash" ? "Delete forever" : "Move to trash"}
+                    title={item.isDraft ? "Delete draft" : viewMode === "trash" ? "Delete forever" : "Move to trash"}
+                    aria-label={item.isDraft ? "Delete draft" : viewMode === "trash" ? "Delete message forever" : "Move message to trash"}
+                    className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -407,7 +458,7 @@ function MailListSkeleton() {
   );
 }
 
-function RecipientLine({ label, value }: { label: string; value?: string }) {
+function RecipientLine({ label, value }: { label: string; value?: string | undefined }) {
   if (!value) {
     return null;
   }

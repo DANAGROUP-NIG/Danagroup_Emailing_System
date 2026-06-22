@@ -1,149 +1,204 @@
 "use client";
 
-import { LogOut, Search } from "lucide-react";
-import { useMemo, useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+// TopBar is locked to h-16 (64px) — app/(app)/mail/[viewMode]/layout.tsx
+// uses `calc(100vh - 64px)` so this height must not change.
+
+import { useMemo } from "react";
+import dynamic from "next/dynamic";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut, MailPlus, Menu, Settings, HelpCircle, User, Loader2 } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 import { useAuthStore } from "@/store/authStore";
+import { useMailStore } from "@/store/mailStore";
+import { useUIStore } from "@/store/uiStore";
+import { useLogout } from "@/hooks/useAuth";
 import NotificationPanel from "@/components/layout/NotificationPanel";
-import Image from "next/image";
-import { ProfileAvatarSetting } from "../ui/Avatar";
+import Avatar from "@/components/ui/Avatar";
+import { cn } from "@/lib/utils";
+import type { SocketConnectionStatus } from "@/hooks/useSocket";
+
+const SearchBar = dynamic(() => import("@/components/mail/SearchBar"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-9 w-full max-w-sm animate-pulse rounded-md bg-accent" aria-hidden="true" />
+  ),
+});
+
+// ─── Route meta map ───────────────────────────────────────────────────────────
 
 const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/inbox/, title: "Inbox", subtitle: "Recent conversations and unread activity" },
-  { match: /^\/mail\/sent/, title: "Sent", subtitle: "Everything you've sent across the organization" },
+  { match: /^\/mail\/sent/, title: "Sent", subtitle: "Everything you&apos;ve sent across the organisation" },
   { match: /^\/mail\/drafts/, title: "Drafts", subtitle: "Work in progress and unsent replies" },
-  { match: /^\/mail\/starred/, title: "Starred", subtitle: "Messages you've pinned for quick return" },
+  { match: /^\/mail\/starred/, title: "Starred", subtitle: "Messages you&apos;ve pinned for quick return" },
   { match: /^\/mail\/trash/, title: "Trash", subtitle: "Messages pending deletion or recovery" },
-  { match: /^\/directory/, title: "Directory", subtitle: "People, teams, and organizational details" },
+  { match: /^\/directory/, title: "Directory", subtitle: "People, teams, and organisational details" },
   { match: /^\/announcements/, title: "Announcements", subtitle: "Broadcast updates and company notices" },
   { match: /^\/admin\/users/, title: "User Admin", subtitle: "Manage access, roles, and employee records" },
   { match: /^\/admin\/departments/, title: "Department Admin", subtitle: "Edit department structure and ownership" },
   { match: /^\/admin\/subsidiaries/, title: "Subsidiary Admin", subtitle: "Manage subsidiary records and domains" },
 ];
 
-export function getInitials(firstName?: string, lastName?: string) {
-  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "DG";
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface TopBarProps {
+  connectionStatus?: SocketConnectionStatus;
 }
 
-export default function TopBar() {
+export default function TopBar({ connectionStatus }: TopBarProps) {
   const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const logoutMutation = useLogout();
+  const openCompose = useMailStore((s) => s.openCompose);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
-  const [isOpen, setIsOpen] = useState(false);
-  const modalRef = useRef<HTMLDivElement>(null);
+  const showReconnecting = connectionStatus === "reconnecting";
 
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, []);
+  const handleLogout = () => {
+    void logoutMutation.mutateAsync();
+  };
 
   const routeMeta = useMemo(
     () =>
-      routeLabels.find((route) => route.match.test(pathname)) ?? {
+      routeLabels.find((r) => r.match.test(pathname)) ?? {
         title: "DIMS",
         subtitle: "Internal communication workspace",
       },
     [pathname],
   );
 
+  const fullName = user ? `${user.firstName} ${user.lastName}` : "Current User";
+
   return (
-    <header className="sticky top-0 z-30 px-6 py-4 gap-[22px] border-b border-slate-200/70 bg-white/85 backdrop-blur flex flex-col justify-center">
-      <div className="flex items-center justify-between gap-6">
-        <div className="min-w-0">
-          <p className="text-lg font-semibold text-slate-900">{routeMeta.title}</p>
-          <p className="truncate text-sm text-slate-500">{routeMeta.subtitle}</p>
-        </div>
+    <header
+      // h-16 = 64px — do not change; mail split layout depends on this
+      className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur md:px-6"
+    >
+      {/* ── Hamburger (mobile only) ── */}
+      <button
+        type="button"
+        aria-label="Open navigation menu"
+        onClick={toggleSidebar}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+      >
+        <Menu className="h-5 w-5" aria-hidden="true" />
+      </button>
 
-        <div className="hidden flex-1 items-center justify-center lg:flex">
-          <div className="flex w-full max-w-xl items-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-4 py-4 text-slate-500">
-            <Search className="h-4 w-4" />
-            <span className="text-sm">Search mail, people, or announcements</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <NotificationPanel userId={user?.id} />
-
-          <div className="hidden relative items-center gap-3 rounded-full border bg-slate-200 md:flex">
-            <div className="group">
-              <div
-                onClick={() => {setIsOpen(!isOpen)}} 
-              className="flex cursor-pointer text-xs font-semibold text-white items-center justify-center rounded-full h-9 w-9">
-                { user?.avatarUrl
-                  ?  <div className="relative h-9 min-w-9 rounded-full overflow-hidden">
-                      <Image alt={`${user.firstName}'s profile`} src={user.avatarUrl} sizes="18px" fill priority className=" object-cover"/>
-                    </div>
-                  : <div className="h-7 w-7 flex justify-center items-center rounded-full bg-dana-blue-600"> { getInitials(user?.firstName, user?.lastName) } </div>
-                }
-              </div>
-
-              <div className={`absolute ${ !isOpen ? "group-hover:opacity-100 transition group-hover:delay-75 opacity-0" : "opacity-0" } top-14 right-0 rounded text-sm text-gray-300 font-semibold bg-gray-800/70 px-3 py-2`}>
-                <div className="text-white">Manage Account</div>
-                <div>{user?.firstName} {user?.lastName}</div>
-                <div>{user?.email}</div>
-              </div>
-
-            </div>
-
-            <div
-              ref={modalRef} 
-              onClick={(e) => e.stopPropagation()}
-              className={` ${isOpen ? "opacity-100" : "opacity-0"} absolute shadow-md rounded-md bg-slate-50 top-16 right-0 w-96 py-8 px-4 flex flex-col gap-3`}
-              >
-
-              <div className="flex flex-col justify-center items-center">
-
-                <div>
-                  <p className="truncate text-sm text-slate-500">{user?.email ?? "user@danagroup.com"}</p>
-                </div>
-
-                <div className="flex flex-col gap-2 mt-4 justify-center items-center">
-
-                  <ProfileAvatarSetting initialUser={user!} />
-
-                  <div className="text-lg font-thin my-1">
-                    Hi, <span> {user ? `${user.firstName}` : "Current User"}!</span>
-                  </div>
-                </div>
-
-                <button className="rounded-full border border-gray-200 text-sm text-dana-blue-400 px-6 py-[6px]"> Manage your Account</button>
-
-              </div>
-              
-
-              
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="inline-flex shadow-sm h-12 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-
-            </div>
-
-          </div>
-
-          
-        </div>
+      {/* ── Breadcrumb / page title ── */}
+      <div className="min-w-0 flex-1 md:flex-none md:w-56">
+        <p className="truncate text-[15px] font-semibold text-foreground leading-tight">
+          {routeMeta.title}
+        </p>
+        <p className="hidden truncate text-xs text-muted-foreground md:block">
+          {routeMeta.subtitle}
+        </p>
       </div>
-      <div>
-        reload and sort UIs
+
+      {/* ── Search (grows in centre) ── */}
+      <div className="hidden flex-1 items-center justify-center lg:flex">
+        <SearchBar />
+      </div>
+
+      {/* ── Right actions ── */}
+      <div className="flex items-center gap-2 ml-auto">
+        {/* Reconnecting indicator */}
+        {showReconnecting && (
+          <div
+            className="hidden sm:flex items-center gap-1.5 rounded-full bg-warning-light px-2.5 py-1 text-xs font-medium text-warning"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            <span>Reconnecting...</span>
+          </div>
+        )}
+
+        {/* Compose — icon-only on <lg, full button on lg+ */}
+        <button
+          type="button"
+          aria-label="Compose new message"
+          onClick={() => openCompose()}
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-lg font-medium text-sm transition-colors",
+            "bg-primary text-primary-foreground hover:bg-primary-hover shadow-dana-sm",
+            "h-9 w-9 p-0 lg:h-9 lg:w-auto lg:px-4",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          )}
+        >
+          <MailPlus className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="hidden lg:inline">Compose</span>
+        </button>
+
+        {/* Notifications bell */}
+        <NotificationPanel userId={user?.id} />
+
+        {/* Profile dropdown */}
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              aria-label="User account menu"
+              aria-haspopup="menu"
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Avatar src={user?.avatarUrl} name={fullName} size="sm" />
+            </button>
+          </DropdownMenu.Trigger>
+
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={8}
+              className={cn(
+                "z-50 w-56 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-dana-lg",
+                "animate-in fade-in-0 zoom-in-95 slide-in-from-top-2",
+                "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+              )}
+            >
+              {/* User identity header */}
+              <div className="px-3 py-2 border-b border-border mb-1">
+                <p className="text-sm font-semibold text-foreground truncate">{fullName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+
+              <DropdownMenu.Item
+                onSelect={() => router.push(`/directory/${user?.id}`)}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent focus:bg-accent"
+              >
+                <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                My Profile
+              </DropdownMenu.Item>
+
+              <DropdownMenu.Item
+                onSelect={() => router.push("/settings")}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent focus:bg-accent"
+              >
+                <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                Settings
+              </DropdownMenu.Item>
+
+              <DropdownMenu.Item
+                onSelect={() => router.push("/help")}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent focus:bg-accent"
+              >
+                <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                Help
+              </DropdownMenu.Item>
+
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
+
+              <DropdownMenu.Item
+                onSelect={handleLogout}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger outline-none transition-colors hover:bg-danger-light focus:bg-danger-light"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Logout
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       </div>
     </header>
   );

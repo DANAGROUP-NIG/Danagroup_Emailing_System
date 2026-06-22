@@ -1,43 +1,30 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCheck, Info, Mail, Megaphone, X } from "lucide-react";
-import api from "@/lib/api";
-import { useNotificationStore } from "@/store/notificationStore";
-import type { AppNotification } from "@/types/api.types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, CheckCheck, Info, Mail, Megaphone, X, ChevronRight } from 'lucide-react';
+import { useNotifications, useMarkNotificationRead, useMarkAllRead, useUnreadCount } from '@/hooks/useNotifications';
+import { timeAgo } from '@/lib/utils';
+import type { AppNotification } from '@/types/api.types';
 
-function timeAgo(dateString: string): string {
-  const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-  return new Date(dateString).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function NotificationIcon({ type }: { type: AppNotification["type"] }) {
-  if (type === "new_mail") {
+function NotificationIcon({ type }: { type: AppNotification['type'] }) {
+  if (type === 'new_mail') {
     return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dana-blue-50">
-        <Mail className="h-4 w-4 text-dana-blue-600" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light">
+        <Mail className="h-4 w-4 text-primary" />
       </span>
     );
   }
-  if (type === "announcement") {
+  if (type === 'announcement') {
     return (
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-50">
-        <Megaphone className="h-4 w-4 text-amber-500" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-warning-light">
+        <Megaphone className="h-4 w-4 text-warning" />
       </span>
     );
   }
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
-      <Info className="h-4 w-4 text-slate-500" />
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+      <Info className="h-4 w-4 text-muted-foreground" />
     </span>
   );
 }
@@ -53,8 +40,8 @@ function NotificationRow({
     <button
       type="button"
       onClick={() => onRead(notification)}
-      className={`group w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
-        !notification.isRead ? "bg-dana-blue-50/30" : ""
+      className={`group w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted ${
+        !notification.isRead ? 'bg-primary-light/30' : ''
       }`}
     >
       <NotificationIcon type={notification.type} />
@@ -63,25 +50,23 @@ function NotificationRow({
         <div className="flex items-start justify-between gap-2">
           <p
             className={`text-sm leading-snug ${
-              notification.isRead
-                ? "font-normal text-slate-600"
-                : "font-semibold text-slate-900"
+              notification.isRead ? 'font-normal text-foreground' : 'font-semibold text-foreground'
             }`}
           >
             {notification.title}
           </p>
           {!notification.isRead && (
-            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-dana-red-500" />
+            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary flex-shrink-0" />
           )}
         </div>
 
         {notification.body ? (
-          <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
             {notification.body}
           </p>
         ) : null}
 
-        <p className="mt-1 text-[10px] font-medium text-slate-400">
+        <p className="mt-1 text-[10px] font-medium text-muted-foreground">
           {timeAgo(notification.createdAt)}
         </p>
       </div>
@@ -94,10 +79,10 @@ function LoadingSkeleton() {
     <div className="space-y-px py-1">
       {[1, 2, 3, 4].map((i) => (
         <div key={i} className="flex items-start gap-3 px-4 py-3">
-          <div className="h-8 w-8 animate-pulse rounded-full bg-slate-100" />
+          <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           <div className="flex-1 space-y-2 pt-0.5">
-            <div className="h-3 w-3/4 animate-pulse rounded bg-slate-100" />
-            <div className="h-2.5 w-1/2 animate-pulse rounded bg-slate-100" />
+            <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+            <div className="h-2.5 w-1/2 animate-pulse rounded bg-muted" />
           </div>
         </div>
       ))}
@@ -106,41 +91,21 @@ function LoadingSkeleton() {
 }
 
 interface NotificationPanelProps {
-  userId?: string;
+  userId?: string | undefined;
 }
 
-export default function NotificationPanel({ userId }: NotificationPanelProps) {
+export default function NotificationPanel({ userId: _userId }: NotificationPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const queryClient = useQueryClient();
 
-  const unreadCount = useNotificationStore((s) => s.unreadCount);
-  const storeNotifications = useNotificationStore((s) => s.notifications);
-  const setNotifications = useNotificationStore((s) => s.setNotifications);
-  const markAllReadStore = useNotificationStore((s) => s.markAllRead);
-  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
+  const { data: unreadCountData } = useUnreadCount();
+  const { data, isLoading } = useNotifications({ filter: 'all' });
+  const markAsRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllRead();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["notifications", userId],
-    queryFn: async () => {
-      const res = await api.get<{
-        data: AppNotification[];
-        total: number;
-        page: number;
-        limit: number;
-      }>("/notifications?limit=30");
-      return res.data;
-    },
-    enabled: isOpen && !!userId,
-    staleTime: 0,
-  });
-
-  useEffect(() => {
-    if (data?.data) {
-      setNotifications(data.data);
-    }
-  }, [data, setNotifications]);
+  const unreadCount = unreadCountData || 0;
+  const allNotifications = data?.pages.flatMap((page) => page.data).slice(0, 10) || [];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -150,69 +115,45 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
       }
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === 'Escape') setIsOpen(false);
     }
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, [isOpen]);
-
-  const serverIds = new Set((data?.data ?? []).map((n) => n.id));
-  const realtimeOnly = storeNotifications.filter((n) => !serverIds.has(n.id));
-  const allNotifications = [...realtimeOnly, ...(data?.data ?? storeNotifications)];
-
-  const markAllRead = useCallback(async () => {
-    try {
-      await api.patch("/notifications/read-all");
-      markAllReadStore();
-      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    } catch {
-      // silent — count will re-sync on next connect
-    }
-  }, [markAllReadStore, queryClient]);
 
   const handleClick = useCallback(
     async (notification: AppNotification) => {
       if (!notification.isRead) {
-        try {
-          await api.patch(`/notifications/${notification.id}/read`);
-          setNotifications(
-            allNotifications.map((n) =>
-              n.id === notification.id ? { ...n, isRead: true } : n,
-            ),
-          );
-          setUnreadCount(Math.max(0, unreadCount - 1));
-        } catch {
-          // silent
-        }
+        await markAsRead.mutateAsync(notification.id);
       }
 
       setIsOpen(false);
 
-      if (notification.type === "new_mail") {
-        router.push("/mail/inbox");
-      } else if (notification.type === "announcement") {
-        router.push("/announcements");
+      if (notification.type === 'new_mail') {
+        router.push(notification.referenceId ? `/mail/inbox/${notification.referenceId}` : '/mail/inbox');
+      } else if (notification.type === 'announcement') {
+        router.push(`/announcements?id=${notification.referenceId}`);
       }
     },
-    [allNotifications, setNotifications, setUnreadCount, unreadCount, router],
+    [markAsRead, router]
   );
 
-  const displayBadge = unreadCount > 99 ? "99+" : unreadCount;
+  const displayBadge = unreadCount > 99 ? '99+' : unreadCount;
 
   return (
     <div ref={panelRef} className="relative">
-      {/* ── Bell button ── */}
+      {/* Bell button */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
           isOpen
-            ? "border-dana-blue-300 bg-dana-blue-50 text-dana-blue-700"
-            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            ? 'border-primary bg-primary-light text-primary'
+            : 'border-border bg-card text-foreground hover:border-border hover:bg-muted'
         }`}
         aria-label="Notifications"
         aria-expanded={isOpen}
@@ -220,27 +161,25 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-dana-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-white">
+          <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-card">
             {displayBadge}
           </span>
         )}
       </button>
 
-      {/* ── Dropdown panel ── */}
+      {/* Dropdown panel */}
       {isOpen && (
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-12 z-50 w-[380px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-dana-lg"
+          className="absolute right-0 top-12 z-50 w-96 overflow-hidden rounded-lg border border-border bg-card shadow-dana-lg"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Notifications
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
               {unreadCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-dana-red-50 px-2 py-0.5 text-[10px] font-semibold text-dana-red-600">
+                <span className="inline-flex items-center rounded-full bg-primary-light px-2 py-0.5 text-[10px] font-semibold text-primary">
                   {unreadCount} unread
                 </span>
               )}
@@ -250,17 +189,31 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  onClick={markAllRead}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dana-blue-600 transition hover:bg-dana-blue-50"
+                  onClick={() => markAllRead.mutate()}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition hover:bg-primary-light"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   Mark all read
                 </button>
               )}
+              {allNotifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Clear all notifications? This will mark all as read.')) {
+                      markAllRead.mutate();
+                    }
+                  }}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Clear all notifications"
+                >
+                  Clear all
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -269,31 +222,23 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
           </div>
 
           {/* List */}
-          <div className="max-h-[440px] overflow-y-auto scrollbar-thin">
+          <div className="max-h-96 overflow-y-auto">
             {isLoading ? (
               <LoadingSkeleton />
             ) : allNotifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-14">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-                  <Bell className="h-6 w-6 text-slate-400" />
+              <div className="flex flex-col items-center justify-center gap-3 py-12">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Bell className="h-6 w-6 text-muted-foreground" />
                 </span>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-slate-600">
-                    No notifications yet
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    You&apos;ll be notified when something arrives
-                  </p>
+                  <p className="text-sm font-medium text-foreground">No notifications</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">You&apos;re all caught up</p>
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-border">
                 {allNotifications.map((n) => (
-                  <NotificationRow
-                    key={n.id}
-                    notification={n}
-                    onRead={handleClick}
-                  />
+                  <NotificationRow key={n.id} notification={n} onRead={handleClick} />
                 ))}
               </div>
             )}
@@ -301,11 +246,17 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
 
           {/* Footer */}
           {allNotifications.length > 0 && (
-            <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-2.5">
-              <p className="text-center text-[11px] text-slate-400">
-                Showing {allNotifications.length} most recent notification
-                {allNotifications.length !== 1 ? "s" : ""}
-              </p>
+            <div className="border-t border-border bg-muted/50 px-4 py-2.5">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  router.push('/notifications');
+                }}
+                className="flex items-center justify-center gap-2 w-full text-center text-xs font-medium text-primary hover:text-primary-hover transition"
+              >
+                View all notifications
+                <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
           )}
         </div>
@@ -313,3 +264,4 @@ export default function NotificationPanel({ userId }: NotificationPanelProps) {
     </div>
   );
 }
+

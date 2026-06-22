@@ -34,7 +34,8 @@ export type MailboxChangedPayload = {
     | "moved_to_trash"
     | "restored_from_trash"
     | "permanently_deleted"
-    | "trash_emptied";
+    | "trash_emptied"
+  | "draft_deleted";
   messageId?: string;
   messageIds?: string[];
   threadId?: string;
@@ -230,7 +231,7 @@ export class MailGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
-  private extractToken(client: Socket) {
+  private extractToken(client: Socket): string | null {
     const authToken =
       typeof client.handshake.auth?.token === "string"
         ? client.handshake.auth.token
@@ -243,6 +244,17 @@ export class MailGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const header = client.handshake.headers.authorization;
     if (typeof header === "string" && header.trim()) {
       return header.replace(/^Bearer\s+/i, "");
+    }
+
+    const cookieHeader = client.handshake.headers.cookie;
+    if (typeof cookieHeader === "string") {
+      const match = cookieHeader
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("access_token="));
+      if (match) {
+        return decodeURIComponent(match.slice("access_token=".length));
+      }
     }
 
     return null;

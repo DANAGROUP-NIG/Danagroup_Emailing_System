@@ -1,14 +1,7 @@
 'use client';
 
-import { FileText, Image, File, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-export interface Attachment {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-}
+import { FileText, ImageIcon, File, X } from 'lucide-react';
+import { Attachment } from '@/types/mail.types';
 
 interface AttachmentListProps {
   attachments: Attachment[];
@@ -16,14 +9,14 @@ interface AttachmentListProps {
   readonly?: boolean;
 }
 
-function getFileIcon(type: string) {
-  if (type.startsWith('image/')) {
-    return <Image className="h-4 w-4 text-blue-600" />;
+function getFileIcon(mimeType: string) {
+  if (mimeType.startsWith('image/')) {
+    return <ImageIcon className="h-4 w-4 text-blue-600" />;
   }
-  if (type.includes('pdf')) {
+  if (mimeType.includes('pdf')) {
     return <FileText className="h-4 w-4 text-red-600" />;
   }
-  if (type.includes('word') || type.includes('document')) {
+  if (mimeType.includes('word') || mimeType.includes('document')) {
     return <FileText className="h-4 w-4 text-blue-600" />;
   }
   return <File className="h-4 w-4 text-gray-600" />;
@@ -58,13 +51,13 @@ export default function AttachmentList({
             className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              {getFileIcon(attachment.type)}
+              {getFileIcon(attachment.mimeType)}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-gray-900">
-                  {attachment.name}
+                  {attachment.filename}
                 </p>
                 <p className="text-xs text-gray-600">
-                  {formatFileSize(attachment.size)}
+                  {formatFileSize(attachment.sizeBytes)}
                 </p>
               </div>
             </div>
