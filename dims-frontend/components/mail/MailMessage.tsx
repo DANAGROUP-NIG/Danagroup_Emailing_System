@@ -144,7 +144,8 @@ export default function MailMessage({
               </span>
             )}
           </div>
-
+        </div>
+        
         <div className="flex items-center gap-4">
           <span className="shrink-0 text-xs text-muted-foreground">
             {isCollapsed 

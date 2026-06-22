@@ -34,24 +34,24 @@ export default function MailThread({ threadId }: { threadId: string }) {
         </div>
       </div>
 
-        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-          {messages.map((message, index: number) => {
-            const previousSenderId = messages[index - 1]?.sender?.id;
-            const isConsecutive =
-              index > 0 && previousSenderId === message.sender?.id;
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        {messages.map((message, index: number) => {
+          const previousSenderId = messages[index - 1]?.sender?.id;
+          const isConsecutive = index > 0 && previousSenderId === message.sender?.id;
 
-            return (
+          return (
             <MailMessage
               key={message.id}
               message={message}
               isCollapsed={index !== messages.length - 1}
             />
-          ))}
-        </div>
+          )
+        })}
       </div>
     </div>
   );
 }
+
 
 function MailThreadSkeleton() {
   return (
