@@ -1,16 +1,14 @@
 import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
 import { SnakeNamingStrategy } from "typeorm-naming-strategies";
+import { buildPostgresOptions } from "./config/database.config";
 
 dotenv.config();
 
+const options = buildPostgresOptions(process.env);
+
 export const AppDataSource = new DataSource({
-  type: "postgres",
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "5432"),
-  username: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  ...options,
 
   entities: [__dirname + "/modules/**/*.entity{.ts,.js}"],
   migrations: ["src/database/migrations/*.ts"],

@@ -72,7 +72,7 @@ Danagroup_Emailing_System/
 
 ## Option A — Run with Docker (Recommended)
 
-This is the fastest and most reliable way to run the full stack. Docker handles PostgreSQL, Redis, MinIO, and Elasticsearch automatically.
+This is the fastest and most reliable way to run the full stack. Docker handles Redis, MinIO, and Elasticsearch automatically. PostgreSQL is expected to run on Neon via `DATABASE_URL`; the bundled Postgres container is available only when you opt into the `local-db` profile.
 
 ### Step 1 — Clone the repository
 
@@ -96,7 +96,9 @@ cp dims-backend/.env.example dims-backend/.env
 cp dims-frontend/.env.local.example dims-frontend/.env.local
 ```
 
-> **Important:** In `dims-backend/.env`, when running via Docker, change the hostnames from `localhost` to the Docker service names:
+> **Important:** For Neon, set `DATABASE_URL` in `dims-backend/.env` to the pooled Neon connection string and keep `DB_SSL=true`. When `DATABASE_URL` is set, it overrides `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`.
+>
+> If you intentionally use the bundled local Postgres container, run Compose with `--profile local-db` and change hostnames from `localhost` to the Docker service names:
 >
 > | Variable | Local value | Docker value |
 > |---|---|---|
@@ -115,10 +117,22 @@ cp dims-frontend/.env.local.example dims-frontend/.env.local
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
+To use the bundled local Postgres instead of Neon:
+
+```bash
+docker compose --profile local-db -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
 **Production-like mode** (compiled images, no source mount):
 
 ```bash
 docker compose up -d --build
+```
+
+To use the bundled local Postgres instead of Neon:
+
+```bash
+docker compose --profile local-db up -d --build
 ```
 
 Wait for all containers to be healthy before running migrations:
@@ -263,9 +277,12 @@ npm run dev
 
 | Variable | Description | Example |
 |---|---|---|
+| `DATABASE_URL` | Neon/cloud Postgres connection URL. Overrides split DB vars. | `postgresql://...?...sslmode=verify-full` |
 | `DB_NAME` | PostgreSQL database name | `dims_db` |
 | `DB_USER` | PostgreSQL username | `dims_user` |
 | `DB_PASSWORD` | PostgreSQL password | `strongpassword` |
+| `DB_SSL` | Enables TLS for cloud Postgres | `true` |
+| `DB_POOL_MAX` | Max Postgres pool connections per API container | `10` |
 | `MINIO_ACCESS_KEY` | MinIO root user | `minioadmin` |
 | `MINIO_SECRET_KEY` | MinIO root password | `minioadmin` |
 | `JWT_SECRET` | JWT signing secret | `long-random-string` |
@@ -275,11 +292,14 @@ npm run dev
 | Variable | Description | Default |
 |---|---|---|
 | `PORT` | API server port | `8000` |
+| `DATABASE_URL` | Neon/cloud Postgres connection URL. Overrides split DB vars. | `postgresql://...?...sslmode=verify-full` |
 | `DB_HOST` | Postgres hostname | `localhost` / `postgres` |
 | `DB_PORT` | Postgres port | `5432` / `5433` (dev local) |
 | `DB_NAME` | Database name | `dims_db` |
 | `DB_USER` | DB username | `dims_user` |
 | `DB_PASSWORD` | DB password | *(set this)* |
+| `DB_SSL` | Enables TLS for cloud Postgres | `true` |
+| `DB_POOL_MAX` | Max Postgres pool connections per API container | `10` |
 | `JWT_SECRET` | Access token secret | *(set this — min 32 chars)* |
 | `JWT_EXPIRES_IN` | Access token lifetime | `15m` |
 | `JWT_REFRESH_SECRET` | Refresh token secret | *(set this — min 32 chars)* |

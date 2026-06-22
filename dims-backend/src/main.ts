@@ -49,7 +49,11 @@ async function bootstrap() {
     app.use(
       session({
         store: new RedisStore({ client: redisClient, prefix: "sess:" }),
-        secret: process.env.SESSION_SECRET || (() => { throw new Error('SESSION_SECRET environment variable is required'); })(),
+        secret:
+          process.env.SESSION_SECRET ||
+          (() => {
+            throw new Error("SESSION_SECRET environment variable is required");
+          })(),
         resave: false,
         saveUninitialized: false,
         name: "dims_sid", // Custom cookie name

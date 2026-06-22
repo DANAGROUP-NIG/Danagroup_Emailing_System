@@ -50,7 +50,7 @@ export class UsersService {
     throw error;
   }
 
-  async updateSessions(id: string, sessions: User['sessions']): Promise<void> {
+  async updateSessions(id: string, sessions: User["sessions"]): Promise<void> {
     await this.userRepo.update(id, { sessions });
   }
 

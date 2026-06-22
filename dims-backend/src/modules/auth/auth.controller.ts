@@ -160,7 +160,9 @@ export class AuthController {
     description: "Current authenticated user",
     type: CurrentUserResponseDto,
   })
-  async me(@CurrentUser() user: { userId: string; email: string; role: string }) {
+  async me(
+    @CurrentUser() user: { userId: string; email: string; role: string },
+  ) {
     const fullUser = await this.usersService.findById(user.userId);
     return new ApiResponseDto(true, "User fetched", fullUser);
   }

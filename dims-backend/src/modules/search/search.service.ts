@@ -24,7 +24,11 @@ export class SearchService {
     try {
       await this.ensureIndexExists(this.USER_INDEX);
     } catch (err: unknown) {
-      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
+      const e = err as {
+        name?: string;
+        message?: string;
+        meta?: { statusCode?: number };
+      };
       this.logger.warn(
         `ensureIndexExists(${this.USER_INDEX}) failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
@@ -33,7 +37,11 @@ export class SearchService {
     try {
       await this.ensureIndexExists(this.MESSAGE_INDEX);
     } catch (err: unknown) {
-      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
+      const e = err as {
+        name?: string;
+        message?: string;
+        meta?: { statusCode?: number };
+      };
       this.logger.warn(
         `ensureIndexExists(${this.MESSAGE_INDEX}) failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
@@ -43,7 +51,11 @@ export class SearchService {
     try {
       await this.syncUsersToIndex();
     } catch (err: unknown) {
-      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
+      const e = err as {
+        name?: string;
+        message?: string;
+        meta?: { statusCode?: number };
+      };
       this.logger.warn(
         `syncUsersToIndex failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}`,
       );
@@ -99,7 +111,7 @@ export class SearchService {
               },
             },
           },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
         mappings: {
           properties: {
@@ -200,7 +212,8 @@ export class SearchService {
     } catch (error) {
       // Catch the missing index error so the app doesn't crash
       if (
-        (error as { meta?: { body?: { error?: { type?: string } } } }).meta?.body?.error?.type === "index_not_found_exception"
+        (error as { meta?: { body?: { error?: { type?: string } } } }).meta
+          ?.body?.error?.type === "index_not_found_exception"
       ) {
         console.warn(
           `Elasticsearch index "${this.USER_INDEX}" not found. Returning empty.`,
@@ -211,7 +224,14 @@ export class SearchService {
     }
   }
 
-  async indexMessage(message: { id: string; subject: string; body: string; senderId: string; sentAt?: Date; recipients?: Array<{ recipientId?: string; id?: string }> }) {
+  async indexMessage(message: {
+    id: string;
+    subject: string;
+    body: string;
+    senderId: string;
+    sentAt?: Date;
+    recipients?: Array<{ recipientId?: string; id?: string }>;
+  }) {
     try {
       return await this.es.index<MessageSearchBody>({
         index: this.MESSAGE_INDEX,

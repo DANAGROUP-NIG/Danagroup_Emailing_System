@@ -1,5 +1,12 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Min,
+} from "class-validator";
 import { Transform } from "class-transformer";
 import { AnnouncementTarget } from "../entities/announcement.entity";
 
@@ -29,7 +36,7 @@ export class QueryAnnouncementsDto {
   departmentId?: string;
 
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => value === "true" || value === true)
   @IsBoolean()
   isPinned?: boolean;
 }

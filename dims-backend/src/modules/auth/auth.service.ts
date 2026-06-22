@@ -93,7 +93,7 @@ export class AuthService {
     return result;
   }
 
-  private async generateTokens(user: Pick<UserShape, 'id' | 'email' | 'role'>) {
+  private async generateTokens(user: Pick<UserShape, "id" | "email" | "role">) {
     const payload = {
       sub: user.id,
       email: user.email,
