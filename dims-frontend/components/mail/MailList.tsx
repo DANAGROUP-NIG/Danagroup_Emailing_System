@@ -18,6 +18,7 @@ import {
   useDeleteMail,
   useRestoreMail,
   usePermanentDeleteMail,
+  useThread,
 } from "@/hooks/useMail";
 import { useMailStore } from "@/store/mailStore";
 import type {
@@ -27,9 +28,9 @@ import type {
 } from "@/types/mail.types";
 import { htmlToText } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getInitials } from "../layout/TopBar";
 import { useAuthStore } from "@/store/authStore";
 import { Span } from "next/dist/trace";
+import { getInitials } from "../ui/Avatar";
 
 interface MailListProps {
   viewMode: MailFolder;
@@ -56,7 +57,7 @@ type MailListRow = {
   date?: string | undefined;
 };
 
-export default function MailList({ viewMode, searchParams }: MailListProps) {
+export default function MailList({ viewMode }: MailListProps) {
   const router = useRouter();
   const params = useParams();
   const currentThreadId = params.threadId as string;
@@ -67,8 +68,8 @@ export default function MailList({ viewMode, searchParams }: MailListProps) {
     {},
   );
 
-  const user = useAuthStore((state) => state.user);
-  const { useThread } = useMail();
+  // const user = useAuthStore((state) => state.user);
+  // const { useThread } = useMail();
   const { data: threadData, isLoading, error } = useThread(currentThreadId);
   const messages = threadData?.messages || [];
 
