@@ -18,7 +18,6 @@ import {
   useDeleteMail,
   useRestoreMail,
   usePermanentDeleteMail,
-  useThread,
 } from "@/hooks/useMail";
 import { useMailStore } from "@/store/mailStore";
 import type {
@@ -28,8 +27,6 @@ import type {
 } from "@/types/mail.types";
 import { htmlToText } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useAuthStore } from "@/store/authStore";
-import { Span } from "next/dist/trace";
 import { getInitials } from "../ui/Avatar";
 
 interface MailListProps {
@@ -67,18 +64,6 @@ export default function MailList({ viewMode }: MailListProps) {
   const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>(
     {},
   );
-
-  // const user = useAuthStore((state) => state.user);
-  // const { useThread } = useMail();
-  const { data: threadData, isLoading, error } = useThread(currentThreadId);
-  const messages = threadData?.messages || [];
-
-  
-  const name = messages[0]?.sender?.name.split(" ") as string[] || [];
-  const firstName = name[0];
-  const lastName = name[1]
-  
-
 
   const inboxQuery = useInbox();
   const sentQuery = useSent();
@@ -229,17 +214,7 @@ export default function MailList({ viewMode }: MailListProps) {
                 />
 
                 <div className="bg-red-700 h-10 w-10 self-center rounded-full flex justify-center items-center font-semibold text-white"> 
-                  { 
-                    isLoading 
-                    ? <></> 
-                    : <>{viewMode === "inbox" ? (<span>
-                          {getInitials(firstName, lastName)} 
-                        </span>) : (<span>
-                          {/* { getInitials(user?.firstName, user?.lastName) }  */}
-                        </span>) }
-                      </>
-                  }
-                   
+                  {getInitialsFromName(item.senderName)}
                 </div>
 
                 <button
@@ -574,4 +549,10 @@ function formatRecipientSummary(
   }
 
   return `${labels[0]} +${labels.length - 1}`;
+}
+
+function getInitialsFromName(name: string) {
+  const [firstName = "", lastName = ""] = name.split(/\s+/);
+
+  return getInitials(firstName, lastName || firstName);
 }

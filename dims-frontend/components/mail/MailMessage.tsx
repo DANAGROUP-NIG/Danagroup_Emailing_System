@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
@@ -26,6 +26,7 @@ export default function MailMessage({
   const starMail = useStarMail();
   const deleteMail = useDeleteMail();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const markedReadIdsRef = useRef(new Set<string>());
 
   const myRecipient = message.recipients.find(
     (r) => r.email === user?.email || r.recipient?.email === user?.email
@@ -40,8 +41,8 @@ export default function MailMessage({
       myRecipient && 
       myRecipient.isRead === false;
 
-    if (canMarkRead) {
-      // Pass the message.id to the mutation
+    if (canMarkRead && !markedReadIdsRef.current.has(message.id)) {
+      markedReadIdsRef.current.add(message.id);
       markRead.mutate(message.id);
     }
   }, [isCollapsed, markRead, message.id, message.isDraft, message.sender?.id, myRecipient, user?.id]);

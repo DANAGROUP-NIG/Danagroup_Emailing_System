@@ -8,6 +8,9 @@ const parseBoolean = (value: string | undefined, fallback = false): boolean => {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 };
 
+const parseOptionalBoolean = (value: string | undefined): boolean | undefined =>
+  value === undefined ? undefined : parseBoolean(value);
+
 const parseInteger = (
   value: string | undefined,
   fallback: number,
@@ -29,6 +32,8 @@ export const buildPostgresOptions = (
     env.DB_SSL_REJECT_UNAUTHORIZED,
     true,
   );
+  const queryLogging =
+    parseOptionalBoolean(env.DB_LOGGING) ?? env.NODE_ENV === "development";
 
   return {
     type: "postgres",
@@ -45,10 +50,7 @@ export const buildPostgresOptions = (
 
     synchronize: false,
 
-    logging:
-      parseBoolean(env.DB_LOGGING) || env.NODE_ENV === "development"
-        ? ["query", "error"]
-        : ["error"],
+    logging: queryLogging ? ["query", "error"] : ["error"],
 
     migrations: ["dist/database/migrations/*.js"],
     migrationsTableName: "migrations",

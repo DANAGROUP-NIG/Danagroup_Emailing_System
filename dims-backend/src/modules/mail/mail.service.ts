@@ -926,7 +926,7 @@ export class MailService {
         };
       }
 
-      await this.recipientRepo
+      const updateResult = await this.recipientRepo
         .createQueryBuilder()
         .update()
         .set({
@@ -981,7 +981,7 @@ export class MailService {
 
   async markThreadAsRead(threadId: string, userId: string) {
     try {
-      await this.recipientRepo
+      const updateResult = await this.recipientRepo
         .createQueryBuilder()
         .update()
         .set({
@@ -999,23 +999,26 @@ export class MailService {
             ")",
           { threadId },
         )
+        .andWhere("isRead = false")
         .execute();
 
-      await this.refreshUserThreadState(
-        this.dataSource.manager,
-        threadId,
-        userId,
-      );
-      this.mailGateway.emitMailRead(userId, {
-        threadId,
-        isRead: true,
-        readAt: new Date().toISOString(),
-      });
-      this.emitMailboxChanged(userId, {
-        action: "read_state_changed",
-        threadId,
-        folders: ["inbox", "starred"],
-      });
+      if ((updateResult.affected ?? 0) > 0) {
+        await this.refreshUserThreadState(
+          this.dataSource.manager,
+          threadId,
+          userId,
+        );
+        this.mailGateway.emitMailRead(userId, {
+          threadId,
+          isRead: true,
+          readAt: new Date().toISOString(),
+        });
+        this.emitMailboxChanged(userId, {
+          action: "read_state_changed",
+          threadId,
+          folders: ["inbox", "starred"],
+        });
+      }
 
       return {
         data: {
@@ -1942,24 +1945,22 @@ export class MailService {
         visibleCount: string;
         unreadCount: string;
         isStarred: string;
-      }>();
+    }>();
 
     const visibleCount = Number(aggregate?.visibleCount ?? 0);
-    await manager.delete(UserThreadState, { threadId, userId });
 
     if (!visibleCount) {
+      await manager.delete(UserThreadState, { threadId, userId });
       return;
     }
 
-    const state = manager.create(UserThreadState, {
+    await manager.upsert(UserThreadState, {
       threadId,
       userId,
       unreadCount: Number(aggregate?.unreadCount ?? 0),
       isStarred: Number(aggregate?.isStarred ?? 0) > 0,
       isRead: Number(aggregate?.unreadCount ?? 0) === 0,
-    });
-
-    await manager.save(state);
+    }, ["userId", "threadId"]);
   }
 
   private async refreshThreadAfterMutation(
