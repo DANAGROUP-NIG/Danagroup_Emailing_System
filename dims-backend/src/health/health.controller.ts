@@ -26,7 +26,7 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([
-      () => this.db.pingCheck("postgres"),
+      () => this.db.pingCheck("postgres", { timeout: 5000 }),
       () => this.redis.isHealthy("redis"),
       () => this.minio.isHealthy("minio"),
       () => this.es.isHealthy("elasticsearch"),
