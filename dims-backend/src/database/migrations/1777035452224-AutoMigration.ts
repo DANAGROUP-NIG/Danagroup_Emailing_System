@@ -4,6 +4,7 @@ export class AutoMigration1777035452224 implements MigrationInterface {
   name = "AutoMigration1777035452224";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
     await queryRunner.query(
       `CREATE TABLE "subsidiaries" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(100) NOT NULL, "domain" character varying(50) NOT NULL, "description" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_02a78cf30080bf9b52e8f856cbe" UNIQUE ("name"), CONSTRAINT "UQ_374018dd0f1f752bbd79fa0a886" UNIQUE ("domain"), CONSTRAINT "PK_34ded851c22b6628bfc8e3bd236" PRIMARY KEY ("id"))`,
     );

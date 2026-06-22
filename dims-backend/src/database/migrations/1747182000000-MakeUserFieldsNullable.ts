@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class MakeUserFieldsNullable1747182000000 implements MigrationInterface {
-  name = "MakeUserFieldsNullable1747182000000";
+export class MakeUserFieldsNullable1777035452225 implements MigrationInterface {
+  name = "MakeUserFieldsNullable1777035452225";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

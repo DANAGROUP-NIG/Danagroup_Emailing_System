@@ -1,34 +1,90 @@
 import { ConfigService } from "@nestjs/config";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
 import { SnakeNamingStrategy } from "typeorm-naming-strategies";
 
-export default (config: ConfigService): TypeOrmModuleOptions => ({
-  type: "postgres",
+const parseBoolean = (value: string | undefined, fallback = false): boolean => {
+  if (value === undefined) return fallback;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+};
 
-  host: config.get<string>("DB_HOST", "localhost"),
-  port: config.get<number>("DB_PORT", 5432),
+const parseInteger = (
+  value: string | undefined,
+  fallback: number,
+): number => {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
 
-  database: config.get<string>("DB_NAME", "dims_db"),
-  username: config.get<string>("DB_USER", "dims_user"),
-  password: config.get<string>("DB_PASSWORD", "password"),
+export const buildPostgresOptions = (
+  env: Record<string, string | undefined>,
+): PostgresConnectionOptions => {
+  const databaseUrl = env.DATABASE_URL;
+  const sslEnabled =
+    parseBoolean(env.DB_SSL) ||
+    Boolean(
+      databaseUrl?.match(/sslmode=(require|verify-full|verify-ca|prefer)/),
+    );
+  const rejectUnauthorized = parseBoolean(
+    env.DB_SSL_REJECT_UNAUTHORIZED,
+    true,
+  );
 
-  autoLoadEntities: true,
+  return {
+    type: "postgres",
 
-  synchronize: false, // never true in prod
+    ...(databaseUrl
+      ? { url: databaseUrl }
+      : {
+          host: env.DB_HOST ?? "localhost",
+          port: parseInteger(env.DB_PORT, 5432),
+          database: env.DB_NAME ?? "dims_db",
+          username: env.DB_USER ?? "dims_user",
+          password: env.DB_PASSWORD ?? "password",
+        }),
 
-  logging:
-    config.get("NODE_ENV") === "development" ? ["query", "error"] : ["error"],
+    synchronize: false,
 
-  migrations: ["dist/database/migrations/*.js"],
-  migrationsTableName: "migrations",
+    logging:
+      parseBoolean(env.DB_LOGGING) || env.NODE_ENV === "development"
+        ? ["query", "error"]
+        : ["error"],
 
-  namingStrategy: new SnakeNamingStrategy(),
+    migrations: ["dist/database/migrations/*.js"],
+    migrationsTableName: "migrations",
 
-  ssl: config.get("DB_SSL") === "true" ? { rejectUnauthorized: false } : false,
+    namingStrategy: new SnakeNamingStrategy(),
 
-  extra: {
-    max: 20,
-  },
+    ssl: sslEnabled ? { rejectUnauthorized } : false,
 
-  keepConnectionAlive: true,
-});
+    extra: {
+      max: parseInteger(env.DB_POOL_MAX, 10),
+      idleTimeoutMillis: parseInteger(env.DB_IDLE_TIMEOUT_MS, 30000),
+      connectionTimeoutMillis: parseInteger(env.DB_CONNECTION_TIMEOUT_MS, 10000),
+      keepAlive: true,
+    },
+  };
+};
+
+export default (config: ConfigService): TypeOrmModuleOptions =>
+  ({
+    ...buildPostgresOptions({
+      DATABASE_URL: config.get<string>("DATABASE_URL"),
+      DB_HOST: config.get<string>("DB_HOST"),
+      DB_PORT: config.get<string>("DB_PORT"),
+      DB_NAME: config.get<string>("DB_NAME"),
+      DB_USER: config.get<string>("DB_USER"),
+      DB_PASSWORD: config.get<string>("DB_PASSWORD"),
+      DB_SSL: config.get<string>("DB_SSL"),
+      DB_SSL_REJECT_UNAUTHORIZED: config.get<string>(
+        "DB_SSL_REJECT_UNAUTHORIZED",
+      ),
+      DB_LOGGING: config.get<string>("DB_LOGGING"),
+      DB_POOL_MAX: config.get<string>("DB_POOL_MAX"),
+      DB_IDLE_TIMEOUT_MS: config.get<string>("DB_IDLE_TIMEOUT_MS"),
+      DB_CONNECTION_TIMEOUT_MS: config.get<string>("DB_CONNECTION_TIMEOUT_MS"),
+      NODE_ENV: config.get<string>("NODE_ENV"),
+    }),
+    autoLoadEntities: true,
+    keepConnectionAlive: true,
+  });
