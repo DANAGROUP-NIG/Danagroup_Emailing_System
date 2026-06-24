@@ -1,13 +1,14 @@
 import { Suspense } from "react";
 import MailThread from "@/components/mail/MailThread";
 import { Spinner } from "@/components/ui/Spinner";
+import { MailFolder } from "@/types/mail.types";
 
 export default function ThreadPage({
   params,
 }: {
-  params: { threadId: string };
+  params: { viewMode: MailFolder; threadId: string };
 }) {
-  const { threadId } = params;
+  const { threadId, viewMode } = params;
 
   if (!threadId) {
     return (
@@ -26,7 +27,7 @@ export default function ThreadPage({
           </div>
         }
       >
-        <MailThread threadId={threadId} />
+        <MailThread threadId={threadId} viewMode={viewMode} />
       </Suspense>
     </div>
   );

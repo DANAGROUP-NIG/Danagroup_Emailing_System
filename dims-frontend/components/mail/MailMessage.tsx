@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
-import { Reply, Forward, Star, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Forward, Reply, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
@@ -69,7 +69,6 @@ export default function MailMessage({
   const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
   const originalText = htmlToText(message.bodyHtml) || message.body || "";
   const sentDate = format(new Date(message.createdAt), "PPP p");
-  const messageDate = new Date(message.createdAt);
   const senderLabel = `${fullName} <${senderEmail}>`;
   const replyBody = `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quoteText(originalText)}`;
   const forwardBody = `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\nSubject: ${message.subject || "(No Subject)"}${toLine ? `\nTo: ${toLine}` : ""}\n\n${originalText}`;
@@ -106,7 +105,7 @@ export default function MailMessage({
   const avatarColor = stringToColor(senderEmail);
 
   return (
-    <div className={`group rounded-xl border bg-pink-400 shadow-sm overflow-hidden transition-all ${isUnread && isCollapsed ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
+    <div className={`group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-all ${isUnread && isCollapsed ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
       {/* Message Header — always visible */}
       <button
         type="button"

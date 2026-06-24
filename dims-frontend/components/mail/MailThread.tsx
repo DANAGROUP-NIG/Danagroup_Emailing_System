@@ -3,9 +3,17 @@
 import { useThread } from "@/hooks/useMail";
 import { Skeleton } from "@/components/ui/Skeleton";
 import MailMessage from "./MailMessage";
-import { Mail } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
+import Link from "next/link";
+import type { MailFolder } from "@/types/mail.types";
 
-export default function MailThread({ threadId }: { threadId: string }) {
+export default function MailThread({
+  threadId,
+  viewMode,
+}: {
+  threadId: string;
+  viewMode: MailFolder;
+}) {
   const { data: threadData, isLoading, error } = useThread(threadId);
 
   if (isLoading) return <MailThreadSkeleton />;
@@ -23,30 +31,38 @@ export default function MailThread({ threadId }: { threadId: string }) {
   const messageCount = messages.length;
 
   return (
-    <div data-testid="thread-view" className="flex h-full flex-col bg-[#f5f6fa]">
+    <div data-testid="thread-view" className="flex h-full flex-col bg-slate-50">
       {/* Sticky subject header */}
-      <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-4 shadow-sm">
-        <div className="mx-auto max-w-3xl">
-          <h1 className="text-lg font-semibold text-slate-800 leading-snug">{subject}</h1>
-          {messageCount > 1 && (
-            <p className="mt-0.5 text-xs text-slate-500">{messageCount} messages in this thread</p>
-          )}
+      <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="mx-auto flex max-w-4xl items-start gap-3">
+          <Link
+            href={`/mail/${viewMode}`}
+            aria-label={`Back to ${viewMode}`}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-semibold leading-snug text-slate-800">
+              {subject}
+            </h1>
+            {messageCount > 1 && (
+              <p className="mt-0.5 text-xs text-slate-500">{messageCount} messages in this thread</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-        {messages.map((message, index: number) => {
-          const previousSenderId = messages[index - 1]?.sender?.id;
-          const isConsecutive = index > 0 && previousSenderId === message.sender?.id;
-
-          return (
+      <div className="flex-1 overflow-y-auto px-4 py-5 lg:px-8">
+        <div className="mx-auto max-w-4xl space-y-3">
+          {messages.map((message, index: number) => (
             <MailMessage
               key={message.id}
               message={message}
               isCollapsed={index !== messages.length - 1}
             />
-          )
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );

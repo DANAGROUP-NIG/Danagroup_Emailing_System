@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
@@ -139,8 +139,8 @@ export default function MailList({ viewMode }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-green-400">
-      <div className="shrink-0 border-b border-slate-200 bg-white p-4">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-purple-400">
+      <div className="shrink-0 border-b border-slate-200 bg-green-400 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <input
@@ -194,26 +194,26 @@ export default function MailList({ viewMode }: MailListProps) {
           items.map((item) => (
             <div
               key={item.id}
-              className={`mail-list-item w-full border-b p-4 text-left transition-colors hover:bg-slate-50 ${
+              className={`mail-list-item w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
                 currentThreadId === item.threadId ? "bg-slate-100" : ""
               } ${item.isUnread ? "bg-blue-50/40" : ""}`}
             >
-              <div className="flex w-full items-start gap-3 group">
+              <div className="group flex w-full items-center gap-3">
                 <input
                   type="checkbox"
                   aria-label={`Select message from ${item.senderName}`}
                   checked={selectedMessageIds.includes(item.selectionId)}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  onChange={() => {
                     toggleMessageSelection(item.selectionId);
                   }}
-                  className={`mt-1 h-3 w-3 rounded group-hover:opacity-100
+                  className={`h-4 w-4 rounded border-slate-300 group-hover:opacity-100
                     ${selectedMessageIds.includes(item.selectionId)
                     ? 'opacity-100' 
                     : 'opacity-0'
                   } `}
                 />
 
-                <div className="bg-red-700 h-10 w-10 self-center rounded-full flex justify-center items-center font-semibold text-white"> 
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dana-red-600 text-sm font-semibold text-white">
                   {getInitialsFromName(item.senderName)}
                 </div>
 
@@ -233,16 +233,25 @@ export default function MailList({ viewMode }: MailListProps) {
                       router.push(`/mail/${viewMode}/${item.threadId}`);
                     }
                   }}
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="grid min-w-0 grid-cols-[minmax(120px,180px)_minmax(0,1fr)_auto] items-center gap-3">
                     <div
                       className={`truncate text-sm font-semibold ${
                         item.isDraft ? "text-dana-red-600" : "text-gray-900"
                       }`}
                     >
                       {item.senderName}
+                    </div>
+                    <div className="min-w-0 truncate">
+                      <span className="text-sm font-medium text-gray-800">
+                        {item.subject}
+                      </span>
+                      <span className="mx-2 text-slate-300">-</span>
+                      <span className="text-sm text-muted-foreground">
+                        {item.bodyPreview}
+                      </span>
                     </div>
                     <div className="whitespace-nowrap text-[10px] text-muted-foreground">
                       {item.date
@@ -255,12 +264,6 @@ export default function MailList({ viewMode }: MailListProps) {
                   <RecipientLine label="To" value={item.toSummary} />
                   <RecipientLine label="Cc" value={item.ccSummary} />
                   <RecipientLine label="Bcc" value={item.bccSummary} />
-                  <p className="truncate text-md text-gray-600 ">
-                    {item.subject}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {item.bodyPreview}
-                  </p>
                 </button>
 
                 <div className="flex shrink-0 items-center gap-1">
