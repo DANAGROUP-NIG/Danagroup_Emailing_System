@@ -15,8 +15,6 @@ import {
   LogOut,
   MailPlus,
   Megaphone,
-  PanelLeftClose,
-  PanelLeftOpen,
   Send,
   Settings,
   Shield,

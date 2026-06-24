@@ -319,6 +319,6 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 export const config = {
   matcher: [
     // Skip static files, API proxy routes, PWA assets, and image files
-    "/((?!_next/static|_next/image|api/|favicon.ico|manifest.json|sw.js|workbox-.*\\.js|fallback-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|metrics/|api/|favicon.ico|manifest.json|sw.js|workbox-.*\\.js|fallback-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

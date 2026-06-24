@@ -139,7 +139,7 @@ export default function MailList({ viewMode }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white">
+    <div className="flex h-full flex-col overflow-hidden bg-green-400">
       <div className="shrink-0 border-b border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

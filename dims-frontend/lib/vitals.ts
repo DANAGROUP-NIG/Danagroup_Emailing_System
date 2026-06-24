@@ -1,6 +1,6 @@
 import type { NextWebVitalsMetric } from "next/app";
 
-const VITALS_ENDPOINT = "/api/metrics/web-vitals";
+const VITALS_ENDPOINT = "/metrics/web-vitals";
 
 /**
  * Send Web Vitals to Sentry as span measurements.

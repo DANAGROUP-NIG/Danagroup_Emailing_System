@@ -106,7 +106,7 @@ export default function MailMessage({
   const avatarColor = stringToColor(senderEmail);
 
   return (
-    <div className={`group rounded-xl border bg-white shadow-sm overflow-hidden transition-all ${isUnread && isCollapsed ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
+    <div className={`group rounded-xl border bg-pink-400 shadow-sm overflow-hidden transition-all ${isUnread && isCollapsed ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
       {/* Message Header — always visible */}
       <button
         type="button"
@@ -131,6 +131,7 @@ export default function MailMessage({
               <span className={`truncate text-sm ${isUnread ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>
                 {fullName}
               </span>
+              <span className="text-gray-400 text-xs"> &lt;{user?.email}&gt;</span>
               {isUnread && (
                 <span className="shrink-0 h-2 w-2 rounded-full bg-blue-500" aria-label="Unread" />
               )}
@@ -145,14 +146,17 @@ export default function MailMessage({
               </span>
             )}
           </div>
+            
+          <div className="flex self-end">
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {isCollapsed 
+                ? format(new Date(message.createdAt), "MMM d") 
+                : format(new Date(message.createdAt), "PPP p")}
+            </span>
+          </div>
         </div>
         
         <div className="flex items-center gap-4">
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {isCollapsed 
-              ? format(new Date(message.createdAt), "MMM d") 
-              : format(new Date(message.createdAt), "PPP p")}
-          </span>
           
           {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
           <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
