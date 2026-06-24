@@ -1,9 +1,10 @@
-
-# Development override — mounts source code for hot-reload
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Local development defaults.
+#
+# Docker Compose automatically includes this file when you run `docker compose up`
+# from the project root. Keep production-like runs explicit with:
+#   docker compose -f docker-compose.yml up -d --build
 
 services:
-
   frontend:
     build:
       context: ./dims-frontend
@@ -30,7 +31,6 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 3000"]
       start_period: 90s
-    # port 3001:3000 already exposed in base compose
 
   api:
     build:
@@ -44,10 +44,8 @@ services:
       - NODE_ENV=development
       - PORT=8000
     ports:
-      - "9229:9229"  # Node.js debugger (api:8000 already exposed in base compose)
+      - "9229:9229"
 
   nginx:
-    ports:
-      - "3000:80"   # Full stack (nginx → Next.js + API proxy)
     volumes:
       - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
