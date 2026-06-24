@@ -489,6 +489,20 @@ Elasticsearch needs at least **2 GB of RAM** available. Increase Docker Desktop 
 
 You have Docker Compose v1 (`docker-compose`). Either upgrade to Docker Desktop (which bundles Compose v2) or use `docker-compose` instead of `docker compose` in all commands above.
 
+### Frontend changes do not update in Docker
+
+For local development, run Compose from the repository root. The included `docker-compose.override.yml` is loaded automatically and bind-mounts `dims-frontend` into the frontend container:
+```bash
+docker compose up -d --build
+```
+
+You can also run the explicit development override:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build --force-recreate frontend nginx
+```
+
+The development config runs `next dev`, keeps `node_modules` and `.next` inside Docker volumes, and enables polling file watchers for Docker Desktop. If the frontend container was created from only `docker-compose.yml`, it runs the compiled `server.js` bundle and IDE edits will not hot-reload.
+
 ### Port already in use
 
 If a port like `5432`, `6379`, or `9200` is already used by a local service, either stop the local service or change the host-side port mapping in `docker-compose.dev.yml`.
