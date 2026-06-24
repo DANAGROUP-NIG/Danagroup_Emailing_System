@@ -61,7 +61,7 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Content area shifted by sidebar width on md+ */}
       <div
-        className="flex min-h-screen flex-col transition-[padding] duration-300 md:pl-[var(--sidebar-width)]"
+        className="flex h-[100vh] flex-col transition-[padding] duration-300 md:pl-[var(--sidebar-width)]"
         style={sidebarCollapsed ? { paddingLeft: "var(--sidebar-collapsed-width)" } : undefined}
       >
         <TopBar connectionStatus={connectionStatus} />

@@ -254,14 +254,14 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
   return (
     <div className="flex h-full flex-col">
       {/* Brand header */}
-      <div className={cn("border-b border-white/10 py-4", collapsed ? "px-2" : "px-5")}>
+      <div className={cn("border-b border-white/10 py-4 bg-slate-100", collapsed ? "px-2" : "px-5")}>
         <Link
           href="/mail/inbox"
           {...(onNavigate ? { onClick: onNavigate } : {})}
           className="mb-4 flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg"
           aria-label="DIMS — go to inbox"
         >
-          <div className={cn("rounded-lg bg-white", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
+          <div className={cn("rounded-lg", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
             {collapsed ? (
               <Image src={logo} width={32} height={6} alt="Dana Group logo" priority className="object-contain" />
             ) : (

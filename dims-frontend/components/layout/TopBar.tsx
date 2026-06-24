@@ -74,7 +74,7 @@ export default function TopBar({ connectionStatus }: TopBarProps) {
   return (
     <header
       // h-16 = 64px — do not change; mail split layout depends on this
-      className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur md:px-6"
+      className="sticky top-0 z-30 flex h-[73px] items-center gap-4 border-b-0 border-border bg-background/80 px-4 backdrop-blur md:px-6"
     >
       {/* ── Hamburger (mobile only) ── */}
       <button

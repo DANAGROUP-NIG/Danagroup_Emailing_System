@@ -8,7 +8,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import { mailApi } from "@/lib/api/mail";
-import type { PaginatedResponse, BackendPageResponse } from "@/types/api.types";
+import type { BackendPageResponse } from "@/types/api.types";
 import type {
   ComposeData,
   DraftMessage,
@@ -254,6 +254,18 @@ export function useMarkRead() {
   });
 }
 
+export function useMarkUnread() {
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<Message, Error, string>({
+    mutationFn: async (id) => {
+      const res = await mailApi.markRead(id, false);
+      return unwrapResponse<Message>(res.data as ApiEnvelope<Message>);
+    },
+    onSuccess: invalidateMail,
+  });
+}
+
 export function useStarMail() {
   const queryClient = useQueryClient();
   const invalidateMail = useInvalidateMail();
@@ -482,15 +494,6 @@ export function useForwardMail() {
  * @deprecated Use discrete hooks instead: useInbox(), useSent(), etc.
  */
 export function useMail() {
-  const queryClient = useQueryClient();
-
-  const invalidateMail = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: mailKeys.all }),
-      queryClient.invalidateQueries({ queryKey: mailKeys.search() }),
-    ]);
-  };
-
   return {
     useInbox: (page = 1) =>
       useQuery({
@@ -527,6 +530,7 @@ export function useMail() {
     useSaveDraft: () => useSaveDraft(),
     useMarkThreadRead: () => useMarkThreadRead(),
     useMarkRead: () => useMarkRead(),
+    useMarkUnread: () => useMarkUnread(),
     useStarMail: () => useStarMail(),
     useDeleteMail: () => useDeleteMail(),
     useRestoreMail: () => useRestoreMail(),

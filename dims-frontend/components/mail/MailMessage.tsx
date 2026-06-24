@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
-import { Forward, Reply, Star, Trash2 } from "lucide-react";
+import { ChevronDown, Forward, Reply, ShieldCheck, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
 import { sanitizeHtml, containsDangerousHtml } from "@/lib/sanitize";
+import { getEmailDomain } from "@/utils/helpers";
 
 export default function MailMessage({ 
   message, 
@@ -26,10 +27,13 @@ export default function MailMessage({
   const starMail = useStarMail();
   const deleteMail = useDeleteMail();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const markedReadIdsRef = useRef(new Set<string>());
 
   const myRecipient = message.recipients.find(
-    (r) => r.email === user?.email || r.recipient?.email === user?.email
+    (r) =>
+      r.email?.toLowerCase() === user?.email?.toLowerCase() ||
+      r.recipient?.email?.toLowerCase() === user?.email?.toLowerCase()
   );
   // Marks message as read on expand (PATCH /api/mail/:id/read)
   useEffect(() => {
@@ -64,6 +68,10 @@ export default function MailMessage({
   const toLine = formatRecipients(message.recipients, "to");
   const ccLine = formatRecipients(message.recipients, "cc");
   const bccLine = formatRecipients(message.recipients, "bcc");
+  const toDisplay = myRecipient ? "me" : toLine || "me";
+  const senderDomain = getEmailDomain(senderEmail);
+  const mailedBy = senderDomain ? `send.${senderDomain}` : senderEmail;
+  const signedBy = senderDomain || senderEmail;
   const replyTo = buildReplyRecipients(message, user?.email);
   const replySubject = withSubjectPrefix(message.subject, "Re:");
   const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
@@ -105,16 +113,10 @@ export default function MailMessage({
   const avatarColor = stringToColor(senderEmail);
 
   return (
-    <div className={`group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-all ${isUnread && isCollapsed ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
-      {/* Message Header — always visible */}
-      <button
-        type="button"
-        aria-expanded={!isCollapsed}
-        aria-label={isCollapsed ? `Expand message from ${fullName}` : `Collapse message from ${fullName}`}
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-      >
-        <div className={`flex items-center gap-3 px-5 py-3.5 transition-colors ${isCollapsed ? "hover:bg-slate-50" : "border-b border-slate-100 bg-slate-50/60"}`}>
+    <div className={`group relative overflow-hidden rounded-b-xl border shadow-sm transition-all min-h-full flex flex-col ${isUnread ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
+      {/* Message Header — Static Row Layout */}
+      <div className="w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset flex justify-between items-center bg-white">
+        <div className="flex items-center gap-3 px-5 py-3.5 transition-colors flex-1 min-w-0">
           {/* Avatar */}
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm"
@@ -130,35 +132,26 @@ export default function MailMessage({
               <span className={`truncate text-sm ${isUnread ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>
                 {fullName}
               </span>
-              <span className="text-gray-400 text-xs"> &lt;{user?.email}&gt;</span>
+              <span className="text-gray-400 text-xs"> &lt;{message.sender?.email}&gt;</span>
               {isUnread && (
                 <span className="shrink-0 h-2 w-2 rounded-full bg-blue-500" aria-label="Unread" />
               )}
             </div>
-            {isCollapsed ? (
-              <span className="block truncate text-xs text-slate-400 mt-0.5">
-                {htmlToText(message.bodyHtml) || message.body || "(No content)"}
-              </span>
-            ) : (
-              <span className="block text-xs text-slate-400 mt-0.5">
-                To: {toLine || "me"}
-              </span>
-            )}
-          </div>
-            
-          <div className="flex self-end">
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {isCollapsed 
-                ? format(new Date(message.createdAt), "MMM d") 
-                : format(new Date(message.createdAt), "PPP p")}
+            <span className="block text-xs text-slate-400 mt-0.5">
+              To: {toLine || "me"}
             </span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-4 px-5">
+          <div className="flex">
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {format(new Date(message.createdAt), "PPP p")}
+            </span>
+          </div>
           
-          {/* Action buttons: Reply, Forward, Star, Delete (shown on hover) */}
-          <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+          {/* Action buttons */}
+          <div className="relative z-10 flex items-center gap-1 opacity-100 transition-opacity">
             <button
               type="button"
               className="p-1.5 hover:bg-muted rounded"
@@ -180,7 +173,6 @@ export default function MailMessage({
               disabled={!myRecipient || starMail.isPending}
               onClick={() => {
                 if (!myRecipient) return;
-
                 starMail.mutate({
                   id: message.id,
                   isStarred: !myRecipient.isStarred,
@@ -202,137 +194,76 @@ export default function MailMessage({
             </button>
           </div>
         </div>
-      </button>
+      </div>
 
-      {/* Expanded body */}
-      {!isCollapsed && (
-        <div className="px-11 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="mb-6 flex flex-col text-xs text-muted-foreground">
-            <span>From: <b className="text-foreground">{fullName}</b> &lt;{senderEmail}&gt;</span>
-            {toLine ? <span>To: {toLine}</span> : null}
-            {ccLine ? <span>Cc: {ccLine}</span> : null}
-            {bccLine ? <span>Bcc: {bccLine}</span> : null}
-            <span>Date: {format(new Date(message.createdAt), "PPPP 'at' p")}</span>
-          </div>
+      {/* Body Content — Stretches to fill vertical height */}
+      <div className="flex-1 overflow-y-auto bg-white">
+        {/* Body Container */}
+        <div className="px-[70px] py-3">
+          <div
+            className="prose prose-sm max-w-none text-slate-700
+              prose-p:leading-relaxed prose-p:my-2
+              prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-slate-800
+              prose-ul:my-2 prose-li:my-0.5"
+            dangerouslySetInnerHTML={{ __html: sanitizedBody }}
+          />
+        </div>
 
-          {/* Body */}
-          <div className="px-5 py-5">
-            <div
-              className="prose prose-sm max-w-none text-slate-700
-                prose-p:leading-relaxed prose-p:my-2
-                prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                prose-strong:text-slate-800
-                prose-ul:my-2 prose-li:my-0.5"
-              dangerouslySetInnerHTML={{ __html: sanitizedBody }}
-            />
-          </div>
-
-          {/* Attachments */}
-          {message.attachments && message.attachments.length > 0 && (
-            <div className="mx-5 mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Attachments ({message.attachments.length})
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {message.attachments.map((file) => (
-                  <button
-                    key={file.id}
-                    type="button"
-                    onClick={async () => {
-                      const response = await filesApi.getDownloadUrl(file.id);
-                      const url = response?.data?.data?.url;
-                      if (url) {
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      }
-                    }}
-                    className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm hover:bg-slate-100 hover:border-slate-300 transition-colors"
-                  >
-                    <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
-                    <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action bar */}
-          <div className="flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/50 px-5 py-2.5">
-            <button
-              type="button"
-              title="Reply"
-              aria-label="Reply to message"
-              onClick={handleReply}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Reply className="h-3.5 w-3.5" aria-hidden="true" />
-              Reply
-            </button>
-            <button
-              type="button"
-              title="Forward"
-              aria-label="Forward message"
-              onClick={handleForward}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Forward className="h-3.5 w-3.5" aria-hidden="true" />
-              Forward
-            </button>
-
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                type="button"
-                disabled={!myRecipient || starMail.isPending}
-                title={myRecipient ? (myRecipient.isStarred ? "Unstar" : "Star") : "Star"}
-                aria-label={myRecipient ? (myRecipient.isStarred ? "Unstar message" : "Star message") : "Only recipient messages can be starred"}
-                aria-pressed={myRecipient?.isStarred === true}
-                onClick={() => {
-                  if (!myRecipient) return;
-                  starMail.mutate({ id: message.id, isStarred: !myRecipient.isStarred });
-                }}
-                className={`rounded-md p-1.5 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${myRecipient?.isStarred === true ? "text-amber-400" : "text-slate-400 hover:text-amber-400"}`}
-              >
-                <Star className={`h-4 w-4 ${myRecipient?.isStarred === true ? "fill-current" : ""}`} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                title="Delete"
-                aria-label="Move message to trash"
-                disabled={deleteMail.isPending}
-                onClick={() => deleteMail.mutate(message.id)}
-                className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </button>
+        {/* Attachments Section */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mx-16 mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Attachments ({message.attachments.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {message.attachments.map((file) => (
+                <button
+                  key={file.id}
+                  type="button"
+                  onClick={async () => {
+                    const response = await filesApi.getDownloadUrl(file.id);
+                    const url = response?.data?.data?.url;
+                    if (url) {
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                  className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm hover:bg-slate-100 hover:border-slate-300 transition-colors"
+                >
+                  <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
+                  <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Collapsed hover actions */}
-      {isCollapsed && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden items-center gap-1 group-hover:flex">
-          <button
-            type="button"
-            title="Reply"
-            aria-label="Reply to message"
-            onClick={(e) => { e.stopPropagation(); handleReply(e); }}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Reply className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title="Delete"
-            aria-label="Move message to trash"
-            disabled={deleteMail.isPending}
-            onClick={(e) => { e.stopPropagation(); deleteMail.mutate(message.id); }}
-            className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      {/* Sticky Action bar — Locks to the very bottom */}
+      <div className="shrink-0 flex items-center gap-1.5 px-[70px] border-t border-slate-100 py-8">
+        <button
+          type="button"
+          title="Reply"
+          aria-label="Reply to message"
+          onClick={handleReply}
+          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs lg:text-base font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Reply className="h-4 w-4" aria-hidden="true" />
+          Reply
+        </button>
+        <button
+          type="button"
+          title="Forward"
+          aria-label="Forward message"
+          onClick={handleForward}
+          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-xs lg:text-base font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Forward className="h-4 w-4" aria-hidden="true" />
+          Forward
+        </button>
+      </div>
     </div>
+
   );
 }
 

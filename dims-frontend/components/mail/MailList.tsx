@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
-import { MailOpen, RotateCcw, Star, Trash2 } from "lucide-react";
+import {
+  Bell,
+  Megaphone,
+  MailOpen,
+  RotateCcw,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 
 import {
@@ -24,6 +32,7 @@ import type {
   DraftMessage,
   MailFolder,
   MailThreadSummary,
+  SenderSummary,
 } from "@/types/mail.types";
 import { htmlToText } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -54,6 +63,19 @@ type MailListRow = {
   date?: string | undefined;
 };
 
+type InboxCategory = "primary" | "promotions" | "social" | "updates";
+
+const inboxCategories: Array<{
+  id: InboxCategory;
+  label: string;
+  icon: typeof MailOpen;
+}> = [
+  { id: "primary", label: "Primary", icon: MailOpen },
+  { id: "promotions", label: "Promotions", icon: Megaphone },
+  { id: "social", label: "Socials", icon: Users },
+  { id: "updates", label: "Updates", icon: Bell },
+];
+
 export default function MailList({ viewMode }: MailListProps) {
   const router = useRouter();
   const params = useParams();
@@ -64,6 +86,8 @@ export default function MailList({ viewMode }: MailListProps) {
   const [starOverrides, setStarOverrides] = useState<Record<string, boolean>>(
     {},
   );
+  const [activeInboxCategory, setActiveInboxCategory] =
+    useState<InboxCategory>("primary");
 
   const inboxQuery = useInbox();
   const sentQuery = useSent();
@@ -103,15 +127,42 @@ export default function MailList({ viewMode }: MailListProps) {
     () => normalizeMailRows(viewMode, flatData),
     [flatData, viewMode],
   );
+  const categorizedInboxItems = useMemo(
+    () =>
+      inboxCategories.reduce(
+        (acc, category) => {
+          acc[category.id] = items.filter(
+            (item) => getInboxCategory(item) === category.id,
+          );
+          return acc;
+        },
+        {
+          primary: [],
+          promotions: [],
+          social: [],
+          updates: [],
+        } as Record<InboxCategory, MailListRow[]>,
+      ),
+    [items],
+  );
+  const visibleItems =
+    viewMode === "inbox" ? categorizedInboxItems[activeInboxCategory] : items;
+  const visibleSelectionIds = useMemo(
+    () => new Set(visibleItems.map((item) => item.selectionId)),
+    [visibleItems],
+  );
+  const selectedVisibleCount = selectedMessageIds.filter((id) =>
+    visibleSelectionIds.has(id),
+  ).length;
 
   const toggleSelectAll = () => {
-    if (selectedMessageIds.length === items.length) {
+    if (selectedVisibleCount === visibleItems.length) {
       resetSelection();
 
       return;
     }
 
-    items.forEach((item) => {
+    visibleItems.forEach((item) => {
       if (!selectedMessageIds.includes(item.selectionId)) {
         toggleMessageSelection(item.selectionId);
       }
@@ -122,7 +173,7 @@ export default function MailList({ viewMode }: MailListProps) {
 
   if (!isSupportedFolder) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+      <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center bg-green-500">
         <MailOpen className="h-10 w-10 text-slate-300" />
         <h3 className="text-sm font-semibold text-slate-900">
           Folder unavailable
@@ -139,28 +190,32 @@ export default function MailList({ viewMode }: MailListProps) {
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-purple-400">
-      <div className="shrink-0 border-b border-slate-200 bg-green-400 p-4">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-white">
+      <div className="shrink-0 border-b border-slate-200 bg-green-500">
+        <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-border"
               checked={
-                items.length > 0 && selectedMessageIds.length === items.length
+                visibleItems.length > 0 &&
+                selectedVisibleCount === visibleItems.length
               }
               onChange={toggleSelectAll}
             />
-            {selectedMessageIds.length > 0 ? (
+            {selectedVisibleCount > 0 ? (
               <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
                 <span className="mr-1 text-xs font-bold">
-                  {selectedMessageIds.length}
+                  {selectedVisibleCount}
                 </span>
                 <button
                   aria-label={viewMode === "trash" ? "Permanently delete selected" : "Move selected to trash"}
                   className="rounded p-1.5 text-destructive hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => {
-                    selectedMessageIds.forEach((id) => {
+                    selectedMessageIds
+                      .filter((id) => visibleSelectionIds.has(id))
+                      .forEach((id) => {
                       if (viewMode === "trash") {
                         permanentDeleteMail.mutate(id);
                         return;
@@ -180,25 +235,59 @@ export default function MailList({ viewMode }: MailListProps) {
                   {viewMode}
                 </h2>
                 <p className="text-xs text-slate-500">
-                  {items.length}{" "}
-                  {items.length === 1 ? "conversation" : "conversations"}
+                  {visibleItems.length}{" "}
+                  {visibleItems.length === 1 ? "conversation" : "conversations"}
                 </p>
               </div>
             )}
           </div>
         </div>
+        </div>
+
+        {viewMode === "inbox" ? (
+          <div className="grid grid-cols-2 border-t border-slate-100 sm:grid-cols-4">
+            {inboxCategories.map((category) => {
+              const Icon = category.icon;
+              const isActive = activeInboxCategory === category.id;
+
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    resetSelection();
+                    setActiveInboxCategory(category.id);
+                  }}
+                  className={`relative flex h-14 items-center gap-3 px-5 text-sm font-medium transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
+                    isActive ? "text-dana-red-600" : "text-slate-600"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <span className="truncate">{category.label}</span>
+                  <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                    {categorizedInboxItems[category.id].length}
+                  </span>
+                  {isActive ? (
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-dana-red-600" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {items.length > 0 ? (
-          items.map((item) => (
+        {visibleItems.length > 0 ? (
+          visibleItems.map((item) => (
             <div
               key={item.id}
               className={`mail-list-item w-full border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
                 currentThreadId === item.threadId ? "bg-slate-100" : ""
               } ${item.isUnread ? "bg-blue-50/40" : ""}`}
             >
-              <div className="group flex w-full items-center gap-3">
+              <div className="group flex w-full items-center gap-3 bg-purple-500">
                 <input
                   type="checkbox"
                   aria-label={`Select message from ${item.senderName}`}
@@ -381,18 +470,28 @@ export default function MailList({ viewMode }: MailListProps) {
             </div>
           ))
         ) : (
-          <EmptyState />
+          <EmptyState viewMode={viewMode} category={activeInboxCategory} />
         )}
       </div>
     </div>
   );
 }
 
-function EmptyState() {
+function EmptyState({
+  viewMode,
+  category,
+}: {
+  viewMode?: MailFolder;
+  category?: InboxCategory;
+}) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
       <MailOpen className="h-10 w-10 text-muted-foreground opacity-20" />
-      <h3 className="mt-4 text-sm font-semibold">No messages found</h3>
+      <h3 className="mt-4 text-sm font-semibold">
+        {viewMode === "inbox" && category
+          ? `No ${inboxCategories.find((item) => item.id === category)?.label.toLowerCase()} messages`
+          : "No messages found"}
+      </h3>
     </div>
   );
 }
@@ -499,11 +598,7 @@ function normalizeMailRows(
       isDraft: false,
       isStarred,
       isUnread: (thread.unreadCount ?? 0) > 0,
-      senderName:
-        sender?.name ||
-        [sender?.firstName, sender?.lastName].filter(Boolean).join(" ") ||
-        sender?.email ||
-        "Unknown sender",
+      senderName: getSenderDisplayName(sender),
       toSummary:
         viewMode === "sent"
           ? formatRecipientSummary(recipients, "to")
@@ -554,8 +649,106 @@ function formatRecipientSummary(
   return `${labels[0]} +${labels.length - 1}`;
 }
 
-function getInitialsFromName(name: string) {
-  const [firstName = "", lastName = ""] = name.split(/\s+/);
+function getInboxCategory(item: MailListRow): InboxCategory {
+  const searchableText = [
+    item.senderName,
+    item.toSummary,
+    item.subject,
+    item.bodyPreview,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
-  return getInitials(firstName, lastName || firstName);
+  if (
+    hasAnyKeyword(searchableText, [
+      "sale",
+      "discount",
+      "offer",
+      "promo",
+      "promotion",
+      "coupon",
+      "deal",
+      "marketing",
+      "newsletter",
+      "unsubscribe",
+      "limited time",
+      "black friday",
+    ])
+  ) {
+    return "promotions";
+  }
+
+  if (
+    hasAnyKeyword(searchableText, [
+      "facebook",
+      "instagram",
+      "linkedin",
+      "twitter",
+      "x.com",
+      "social",
+      "connection",
+      "follow",
+      "mentioned you",
+      "tagged you",
+      "new follower",
+    ])
+  ) {
+    return "social";
+  }
+
+  if (
+    hasAnyKeyword(searchableText, [
+      "alert",
+      "notification",
+      "update",
+      "receipt",
+      "invoice",
+      "statement",
+      "security",
+      "password",
+      "verification",
+      "confirm",
+      "confirmed",
+      "ticket",
+      "status",
+      "system",
+      "no-reply",
+      "noreply",
+    ])
+  ) {
+    return "updates";
+  }
+
+  return "primary";
+}
+
+function hasAnyKeyword(value: string, keywords: string[]) {
+  return keywords.some((keyword) => value.includes(keyword));
+}
+
+function getInitialsFromName(name: string) {
+  const [firstName = "", lastName = ""] = name
+    .replace(/<.*?>/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!lastName && firstName.length >= 2) {
+    return firstName.slice(0, 2).toUpperCase();
+  }
+
+  return getInitials(firstName, lastName);
+}
+
+function getSenderDisplayName(sender?: SenderSummary | null) {
+  if (!sender) {
+    return "Unknown sender";
+  }
+
+  const fullName =
+    "name" in sender && typeof sender.name === "string"
+      ? sender.name
+      : [sender.firstName, sender.lastName].filter(Boolean).join(" ").trim();
+
+  return fullName || sender.email || "Unknown sender";
 }
