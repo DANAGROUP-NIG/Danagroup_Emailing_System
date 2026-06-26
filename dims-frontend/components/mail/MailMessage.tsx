@@ -75,10 +75,10 @@ export default function MailMessage({
   const replyTo = buildReplyRecipients(message, user?.email);
   const replySubject = withSubjectPrefix(message.subject, "Re:");
   const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
-  const originalText = htmlToText(message.bodyHtml) || message.body || "";
-  const sentDate = format(new Date(message.createdAt), "PPP p");
+  const originalText = formatOriginalMessageText(message.bodyHtml, message.body);
+  const sentDate = format(new Date(message.sentAt || message.createdAt), "PPP p");
   const senderLabel = `${fullName} <${senderEmail}>`;
-  const replyBody = `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quoteText(originalText)}`;
+  const replyBody = buildReplyBody(sentDate, senderLabel, originalText);
   const forwardBody = `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\nSubject: ${message.subject || "(No Subject)"}${toLine ? `\nTo: ${toLine}` : ""}\n\n${originalText}`;
   const handleReply = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -276,9 +276,25 @@ function withSubjectPrefix(subject: string | undefined, prefix: "Re:" | "Fwd:") 
 
 function quoteText(value: string) {
   return value
+    .trim()
     .split(/\r?\n/)
-    .map((line) => `> ${line}`)
+    .map((line) => (line.trim() ? `> ${line}` : ">"))
     .join("\n");
+}
+
+function buildReplyBody(sentDate: string, senderLabel: string, originalText: string) {
+  const quotedOriginal = quoteText(originalText);
+
+  return quotedOriginal
+    ? `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quotedOriginal}`
+    : `\n\nOn ${sentDate}, ${senderLabel} wrote:`;
+}
+
+function formatOriginalMessageText(
+  bodyHtml?: string | null,
+  body?: string | null,
+) {
+  return (htmlToText(bodyHtml) || htmlToText(body) || "").trim();
 }
 
 function buildReplyRecipients(message: Message, currentUserEmail?: string) {

@@ -29,9 +29,9 @@ const SearchBar = dynamic(() => import("@/components/mail/SearchBar"), {
 
 const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/inbox/, title: "Inbox", subtitle: "Recent conversations and unread activity" },
-  { match: /^\/mail\/sent/, title: "Sent", subtitle: "Everything you&apos;ve sent across the organisation" },
+  { match: /^\/mail\/sent/, title: "Sent", subtitle: "Everything you've sent across the organisation" },
   { match: /^\/mail\/drafts/, title: "Drafts", subtitle: "Work in progress and unsent replies" },
-  { match: /^\/mail\/starred/, title: "Starred", subtitle: "Messages you&apos;ve pinned for quick return" },
+  { match: /^\/mail\/starred/, title: "Starred", subtitle: "Messages you've pinned for quick return" },
   { match: /^\/mail\/trash/, title: "Trash", subtitle: "Messages pending deletion or recovery" },
   { match: /^\/directory/, title: "Directory", subtitle: "People, teams, and organisational details" },
   { match: /^\/announcements/, title: "Announcements", subtitle: "Broadcast updates and company notices" },

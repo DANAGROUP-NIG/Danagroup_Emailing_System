@@ -118,7 +118,7 @@ describe("htmlToText", () => {
 
   it("should handle nested HTML tags", () => {
     const html = "<div><p>Line 1</p><p>Line 2</p></div>";
-    expect(htmlToText(html)).toBe("Line 1Line 2");
+    expect(htmlToText(html)).toBe("Line 1\nLine 2");
   });
 
   it("should handle HTML with attributes", () => {
@@ -133,7 +133,7 @@ describe("htmlToText", () => {
 
   it("should handle self-closing tags", () => {
     const html = "Line 1<br/>Line 2<hr/>Line 3";
-    expect(htmlToText(html)).toBe("Line 1Line 2Line 3");
+    expect(htmlToText(html)).toBe("Line 1\nLine 2\nLine 3");
   });
 
   it("should handle special characters in HTML", () => {

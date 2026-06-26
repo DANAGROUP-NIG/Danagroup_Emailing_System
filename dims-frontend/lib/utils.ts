@@ -23,16 +23,32 @@ export function timeAgo(dateString: string): string {
 export const htmlToText = (html: string | null | undefined): string => {
   if (!html) return "";
 
+  const normalizedHtml = html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*hr\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|blockquote)\s*>/gi, "\n")
+    .replace(/<\s*(p|div|li|h[1-6]|tr|blockquote)(\s[^>]*)?>/gi, "\n")
+    .replace(/<\s*\/\s*(ul|ol|table|thead|tbody)\s*>/gi, "\n");
+
   // Safety for Server-Side Rendering (SSR)
   if (typeof window === "undefined") {
     // Fallback: simple regex to strip tags if window is not available
-    return html.replace(/<[^>]*>/g, "").trim();
+    return normalizePlainText(normalizedHtml.replace(/<[^>]*>/g, ""));
   }
 
   //Browser-based conversion
   const tempDiv: HTMLDivElement = document.createElement("div");
-  tempDiv.innerHTML = html;
+  tempDiv.innerHTML = normalizedHtml;
   
-  return (tempDiv.textContent || tempDiv.innerText || "").trim();
+  return normalizePlainText(tempDiv.textContent || tempDiv.innerText || "");
 };
+
+function normalizePlainText(value: string): string {
+  return value
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
 

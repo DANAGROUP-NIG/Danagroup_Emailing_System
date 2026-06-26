@@ -191,7 +191,7 @@ export default function MailList({ viewMode }: MailListProps) {
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden bg-white">
-      <div className="shrink-0 border-b border-slate-200 bg-green-500">
+      <div className="shrink-0 border-b border-slate-200 ">
         <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -287,7 +287,7 @@ export default function MailList({ viewMode }: MailListProps) {
                 currentThreadId === item.threadId ? "bg-slate-100" : ""
               } ${item.isUnread ? "bg-blue-50/40" : ""}`}
             >
-              <div className="group flex w-full items-center gap-3 bg-purple-500">
+              <div className="group flex w-full items-center gap-3">
                 <input
                   type="checkbox"
                   aria-label={`Select message from ${item.senderName}`}
@@ -333,12 +333,12 @@ export default function MailList({ viewMode }: MailListProps) {
                     >
                       {item.senderName}
                     </div>
-                    <div className="min-w-0 truncate">
-                      <span className="text-sm font-medium text-gray-800">
+                    <div className="min-w-0 truncate text-sm lg:text-base">
+                      <span className="font-medium text-gray-800">
                         {item.subject}
                       </span>
                       <span className="mx-2 text-slate-300">-</span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className=" text-muted-foreground">
                         {item.bodyPreview}
                       </span>
                     </div>
@@ -575,7 +575,7 @@ function normalizeMailRows(
         ccSummary: formatRecipientSummary(draft.recipients ?? [], "cc"),
         bccSummary: formatRecipientSummary(draft.recipients ?? [], "bcc"),
         subject: draft.subject || "(No Subject)",
-        bodyPreview: htmlToText(draft.bodyHtml) || draft.body || "(No content)",
+        bodyPreview: formatBodyPreview(draft.bodyHtml, draft.body),
         date: draft.createdAt,
       };
     });
@@ -598,7 +598,10 @@ function normalizeMailRows(
       isDraft: false,
       isStarred,
       isUnread: (thread.unreadCount ?? 0) > 0,
-      senderName: getSenderDisplayName(sender),
+      senderName:
+        viewMode === "sent"
+          ? formatSentHeading(recipients)
+          : getSenderDisplayName(sender),
       toSummary:
         viewMode === "sent"
           ? formatRecipientSummary(recipients, "to")
@@ -612,13 +615,30 @@ function normalizeMailRows(
           ? formatRecipientSummary(recipients, "bcc")
           : undefined,
       subject: thread.subject || "(No Subject)",
-      bodyPreview:
-        htmlToText(latestMessage?.bodyHtml) ||
-        latestMessage?.body ||
-        "(No content)",
+      bodyPreview: formatBodyPreview(
+        latestMessage?.bodyHtml,
+        latestMessage?.body,
+      ),
       date: latestMessage?.createdAt,
     };
   });
+}
+
+function formatBodyPreview(
+  bodyHtml?: string | null,
+  body?: string | null,
+): string {
+  const text = htmlToText(bodyHtml) || body || "";
+
+  return text.replace(/\s+/g, " ").trim() || "(No content)";
+}
+
+function formatSentHeading(
+  recipients: NonNullable<MailThreadSummary["latestMessage"]>["recipients"] = [],
+) {
+  const toSummary = formatRecipientSummary(recipients, "to");
+
+  return toSummary ? `To: ${toSummary}` : "To: undisclosed recipients";
 }
 
 function formatRecipientSummary(
