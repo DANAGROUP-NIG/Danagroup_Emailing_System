@@ -41,7 +41,7 @@ export default function EmployeeGrid({
   onLoadMore,
 }: EmployeeGridProps) {
   const gridColsClass =
-    'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-96 md:h-[60vh] xl:h-96 pb-8 scrollbar-thin';
+    'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4';
 
   if (isLoading && users.length === 0) {
     return (

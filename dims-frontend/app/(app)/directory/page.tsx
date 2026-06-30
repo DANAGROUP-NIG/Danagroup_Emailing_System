@@ -103,12 +103,14 @@ export default function DirectoryPage() {
       />
 
       {/* Grid */}
-      <EmployeeGrid
-        users={allUsers}
-        isLoading={isLoading || isFetching}
-        hasNextPage={hasNextPage || false}
-        onLoadMore={() => fetchNextPage()}
-      />
+      <div className='pb-32 md:pb-44 lg:pb-32 min-h-0 max-h-[calc(100vh-220px)] overflow-y-auto scrollbar-thin'>
+        <EmployeeGrid
+          users={allUsers}
+          isLoading={isLoading || isFetching}
+          hasNextPage={hasNextPage || false}
+          onLoadMore={() => fetchNextPage()}
+        />
+      </div>
 
       {/* Infinite Scroll Trigger */}
       <div ref={observerTarget} className="h-1" />
