@@ -87,7 +87,7 @@ export default function NotificationsPage() {
   const groupedNotifications = groupNotificationsByDate(allNotifications);
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto">
+    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
