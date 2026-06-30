@@ -13,29 +13,65 @@ export interface DirectoryFilters {
 }
 
 /**
- * Fetch paginated directory users with filtering
+ * Fetch paginated directory users with filtering.
+ * When a text query is present, routes through the Elasticsearch-backed
+ * /users/search endpoint. Otherwise uses the standard paginated /users list.
  */
 export function useDirectoryUsers(filters: DirectoryFilters = {}, pageSize = 50) {
+  const hasTextQuery = !!filters.q;
+
   return useInfiniteQuery({
     queryKey: ['directory', 'users', filters],
-    queryFn: async ({ pageParam = 0 }) => {
-      const res = await usersApi.list({
-        search: filters.q,
-        subsidiary: filters.subsidiary,
-        department: filters.department,
-        role: filters.role,
-        limit: pageSize,
-        page: (pageParam as number) + 1,
-      });
+    queryFn: async ({ pageParam = 0, signal }) => {
+      const page = (pageParam as number) + 1;
+
+      if (hasTextQuery) {
+        const res = await usersApi.search(
+          {
+            search: filters.q,
+            subsidiary: filters.subsidiary,
+            department: filters.department,
+            role: filters.role,
+            limit: pageSize,
+            page,
+          },
+          signal,
+        );
+        const esResult = res.data as {
+          hits?: User[];
+          total?: number;
+          page?: number;
+          limit?: number;
+        };
+        return {
+          data: esResult.hits ?? [],
+          pagination: {
+            total: esResult.total ?? 0,
+            page: esResult.page ?? page,
+            limit: esResult.limit ?? pageSize,
+          },
+        };
+      }
+
+      const res = await usersApi.list(
+        {
+          subsidiary: filters.subsidiary,
+          department: filters.department,
+          role: filters.role,
+          limit: pageSize,
+          page,
+        },
+        signal,
+      );
       return res.data;
     },
     getNextPageParam: (lastPage, allPages) => {
       const total = lastPage.pagination?.total ?? 0;
-      const fetched = (allPages.length) * pageSize;
+      const fetched = allPages.length * pageSize;
       return fetched < total ? allPages.length : undefined;
     },
     initialPageParam: 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: hasTextQuery ? 15_000 : 5 * 60 * 1000,
   });
 }
 

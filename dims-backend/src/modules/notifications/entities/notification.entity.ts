@@ -6,10 +6,13 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from "typeorm";
 
 export type NotificationType = "new_mail" | "announcement" | "system";
 
+@Index(["userId", "isRead"])
+@Index(["userId", "createdAt"])
 @Entity("notifications")
 export class Notification {
   @PrimaryGeneratedColumn("uuid")

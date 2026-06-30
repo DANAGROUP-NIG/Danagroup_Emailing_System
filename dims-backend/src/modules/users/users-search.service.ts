@@ -1,23 +1,24 @@
-// src/users/users-search.service.ts
 import { Injectable } from "@nestjs/common";
-import { MailService } from "@modules/mail/mail.service";
 import { SearchService } from "@modules/search/search.service";
 
 export interface UnifiedSearchResult {
   type: "user" | "mail";
   id: string;
-  title: string; // Name for users, Subject for mail
-  subtitle: string; // Email for users, Preview text for mail
-  url: string; // e.g., /dashboard/users/123 or /dashboard/mail/456
+  title: string;
+  subtitle: string;
+  url: string;
+}
+
+export interface UnifiedSearchResponse {
+  results: UnifiedSearchResult[];
+  total: number;
+  page: number;
 }
 
 @Injectable()
 export class UsersSearchService {
-  private readonly index = "users";
-
   constructor(
-    private readonly searchService: SearchService, // Assuming you have a SearchService to query Elasticsearch
-    private readonly mailService: MailService, // Assuming you have a MailService to query mails
+    private readonly searchService: SearchService,
   ) {}
 
   async unifiedSearch(
@@ -27,45 +28,40 @@ export class UsersSearchService {
     page = 1,
     limit = 10,
     filters?: { department?: string; subsidiary?: string; role?: string },
-  ) {
+  ): Promise<UnifiedSearchResponse> {
     const results: UnifiedSearchResult[] = [];
     let total = 0;
 
-    // 1. SEARCH USERS (Elasticsearch)
     if (type === "users" || type === "all") {
-      const hits = await this.searchService.searchUsers(query, limit, filters);
-      const userResults: UnifiedSearchResult[] = hits.hits.map((h) => ({
+      const userResult = await this.searchService.searchUsers(query, page, limit, filters);
+      const userResults: UnifiedSearchResult[] = userResult.hits.map((h) => ({
         type: "user" as const,
-        id: h._id,
-        title: `${h._source.firstName} ${h._source.lastName}`,
-        subtitle: h._source.email,
-        url: `/dashboard/users/${h._id}`,
+        id: h.id,
+        title: `${h.firstName} ${h.lastName}`,
+        subtitle: h.email,
+        url: `/directory/${h.id}`,
       }));
       results.push(...userResults);
-      total += (hits.total as { value: number }).value || 0;
+      total += userResult.total;
     }
 
-    // 2. SEARCH MAIL via MailService (Database Query)
-    if (type === "mail" || type === "all") {
-      const mails = await this.mailService.searchUserMail(
-        requesterId,
-        query,
-        limit,
-      );
-      const mailResults: UnifiedSearchResult[] = mails.map((m) => ({
+    if ((type === "mail" || type === "all") && requesterId) {
+      const mailResult = await this.searchService.searchMail(requesterId, query, limit);
+      const mailResults: UnifiedSearchResult[] = mailResult.hits.map((m) => ({
         type: "mail" as const,
         id: m.id,
         title: m.subject,
-        subtitle: m.body.substring(0, 50) + "...",
-        url: `/dashboard/mail/${m.id}`,
+        subtitle: m.bodySnippet ? `${m.bodySnippet}...` : "",
+        url: `/mail/${m.id}`,
       }));
       results.push(...mailResults);
+      total += mailResult.total;
     }
+
     return { results, total, page };
   }
 
   async remove(id: string) {
-    // Delegate to the core service to ensure index consistency
     return this.searchService.deleteUser(id);
   }
 }

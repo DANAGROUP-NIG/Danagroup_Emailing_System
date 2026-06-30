@@ -35,6 +35,7 @@ import {
   MessageResponseDto,
 } from "./dto/auth-response.dto";
 import { UserShape } from "./auth.service";
+import { StorageService } from "@modules/storage/storage.service";
 
 type AuthenticatedRequest = Request & {
   user: UserShape;
@@ -46,6 +47,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly storageService: StorageService,
   ) {}
 
   @Public()
@@ -164,7 +166,11 @@ export class AuthController {
     @CurrentUser() user: { userId: string; email: string; role: string },
   ) {
     const fullUser = await this.usersService.findById(user.userId);
-    return new ApiResponseDto(true, "User fetched", fullUser);
+    const resolved = {
+      ...fullUser,
+      avatarUrl: this.storageService.resolveAvatarUrl(fullUser.avatarUrl) ?? undefined,
+    };
+    return new ApiResponseDto(true, "User fetched", resolved);
   }
 
   @Roles("group_admin")

@@ -28,30 +28,43 @@ export default function RecipientInput({
   const [open, setOpen] = useState(false);
   const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Fetch suggestions from directory API
+  // Fetch suggestions from directory API, cancelling any in-flight request
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       usersApi
-        .search({ search: debouncedQuery, limit: 10 })
+        .search({ search: debouncedQuery, limit: 10 }, controller.signal)
         .then((res) => {
-          const raw = res.data as unknown;
-          const data: ParticipantSummary[] = Array.isArray(raw)
-            ? raw
-            : Array.isArray((raw as Record<string, unknown>)?.data)
-              ? (raw as { data: ParticipantSummary[] }).data
-              : [];
+          if (controller.signal.aborted) return;
+          const esResult = res.data as unknown;
+          const hitsArray = (esResult as { hits?: ParticipantSummary[] })?.hits;
+          const dataArray = (esResult as { data?: ParticipantSummary[] })?.data;
+          const data: ParticipantSummary[] = Array.isArray(hitsArray)
+            ? hitsArray
+            : Array.isArray(dataArray)
+              ? dataArray
+              : Array.isArray(esResult)
+                ? (esResult as ParticipantSummary[])
+                : [];
           setSuggestions(data.slice(0, 10));
           setOpen(true);
           setSelectedIndex(0);
         })
         .catch(() => {
-          setSuggestions([]);
+          if (!abortRef.current?.signal.aborted) setSuggestions([]);
         });
     } else {
+      if (abortRef.current) abortRef.current.abort();
       setSuggestions([]);
       setOpen(false);
     }
+
+    return () => { abortRef.current?.abort(); };
   }, [debouncedQuery]);
 
   const addRecipient = useCallback(

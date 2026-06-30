@@ -13,7 +13,6 @@ import { Message } from "@modules/mail/entities/message.entity";
 import { Thread } from "@modules/mail/entities/thread.entity";
 import { MessageRecipient } from "@modules/mail/entities/message-recipient.entity";
 import { Attachment } from "@modules/files/entities/attachment.entity";
-import { CloudinaryService } from "@modules/cloudinary/cloudinary.service";
 
 @Module({
   imports: [
@@ -31,7 +30,7 @@ import { CloudinaryService } from "@modules/cloudinary/cloudinary.service";
     forwardRef(() => MailModule),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UsersSearchService, CloudinaryService],
+  providers: [UsersService, UsersSearchService],
   exports: [UsersService],
 })
 export class UsersModule {}

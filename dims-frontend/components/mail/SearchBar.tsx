@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, X, Mail, User } from 'lucide-react';
+import { Search, X, Mail, User, Loader2 } from 'lucide-react';
 import { searchApi } from '@/lib/api';
 import type { SearchResult } from '@/types/api.types';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -16,30 +16,52 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<{ mails: SearchResult[]; users: SearchResult[] }>({ mails: [], users: [] });
   const [activeIndex, setActiveIndex] = useState(0);
   const debouncedQuery = useDebounce(query, 300);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const allResults = [...results.mails, ...results.users];
   const hasResults = allResults.length > 0;
 
-  // Search mails and users
+  // Search mails and users — cancel any in-flight request before firing a new one
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsLoading(true);
+
       Promise.all([
-        searchApi.search({ q: debouncedQuery, type: 'mail', limit: 5 }).catch(() => null),
-        searchApi.search({ q: debouncedQuery, type: 'users', limit: 4 }).catch(() => null),
+        searchApi.search({ q: debouncedQuery, type: 'mail', limit: 5 }, controller.signal).catch(() => null),
+        searchApi.search({ q: debouncedQuery, type: 'users', limit: 4 }, controller.signal).catch(() => null),
       ]).then(([mailRes, userRes]) => {
+        if (controller.signal.aborted) return;
         const mailResults = mailRes?.data?.data?.results ?? [];
         const userResults = userRes?.data?.data?.results ?? [];
         setResults({ mails: mailResults, users: userResults });
         setActiveIndex(0);
+        setIsLoading(false);
+      }).catch(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
       });
     } else {
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
       setResults({ mails: [], users: [] });
+      setIsLoading(false);
     }
+
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [debouncedQuery]);
 
   // Close dropdown when clicking outside
@@ -102,7 +124,10 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
           isOpen ? 'border-primary ring-2 ring-primary/20 bg-accent' : 'border-border hover:bg-accent'
         )}
       >
-        <Search size={16} className="shrink-0 text-muted-foreground" />
+        {isLoading
+          ? <Loader2 size={16} className="shrink-0 text-muted-foreground animate-spin" />
+          : <Search size={16} className="shrink-0 text-muted-foreground" />
+        }
         <input
           ref={inputRef}
           type="text"
@@ -142,7 +167,12 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
           id="search-results"
           className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-border bg-card shadow-dana-lg overflow-hidden"
         >
-          {!hasResults ? (
+          {isLoading ? (
+            <div className="py-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+              <Loader2 size={14} className="animate-spin" />
+              Searching...
+            </div>
+          ) : !hasResults ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               No results found for &quot;{query}&quot;
             </div>

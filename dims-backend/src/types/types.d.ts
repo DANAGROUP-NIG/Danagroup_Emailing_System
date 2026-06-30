@@ -12,6 +12,7 @@ export interface UserSearchBody {
   lastName: string;
   email: string;
   role: string;
+  jobTitle?: string;
   department?: string;
   subsidiary?: string;
   departmentId?: string;

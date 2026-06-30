@@ -163,20 +163,11 @@ export class AuthService {
         throw new UnauthorizedException();
       }
 
-      // find matching sessions
-
-      let sessionIndex = -1;
-      for (let i = 0; i < user.sessions.length; i++) {
-        const match = await bcrypt.compare(
-          refreshToken,
-          user.sessions[i].refreshToken,
-        );
-
-        if (match) {
-          sessionIndex = i;
-          break;
-        }
-      }
+      // find matching session — run all compares in parallel
+      const matchResults = await Promise.all(
+        user.sessions.map((s) => bcrypt.compare(refreshToken, s.refreshToken)),
+      );
+      const sessionIndex = matchResults.findIndex(Boolean);
 
       if (sessionIndex === -1) {
         throw new UnauthorizedException();
@@ -238,13 +229,12 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
 
     if (user?.sessions && refreshToken) {
-      const filteredSessions = [];
-      for (const session of user.sessions) {
-        const match = await bcrypt.compare(refreshToken, session.refreshToken);
-        if (!match) {
-          filteredSessions.push(session);
-        }
-      }
+      const matchResults = await Promise.all(
+        user.sessions.map((s) => bcrypt.compare(refreshToken, s.refreshToken)),
+      );
+      const filteredSessions = user.sessions.filter(
+        (_, i) => !matchResults[i],
+      );
 
       await this.usersService.updateAuthState(userId, {
         sessions: filteredSessions,

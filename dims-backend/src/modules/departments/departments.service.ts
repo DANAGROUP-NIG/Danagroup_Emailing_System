@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -11,6 +12,11 @@ import { CreateDepartmentDto } from "./dto/create-department.dto";
 import { UpdateDepartmentDto } from "./dto/update-department.dto";
 import { CreateSubsidiaryDto } from "./dto/create-subsidiary.dto";
 import { UpdateSubsidiaryDto } from "./dto/update-subsidiary.dto";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import type { Cache } from "cache-manager";
+
+const CACHE_TTL_LIST = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_ITEM = 5 * 60 * 1000;  // 5 minutes
 
 @Injectable()
 export class DepartmentsService {
@@ -19,16 +25,30 @@ export class DepartmentsService {
     private readonly deptRepo: Repository<Department>,
     @InjectRepository(Subsidiary)
     private readonly subsidiaryRepo: Repository<Subsidiary>,
+    @Inject(CACHE_MANAGER)
+    private readonly cache: Cache,
   ) {}
 
   async findAllDepartments(subsidiaryId?: string) {
-    return this.deptRepo.find({
+    const key = subsidiaryId
+      ? `departments:by-subsidiary:${subsidiaryId}`
+      : `departments:all`;
+    const cached = await this.cache.get<Department[]>(key);
+    if (cached) return cached;
+
+    const data = await this.deptRepo.find({
       where: subsidiaryId ? { subsidiaryId } : undefined,
       relations: ["subsidiary"],
     });
+    await this.cache.set(key, data, CACHE_TTL_LIST);
+    return data;
   }
 
   async findDepartmentById(id: string) {
+    const key = `department:${id}`;
+    const cached = await this.cache.get<Department>(key);
+    if (cached) return cached;
+
     const department = await this.deptRepo.findOne({
       where: { id },
       relations: ["subsidiary"],
@@ -36,6 +56,7 @@ export class DepartmentsService {
     if (!department) {
       throw new NotFoundException("Department not found");
     }
+    await this.cache.set(key, department, CACHE_TTL_ITEM);
     return department;
   }
 
@@ -49,7 +70,9 @@ export class DepartmentsService {
 
     try {
       const department = this.deptRepo.create(dto);
-      return await this.deptRepo.save(department);
+      const saved = await this.deptRepo.save(department);
+      await this.invalidateDepartmentCaches(dto.subsidiaryId);
+      return saved;
     } catch (error: unknown) {
       if ((error as { code?: string })?.code === "23505") {
         throw new ConflictException(
@@ -63,7 +86,9 @@ export class DepartmentsService {
   async updateDepartment(id: string, dto: UpdateDepartmentDto) {
     const department = await this.findDepartmentById(id);
     Object.assign(department, dto);
-    return this.deptRepo.save(department);
+    const saved = await this.deptRepo.save(department);
+    await this.invalidateDepartmentCaches(department.subsidiaryId, id);
+    return saved;
   }
 
   async deleteDepartment(id: string) {
@@ -81,13 +106,40 @@ export class DepartmentsService {
     }
 
     await this.deptRepo.remove(department);
+    await this.invalidateDepartmentCaches(department.subsidiaryId, id);
+  }
+
+  private async invalidateDepartmentCaches(
+    subsidiaryId?: string,
+    departmentId?: string,
+  ) {
+    const keys: Promise<void>[] = [
+      this.cache.del(`departments:all`),
+    ];
+    if (subsidiaryId) {
+      keys.push(this.cache.del(`departments:by-subsidiary:${subsidiaryId}`));
+    }
+    if (departmentId) {
+      keys.push(this.cache.del(`department:${departmentId}`));
+    }
+    await Promise.all(keys);
   }
 
   async findAllSubsidiaries() {
-    return this.subsidiaryRepo.find({ relations: ["departments"] });
+    const key = `subsidiaries:all`;
+    const cached = await this.cache.get<Subsidiary[]>(key);
+    if (cached) return cached;
+
+    const data = await this.subsidiaryRepo.find({ relations: ["departments"] });
+    await this.cache.set(key, data, CACHE_TTL_LIST);
+    return data;
   }
 
   async findSubsidiaryById(id: string) {
+    const key = `subsidiary:${id}`;
+    const cached = await this.cache.get<Subsidiary>(key);
+    if (cached) return cached;
+
     const subsidiary = await this.subsidiaryRepo.findOne({
       where: { id },
       relations: ["departments"],
@@ -95,13 +147,16 @@ export class DepartmentsService {
     if (!subsidiary) {
       throw new NotFoundException("Subsidiary not found");
     }
+    await this.cache.set(key, subsidiary, CACHE_TTL_ITEM);
     return subsidiary;
   }
 
   async createSubsidiary(dto: CreateSubsidiaryDto) {
     try {
       const subsidiary = this.subsidiaryRepo.create(dto);
-      return await this.subsidiaryRepo.save(subsidiary);
+      const saved = await this.subsidiaryRepo.save(subsidiary);
+      await this.invalidateSubsidiaryCaches();
+      return saved;
     } catch (error: unknown) {
       if ((error as { code?: string })?.code === "23505") {
         throw new ConflictException(
@@ -115,6 +170,17 @@ export class DepartmentsService {
   async updateSubsidiary(id: string, dto: UpdateSubsidiaryDto) {
     const subsidiary = await this.findSubsidiaryById(id);
     Object.assign(subsidiary, dto);
-    return this.subsidiaryRepo.save(subsidiary);
+    const saved = await this.subsidiaryRepo.save(subsidiary);
+    await this.invalidateSubsidiaryCaches(id);
+    return saved;
+  }
+
+  private async invalidateSubsidiaryCaches(subsidiaryId?: string) {
+    const keys: Promise<void>[] = [this.cache.del(`subsidiaries:all`)];
+    if (subsidiaryId) {
+      keys.push(this.cache.del(`subsidiary:${subsidiaryId}`));
+      keys.push(this.cache.del(`departments:by-subsidiary:${subsidiaryId}`));
+    }
+    await Promise.all(keys);
   }
 }

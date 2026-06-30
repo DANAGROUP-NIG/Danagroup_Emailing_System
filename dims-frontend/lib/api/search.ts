@@ -19,6 +19,6 @@ export interface SearchResponse {
 }
 
 export const searchApi = {
-  search: (params: SearchParams) =>
-    apiClient.get<{ data: SearchResponse }>("/search", { params }),
+  search: (params: SearchParams, signal?: AbortSignal) =>
+    apiClient.get<{ data: SearchResponse }>("/search", { params, ...(signal ? { signal } : {}) }),
 };

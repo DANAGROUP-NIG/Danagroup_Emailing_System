@@ -25,7 +25,7 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { SearchService } from "@modules/search/search.service";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
-import { CloudinaryService } from "@modules/cloudinary/cloudinary.service";
+import { StorageService } from "@modules/storage/storage.service";
 import { FileInterceptor } from "@nestjs/platform-express/multer/interceptors/file.interceptor";
 
 @ApiTags("users")
@@ -38,7 +38,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly searchService: SearchService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly storageService: StorageService,
   ) {}
 
   @Get()
@@ -48,12 +48,13 @@ export class UsersController {
   }
 
   @Get("search")
-  @ApiOperation({ summary: "Search users by name or email" })
+  @ApiOperation({ summary: "Search users by name or email (Elasticsearch-backed)" })
   async search(@Query() queryDto: QueryUserDto) {
     this.logger.log(`Search query received: ${JSON.stringify(queryDto)}`);
     return await this.searchService.searchUsers(
       queryDto.search || "",
-      queryDto.limit,
+      queryDto.page ?? 1,
+      queryDto.limit ?? 10,
       {
         department: queryDto.department,
         subsidiary: queryDto.subsidiary,
@@ -68,7 +69,7 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
-  @Put("change-dp") // Use PUT or PATCH for updates
+  @Put("change-dp")
   @UseInterceptors(FileInterceptor("file"))
   async changeDisplayPicture(
     @UploadedFile() file: Express.Multer.File,
@@ -78,33 +79,29 @@ export class UsersController {
       throw new BadRequestException("New profile image file is required");
     }
 
-    const userId = currentUser.userId; // Get the authenticated user's ID
+    const userId = currentUser.userId;
 
-    // Fetch current user from DB to check for an existing DP
+    // Fetch current user to delete old avatar from MinIO if it exists
     const user = await this.usersService.findById(userId);
-
-    // If they have an old image, delete it from Cloudinary
-    if (user?.avatarPublicId) {
+    if (user?.avatarUrl && this.storageService.isStorageKey(user.avatarUrl)) {
       try {
-        await this.cloudinaryService.deleteFile(user.avatarPublicId);
+        await this.storageService.delete(user.avatarUrl);
       } catch (err) {
-        // Log error but don't block the upload process if deletion fails
-        console.error("Failed to delete old image from Cloudinary:", err);
+        this.logger.warn(`Failed to delete old avatar for user ${userId}: ${(err as Error).message}`);
       }
     }
 
-    // Upload the new profile picture
-    const uploadResult = await this.cloudinaryService.uploadFile(file);
+    // Upload new avatar to MinIO under avatars/<userId>/
+    const result = await this.storageService.uploadAvatar(file, userId);
+    const avatarUrl = this.storageService.getPublicUrl(result.storageKey);
 
-    // Save BOTH the secure URL and the public_id to your database
     await this.usersService.updateProfilePic(userId, {
-      avatarUrl: uploadResult.secure_url,
-      avatarPublicId: uploadResult.public_id, // Store this for future updates/deletions
+      avatarUrl: result.storageKey,
     });
 
     return {
       message: "Profile picture updated successfully",
-      avatarUrl: uploadResult.secure_url,
+      avatarUrl,
     };
   }
 

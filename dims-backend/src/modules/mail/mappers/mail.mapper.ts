@@ -11,6 +11,24 @@ type UserSummary = {
   avatarUrl?: string | null;
 };
 
+const STORAGE_KEY_PREFIXES = ["avatars/", "attachments/", "uploads/", "exports/", "imports/", "logos/", "signatures/"];
+
+function resolveAvatarUrl(rawUrl?: string | null): string | null {
+  if (!rawUrl) return null;
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) return rawUrl;
+  const isKey = STORAGE_KEY_PREFIXES.some((p) => rawUrl.startsWith(p));
+  if (!isKey) return rawUrl;
+
+  const publicUrl = process.env.MINIO_PUBLIC_URL;
+  const bucket = process.env.MINIO_BUCKET ?? "dims-files";
+  if (publicUrl) return `${publicUrl.replace(/\/$/, "")}/${bucket}/${rawUrl}`;
+
+  const host = process.env.MINIO_ENDPOINT ?? "localhost";
+  const port = process.env.MINIO_PORT ?? "9000";
+  const ssl = process.env.MINIO_USE_SSL === "true";
+  return `${ssl ? "https" : "http"}://${host}:${port}/${bucket}/${rawUrl}`;
+}
+
 type ThreadWithOptionalState = Thread & {
   userState?: UserThreadState | null;
 };
@@ -26,7 +44,7 @@ export class MailMapper {
       email: user.email,
       firstName: user.firstName ?? "",
       lastName: user.lastName ?? "",
-      avatarUrl: user.avatarUrl ?? null,
+      avatarUrl: resolveAvatarUrl(user.avatarUrl),
     };
   }
 
@@ -70,7 +88,7 @@ export class MailMapper {
       id: user.id,
       email: user.email,
       name: [user.firstName, user.lastName].filter(Boolean).join(" ").trim(),
-      avatarUrl: user.avatarUrl ?? null,
+      avatarUrl: resolveAvatarUrl(user.avatarUrl),
     };
   }
 

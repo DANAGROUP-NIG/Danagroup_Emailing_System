@@ -13,6 +13,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  Index,
 } from "typeorm";
 
 export type UserRole =
@@ -21,6 +22,9 @@ export type UserRole =
   | "subsidiary_admin"
   | "group_admin";
 
+@Index(["departmentId", "isActive"])
+@Index(["subsidiaryId", "isActive"])
+@Index(["isActive"])
 @Entity("users")
 export class User {
   @PrimaryGeneratedColumn("uuid")
@@ -48,11 +52,8 @@ export class User {
   @Column({ length: 150, nullable: true })
   jobTitle?: string;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ length: 500, nullable: true })
   avatarUrl?: string;
-
-  @Column({ nullable: true })
-  avatarPublicId?: string; // For Cloudinary management
 
   @Column({ default: true })
   isActive: boolean;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/Button';
@@ -34,22 +34,26 @@ export default function EmployeeFilters({
   isLoading = false,
 }: EmployeeFiltersProps) {
   const [searchInput, setSearchInput] = useState(filters.q || '');
-  const debouncedSearch = useDebounce(searchInput, 250);
+  const debouncedSearch = useDebounce(searchInput, 300);
   const { data: subsidiaries, isLoading: subsidariesLoading } =
     useSubsidiaries();
   const { data: departments, isLoading: departmentsLoading } = useDepartments(
     filters.subsidiary
   );
 
-  // Sync debounced search to filters
+  useEffect(() => {
+    const next = debouncedSearch || undefined;
+    if (next !== filters.q) {
+      onFiltersChange({ ...filters, q: next });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearchInput(value);
-      if (debouncedSearch !== filters.q) {
-        onFiltersChange({ ...filters, q: value || undefined });
-      }
     },
-    [filters, debouncedSearch, onFiltersChange]
+    []
   );
 
   const handleSubsidiaryChange = (value: string) => {

@@ -17,6 +17,7 @@ export interface SearchUsersParams {
   subsidiary?: string | undefined;
   role?: string | undefined;
   limit?: number | undefined;
+  page?: number | undefined;
 }
 
 export interface CreateUserPayload {
@@ -53,11 +54,11 @@ export interface UsersListResponse {
 }
 
 export const usersApi = {
-  list: (params?: ListUsersParams) =>
-    apiClient.get<UsersListResponse>("/users", { params }),
+  list: (params?: ListUsersParams, signal?: AbortSignal) =>
+    apiClient.get<UsersListResponse>("/users", { params, ...(signal ? { signal } : {}) }),
 
-  search: (params: SearchUsersParams) =>
-    apiClient.get("/users/search", { params }),
+  search: (params: SearchUsersParams, signal?: AbortSignal) =>
+    apiClient.get("/users/search", { params, ...(signal ? { signal } : {}) }),
 
   getById: (id: string) =>
     apiClient.get<User>(`/users/${id}`),

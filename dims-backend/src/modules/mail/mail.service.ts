@@ -245,11 +245,7 @@ export class MailService {
     limit: number,
     folder: ThreadFolder,
   ) {
-    const total = await this.countDistinctThreads(baseQuery);
-
-    // Use the clone to avoid polluting the baseQuery logic
-    const qb = this.applyThreadRelations(baseQuery.clone(), userId);
-    const rows = await qb
+    const dataQb = this.applyThreadRelations(baseQuery.clone(), userId)
       .addSelect(
         "COALESCE(thread.last_message_at, thread.last_activity_at)",
         "thread_sort_date",
@@ -258,8 +254,12 @@ export class MailService {
       .setParameter("userId", userId)
       .orderBy("thread_sort_date", "DESC")
       .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
+      .take(limit);
+
+    const [total, rows] = await Promise.all([
+      this.countDistinctThreads(baseQuery),
+      dataQb.getMany(),
+    ]);
 
     const threads = this.prepareThreads(
       rows,
@@ -397,6 +397,10 @@ export class MailService {
     } catch (error) {
       this.handleError("searchUserMail", error);
     }
+  }
+
+  async searchUserMailEs(userId: string, query: string, limit = 10) {
+    return this.searchUserMail(userId, query, limit);
   }
 
   async getInboxThreadsOptimized(userId: string, cursor?: string, limit = 20) {
@@ -942,15 +946,16 @@ export class MailService {
         select: ["id", "threadId"],
       });
 
-      for (const threadId of [
-        ...new Set(messages.map((message) => message.threadId)),
-      ]) {
-        await this.refreshUserThreadState(
-          this.dataSource.manager,
-          threadId,
-          userId,
-        );
-      }
+      await Promise.all(
+        [...new Set(messages.map((message) => message.threadId))].map(
+          (threadId) =>
+            this.refreshUserThreadState(
+              this.dataSource.manager,
+              threadId,
+              userId,
+            ),
+        ),
+      );
 
       for (const message of messages) {
         this.emitMailReadEvent(
@@ -1135,15 +1140,10 @@ export class MailService {
         throw new ForbiddenException("No access to this message");
       }
 
-      await this.refreshThreadAfterMutation(
-        this.dataSource.manager,
-        message.threadId,
-      );
-      await this.refreshUserThreadState(
-        this.dataSource.manager,
-        message.threadId,
-        userId,
-      );
+      await Promise.all([
+        this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId),
+        this.refreshUserThreadState(this.dataSource.manager, message.threadId, userId),
+      ]);
       this.emitMailboxChanged(userId, {
         action: "moved_to_trash",
         messageId,
@@ -1249,15 +1249,10 @@ export class MailService {
         );
       }
 
-      await this.refreshThreadAfterMutation(
-        this.dataSource.manager,
-        message.threadId,
-      );
-      await this.refreshUserThreadState(
-        this.dataSource.manager,
-        message.threadId,
-        userId,
-      );
+      await Promise.all([
+        this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId),
+        this.refreshUserThreadState(this.dataSource.manager, message.threadId, userId),
+      ]);
       this.emitMailboxChanged(userId, {
         action: "restored_from_trash",
         messageId,
@@ -1317,15 +1312,10 @@ export class MailService {
       );
       if (recipient && recipient.isDeleted) {
         await this.recipientRepo.remove(recipient);
-        await this.refreshThreadAfterMutation(
-          this.dataSource.manager,
-          message.threadId,
-        );
-        await this.refreshUserThreadState(
-          this.dataSource.manager,
-          message.threadId,
-          userId,
-        );
+        await Promise.all([
+          this.refreshThreadAfterMutation(this.dataSource.manager, message.threadId),
+          this.refreshUserThreadState(this.dataSource.manager, message.threadId, userId),
+        ]);
         this.emitMailboxChanged(userId, {
           action: "permanently_deleted",
           messageId,
@@ -1361,6 +1351,7 @@ export class MailService {
       const threadId = draft.threadId;
       await this.messageRepo.delete(draftId);
       await this.refreshThreadAfterMutation(this.dataSource.manager, threadId);
+      await this.jobsService.enqueueMessageDelete({ messageId: draftId });
 
       this.emitMailboxChanged(userId, {
         action: "draft_deleted",
@@ -1425,23 +1416,27 @@ export class MailService {
         .andWhere("senderDeletedAt IS NOT NULL")
         .execute();
 
-      for (const message of senderMessages.filter(
-        (item) => !!item.senderDeletedAt,
-      )) {
-        await this.jobsService.enqueueMessageDelete({ messageId: message.id });
-      }
+      await Promise.all(
+        senderMessages
+          .filter((item) => !!item.senderDeletedAt)
+          .map((message) =>
+            this.jobsService.enqueueMessageDelete({ messageId: message.id }),
+          ),
+      );
 
-      for (const threadId of affectedThreadIds) {
-        await this.refreshUserThreadState(
-          this.dataSource.manager,
-          threadId,
-          userId,
-        );
-        await this.refreshThreadAfterMutation(
-          this.dataSource.manager,
-          threadId,
-        );
-      }
+      await Promise.all(
+        affectedThreadIds.flatMap((threadId) => [
+          this.refreshUserThreadState(
+            this.dataSource.manager,
+            threadId,
+            userId,
+          ),
+          this.refreshThreadAfterMutation(
+            this.dataSource.manager,
+            threadId,
+          ),
+        ]),
+      );
 
       this.emitMailboxChanged(userId, {
         action: "trash_emptied",
@@ -1513,30 +1508,33 @@ export class MailService {
           senderMessages.map((message) => message.id),
         );
 
-        for (const message of senderMessages) {
-          await this.jobsService.enqueueMessageDelete({
-            messageId: message.id,
-          });
-        }
-      }
-
-      for (const threadId of affectedThreadIds) {
-        await this.refreshThreadAfterMutation(
-          this.dataSource.manager,
-          threadId,
+        await Promise.all(
+          senderMessages.map((message) =>
+            this.jobsService.enqueueMessageDelete({ messageId: message.id }),
+          ),
         );
       }
 
-      for (const userId of affectedUserIds) {
-        const threadIds = [...affectedThreadIds];
-        for (const threadId of threadIds) {
-          await this.refreshUserThreadState(
-            this.dataSource.manager,
-            threadId,
-            userId,
-          );
-        }
-      }
+      const threadIdArray = [...affectedThreadIds];
+      const userIdArray = [...affectedUserIds];
+
+      await Promise.all(
+        threadIdArray.map((threadId) =>
+          this.refreshThreadAfterMutation(this.dataSource.manager, threadId),
+        ),
+      );
+
+      await Promise.all(
+        userIdArray.flatMap((userId) =>
+          threadIdArray.map((threadId) =>
+            this.refreshUserThreadState(
+              this.dataSource.manager,
+              threadId,
+              userId,
+            ),
+          ),
+        ),
+      );
 
       return {
         data: {
@@ -1977,9 +1975,11 @@ export class MailService {
       .select("DISTINCT recipient.recipientId", "userId")
       .getRawMany<{ userId: string }>();
 
-    for (const recipient of recipients) {
-      await this.refreshUserThreadState(manager, threadId, recipient.userId);
-    }
+    await Promise.all(
+      recipients.map((recipient) =>
+        this.refreshUserThreadState(manager, threadId, recipient.userId),
+      ),
+    );
   }
 
   private async getMessageOrFail(manager: EntityManager, messageId: string) {

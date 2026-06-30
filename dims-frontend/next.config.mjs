@@ -34,6 +34,13 @@ const nextConfig = {
         protocol: "http",
         hostname: "minio",
         port: "9000",
+        pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9000",
+        pathname: "/**",
       },
       {
         protocol: "https",
@@ -43,13 +50,8 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
-        port: "",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
         hostname: "dims.danagroup.internal",
+        pathname: "/**",
       },
     ],
   },

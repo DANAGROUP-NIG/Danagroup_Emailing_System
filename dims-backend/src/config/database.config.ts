@@ -60,10 +60,11 @@ export const buildPostgresOptions = (
     ssl: sslEnabled ? { rejectUnauthorized } : false,
 
     extra: {
-      max: parseInteger(env.DB_POOL_MAX, 10),
-      idleTimeoutMillis: parseInteger(env.DB_IDLE_TIMEOUT_MS, 30000),
-      connectionTimeoutMillis: parseInteger(env.DB_CONNECTION_TIMEOUT_MS, 10000),
+      max: parseInteger(env.DB_POOL_MAX, 20),
+      idleTimeoutMillis: parseInteger(env.DB_IDLE_TIMEOUT_MS, 10000),
+      connectionTimeoutMillis: parseInteger(env.DB_CONNECTION_TIMEOUT_MS, 5000),
       keepAlive: true,
+      keepAliveInitialDelayMillis: 0,
     },
   };
 };

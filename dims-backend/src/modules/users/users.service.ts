@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
+import { Brackets, Repository } from "typeorm";
 import { User, UserRole } from "./entities/user.entity";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -19,6 +19,7 @@ import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import * as bcrypt from "bcrypt";
 import { MailService } from "@modules/mail/mail.service";
+import { StorageService } from "@modules/storage/storage.service";
 
 @Injectable()
 export class UsersService {
@@ -34,6 +35,7 @@ export class UsersService {
 
     private readonly jobsService: JobsService,
     private readonly usersSearch: UsersSearchService,
+    private readonly storageService: StorageService,
 
     @Inject(forwardRef(() => MailService))
     private readonly mailService: MailService,
@@ -66,26 +68,71 @@ export class UsersService {
       const page = Number(query.page) || 1;
       const limit = Number(query.limit) || 10;
       const { search, department, subsidiary, role, sortBy } = query;
-      const where = [];
-      if (search) {
-        where.push([
-          { firstName: ILike(`%${search}%`) },
-          { lastName: ILike(`%${search}%`) },
-          { email: ILike(`%${search}%`) },
-        ]);
-      }
-      if (department) where.push({ department });
-      if (subsidiary) where.push({ subsidiary });
-      if (role) where.push({ role });
 
-      const [data, total] = await this.userRepo.findAndCount({
-        where: where.length ? where : undefined,
-        take: limit,
-        skip: (page - 1) * limit,
-        order: { [sortBy || "firstName"]: "ASC" },
-      });
+      const allowedSortColumns = ["firstName", "lastName", "createdAt"] as const;
+      const sortColumn: string = allowedSortColumns.includes(
+        sortBy as (typeof allowedSortColumns)[number],
+      )
+        ? sortBy
+        : "firstName";
+
+      const qb = this.userRepo
+        .createQueryBuilder("user")
+        .select([
+          "user.id",
+          "user.email",
+          "user.firstName",
+          "user.lastName",
+          "user.role",
+          "user.jobTitle",
+          "user.avatarUrl",
+          "user.isActive",
+          "user.departmentId",
+          "user.subsidiaryId",
+          "user.lastLoginAt",
+          "user.createdAt",
+          "user.updatedAt",
+        ]);
+
+      if (search) {
+        qb.andWhere(
+          new Brackets((wb) => {
+            wb.where("user.firstName ILIKE :search", {
+              search: `%${search}%`,
+            })
+              .orWhere("user.lastName ILIKE :search", {
+                search: `%${search}%`,
+              })
+              .orWhere("user.email ILIKE :search", {
+                search: `%${search}%`,
+              });
+          }),
+        );
+      }
+
+      if (department) {
+        qb.andWhere("user.departmentId = :department", { department });
+      }
+      if (subsidiary) {
+        qb.andWhere("user.subsidiaryId = :subsidiary", { subsidiary });
+      }
+      if (role) {
+        qb.andWhere("user.role = :role", { role });
+      }
+
+      qb.orderBy(`user.${sortColumn}`, "ASC")
+        .skip((page - 1) * limit)
+        .take(limit);
+
+      const [data, total] = await qb.getManyAndCount();
+
+      const resolved = data.map((u) => ({
+        ...u,
+        avatarUrl: this.storageService.resolveAvatarUrl(u.avatarUrl) ?? undefined,
+      }));
+
       return {
-        data,
+        data: resolved,
         pagination: {
           total,
           page,
@@ -105,7 +152,10 @@ export class UsersService {
       throw new NotFoundException("User not found");
     }
 
-    return user;
+    return {
+      ...user,
+      avatarUrl: this.storageService.resolveAvatarUrl(user.avatarUrl) ?? undefined,
+    } as User;
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -152,13 +202,10 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
-    // Find the existing department and subsidiary by name
-    const department = await this.departRepo.findOneBy({
-      name: dto.department,
-    });
-    const subsidiary = await this.subsidiaryRepo.findOneBy({
-      name: dto.subsidiary,
-    });
+    const [department, subsidiary] = await Promise.all([
+      this.departRepo.findOneBy({ name: dto.department }),
+      this.subsidiaryRepo.findOneBy({ name: dto.subsidiary }),
+    ]);
 
     if (!department || !subsidiary) {
       throw new NotFoundException("Department or Subsidiary not found");
@@ -231,7 +278,7 @@ export class UsersService {
 
   async updateProfilePic(
     userId: string,
-    data: { avatarUrl: string; avatarPublicId: string },
+    data: { avatarUrl: string },
   ) {
     try {
       const user = await this.userRepo.findOne({ where: { id: userId } });
@@ -239,7 +286,6 @@ export class UsersService {
       if (!user) throw new NotFoundException("User not found");
 
       user.avatarUrl = data.avatarUrl;
-      user.avatarPublicId = data.avatarPublicId;
 
       const updatedUser = await this.userRepo.save(user);
       await this.jobsService.enqueueUserIndex({ userId: updatedUser.id });
@@ -247,7 +293,6 @@ export class UsersService {
       return {
         data: {
           avatarUrl: updatedUser.avatarUrl,
-          avatarPublicId: updatedUser.avatarPublicId,
         },
       };
     } catch (error) {
@@ -263,9 +308,10 @@ export class UsersService {
       user.isActive = false;
 
       const updatedUser = await this.userRepo.save(user);
-      await this.jobsService.enqueueUserDelete({ userId: id });
-
-      await this.jobsService.enqueueUserIndex({ userId: updatedUser.id });
+      await Promise.all([
+        this.jobsService.enqueueUserDelete({ userId: id }),
+        this.jobsService.enqueueUserIndex({ userId: updatedUser.id }),
+      ]);
 
       this.logger.log(
         `User ${user.firstName} ${user.lastName} deactivated successfully`,

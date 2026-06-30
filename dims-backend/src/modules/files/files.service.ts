@@ -1,39 +1,13 @@
 import {
-  BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import * as Minio from "minio";
-import { v4 as uuid } from "uuid";
 import { Attachment } from "./entities/attachment.entity";
-import { MINIO_CLIENT, MINIO_BUCKET } from "../../config/storage.config";
 import { Message } from "../mail/entities/message.entity";
-
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/zip",
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-]);
-
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
-const AVATAR_ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-]);
+import { StorageService } from "@modules/storage/storage.service";
 
 @Injectable()
 export class FilesService {
@@ -42,33 +16,18 @@ export class FilesService {
     private readonly attachmentRepo: Repository<Attachment>,
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
-    @Inject(MINIO_CLIENT) private readonly minioClient: Minio.Client,
-    @Inject(MINIO_BUCKET) private readonly bucket: string,
+    private readonly storageService: StorageService,
   ) {}
 
   async upload(file: Express.Multer.File, uploaderId: string) {
-    this.validateUpload(file);
-    await this.ensureBucket();
-
-    const safeFilename = file.originalname.replace(/[^\w.\-]/g, "_");
-    const storageKey = `uploads/${uuid()}/${safeFilename}`;
-
-    await this.minioClient.putObject(
-      this.bucket,
-      storageKey,
-      file.buffer,
-      file.size,
-      {
-        "Content-Type": file.mimetype,
-      },
-    );
+    const result = await this.storageService.uploadAttachment(file);
 
     const attachment = this.attachmentRepo.create({
       uploaderId,
       filename: file.originalname,
       mime_type: file.mimetype,
       sizeBytes: file.size,
-      storageKey,
+      storageKey: result.storageKey,
       messageId: null,
     });
 
@@ -87,10 +46,9 @@ export class FilesService {
 
     await this.assertCanAccessAttachment(attachment, requesterId);
 
-    const url = await this.minioClient.presignedGetObject(
-      this.bucket,
+    const url = await this.storageService.getPresignedDownloadUrl(
       attachment.storageKey,
-      60 * 60,
+      3600,
     );
 
     return {
@@ -117,7 +75,7 @@ export class FilesService {
       );
     }
 
-    await this.minioClient.removeObject(this.bucket, attachment.storageKey);
+    await this.storageService.delete(attachment.storageKey);
     await this.attachmentRepo.delete(attachmentId);
 
     return {
@@ -129,55 +87,8 @@ export class FilesService {
   }
 
   async uploadAvatar(file: Express.Multer.File, uploaderId: string) {
-    if (!file) {
-      throw new BadRequestException("File is required");
-    }
-    if (!AVATAR_ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      throw new BadRequestException("Avatar must be jpeg, png, gif, or webp");
-    }
-    if (file.size > MAX_AVATAR_SIZE) {
-      throw new BadRequestException("Avatar exceeds 5MB limit");
-    }
-
-    await this.ensureBucket();
-
-    const ext =
-      file.originalname
-        .split(".")
-        .pop()
-        ?.replace(/[^a-z0-9]/gi, "") || "jpg";
-    const storageKey = `avatars/${uploaderId}/${uuid()}.${ext}`;
-
-    await this.minioClient.putObject(
-      this.bucket,
-      storageKey,
-      file.buffer,
-      file.size,
-      { "Content-Type": file.mimetype },
-    );
-
-    return { storageKey };
-  }
-
-  private validateUpload(file?: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException("File is required");
-    }
-
-    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      throw new BadRequestException("Unsupported file type");
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException("File exceeds 20MB limit");
-    }
-  }
-
-  private async ensureBucket() {
-    const exists = await this.minioClient.bucketExists(this.bucket);
-    if (!exists) {
-      await this.minioClient.makeBucket(this.bucket);
-    }
+    const result = await this.storageService.uploadAvatar(file, uploaderId);
+    return { storageKey: result.storageKey };
   }
 
   private async assertCanAccessAttachment(
