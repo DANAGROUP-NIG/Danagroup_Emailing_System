@@ -339,7 +339,7 @@ function AdminUsersPageContent() {
   ];
 
   return (
-    <div data-testid="admin-panel" className="space-y-6">
+    <div data-testid="admin-panel" className="space-y-6 max-w-7xl px-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -386,7 +386,9 @@ function AdminUsersPageContent() {
       </div>
 
       {/* Table */}
-      <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} pageSize={10} />
+      <div className='max-h-[calc(100vh-260px)] overflow-y-auto rounded-lg'>
+        <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} pageSize={10} />
+      </div>
 
       {/* Form Modal */}
       <UserFormModal
