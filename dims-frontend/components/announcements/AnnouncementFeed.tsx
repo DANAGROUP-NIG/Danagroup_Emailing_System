@@ -56,7 +56,7 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
   const departments = departmentsData || [];
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Filters</h2>
