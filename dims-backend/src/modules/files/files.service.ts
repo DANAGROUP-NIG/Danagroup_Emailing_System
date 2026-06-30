@@ -60,6 +60,24 @@ export class FilesService {
     };
   }
 
+  async getStream(attachmentId: string, requesterId: string) {
+    const attachment = await this.attachmentRepo.findOne({
+      where: { id: attachmentId },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException("Attachment not found");
+    }
+
+    await this.assertCanAccessAttachment(attachment, requesterId);
+
+    const stream = await this.storageService.getObjectStream(
+      attachment.storageKey,
+    );
+
+    return { attachment, stream };
+  }
+
   async delete(attachmentId: string, requesterId: string) {
     const attachment = await this.attachmentRepo.findOne({
       where: { id: attachmentId },

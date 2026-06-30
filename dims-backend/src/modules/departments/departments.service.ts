@@ -113,7 +113,7 @@ export class DepartmentsService {
     subsidiaryId?: string,
     departmentId?: string,
   ) {
-    const keys: Promise<void>[] = [
+    const keys: Promise<unknown>[] = [
       this.cache.del(`departments:all`),
     ];
     if (subsidiaryId) {
@@ -176,7 +176,7 @@ export class DepartmentsService {
   }
 
   private async invalidateSubsidiaryCaches(subsidiaryId?: string) {
-    const keys: Promise<void>[] = [this.cache.del(`subsidiaries:all`)];
+    const keys: Promise<unknown>[] = [this.cache.del(`subsidiaries:all`)];
     if (subsidiaryId) {
       keys.push(this.cache.del(`subsidiary:${subsidiaryId}`));
       keys.push(this.cache.del(`departments:by-subsidiary:${subsidiaryId}`));

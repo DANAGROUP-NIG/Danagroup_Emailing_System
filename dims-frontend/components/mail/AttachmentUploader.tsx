@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Upload } from 'lucide-react';
 import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -48,12 +48,11 @@ export default function AttachmentUploader({
 
   const totalSize = uploadedFiles.reduce((sum, file) => sum + file.sizeBytes, 0);
 
-  const syncFiles = useCallback(
-    (files: UploadedAttachment[]) => {
-      onChange?.(files.filter((file) => !file.isUploading && !file.error));
-    },
-    [onChange],
-  );
+  // Sync completed uploads to parent outside of render to avoid the
+  // "Cannot update a component while rendering a different component" warning.
+  useEffect(() => {
+    onChange?.(uploadedFiles.filter((file) => !file.isUploading && !file.error));
+  }, [uploadedFiles, onChange]);
 
   const validateFile = useCallback(
     async (file: File): Promise<string | null> => {
@@ -107,8 +106,8 @@ export default function AttachmentUploader({
         });
 
         const uploaded = res.data.data;
-        setUploadedFiles((prev) => {
-          const next = prev.map((current) =>
+        setUploadedFiles((prev) =>
+          prev.map((current) =>
             current.id === tempId
               ? {
                   id: uploaded.id,
@@ -120,11 +119,8 @@ export default function AttachmentUploader({
                   isUploading: false,
                 }
               : current,
-          );
-
-          syncFiles(next);
-          return next;
-        });
+          ),
+        );
       } catch (error: unknown) {
         const axiosErr = error as { response?: { data?: { message?: string | string[] } } };
         const rawMsg = axiosErr?.response?.data?.message;
@@ -137,7 +133,7 @@ export default function AttachmentUploader({
         );
       }
     },
-    [onError, syncFiles],
+    [onError],
   );
 
   const addFiles = useCallback(
@@ -173,13 +169,9 @@ export default function AttachmentUploader({
         await filesApi.delete(id);
       }
 
-      setUploadedFiles((prev) => {
-        const next = prev.filter((file) => file.id !== id);
-        syncFiles(next);
-        return next;
-      });
+      setUploadedFiles((prev) => prev.filter((file) => file.id !== id));
     },
-    [syncFiles, uploadedFiles],
+    [uploadedFiles],
   );
 
   return (

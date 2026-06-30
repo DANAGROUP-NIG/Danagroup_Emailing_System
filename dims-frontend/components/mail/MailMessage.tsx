@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
-import { ChevronDown, Forward, Reply, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { ChevronDown, Download, Forward, Reply, ShieldCheck, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
@@ -218,21 +218,41 @@ export default function MailMessage({
             </p>
             <div className="flex flex-wrap gap-2">
               {message.attachments.map((file) => (
-                <button
+                <div
                   key={file.id}
-                  type="button"
-                  onClick={async () => {
-                    const response = await filesApi.getDownloadUrl(file.id);
-                    const url = response?.data?.data?.url;
-                    if (url) {
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }
-                  }}
-                  className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-xs shadow-sm hover:bg-slate-100 hover:border-slate-300 transition-colors"
+                  className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-2 text-xs shadow-sm hover:border-slate-300 transition-colors"
                 >
-                  <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
-                  <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(
+                        filesApi.getStreamUrl(file.id),
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    }}
+                    className="flex items-center gap-2 text-left hover:bg-slate-100 px-1 py-0.5 rounded transition-colors"
+                  >
+                    <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
+                    <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = filesApi.getDownloadStreamUrl(file.id);
+                      a.download = file.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                    }}
+                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                    aria-label="Download attachment"
+                    title="Download"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

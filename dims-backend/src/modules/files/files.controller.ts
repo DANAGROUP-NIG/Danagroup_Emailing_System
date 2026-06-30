@@ -4,6 +4,9 @@ import {
   Get,
   Param,
   Post,
+  Query,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
   Logger,
@@ -20,7 +23,7 @@ import {
 import { CurrentUser } from "@common/decorators/current-user.decorator";
 import { FilesService } from "./files.service";
 import { StorageService } from "@modules/storage/storage.service";
-import { Express } from "express";
+import { Express, Response } from "express";
 
 @ApiTags("files")
 @ApiBearerAuth()
@@ -52,6 +55,28 @@ export class FilesController {
     @CurrentUser() user: { userId: string },
   ) {
     return this.filesService.getDownloadUrl(id, user.userId);
+  }
+
+  @Get(":id/stream")
+  @ApiOperation({ summary: "Stream or download attachment content" })
+  async streamAttachment(
+    @Param("id") id: string,
+    @Query("download") download: string,
+    @CurrentUser() user: { userId: string },
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { attachment, stream } = await this.filesService.getStream(
+      id,
+      user.userId,
+    );
+
+    res.set({
+      "Content-Type": attachment.mime_type,
+      "Content-Disposition": `${download === "true" ? "attachment" : "inline"}; filename="${attachment.filename}"`,
+      "Content-Length": String(attachment.sizeBytes),
+    });
+
+    return new StreamableFile(stream);
   }
 
   @Delete(":id")

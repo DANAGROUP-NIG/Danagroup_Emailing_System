@@ -33,6 +33,10 @@ export const filesApi = {
   getDownloadUrl: (id: string) =>
     apiClient.get<{ data: DownloadUrlData }>(`/files/${id}/download`),
 
+  getStreamUrl: (id: string) => `/api/files/${id}/stream`,
+
+  getDownloadStreamUrl: (id: string) => `/api/files/${id}/stream?download=true`,
+
   delete: (id: string) =>
     apiClient.delete<{ data: { id: string; deleted: boolean } }>(`/files/${id}`),
 

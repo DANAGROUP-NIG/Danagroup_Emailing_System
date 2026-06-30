@@ -153,6 +153,16 @@ export default function ComposeModal() {
     [attachmentIds.length],
   );
 
+  const handleAttachmentChange = useCallback(
+    (files: UploadedAttachment[]) => setUploadedAttachments(files),
+    [],
+  );
+
+  const handleAttachmentError = useCallback(
+    (message: string) => showToast({ title: message, variant: "error" }),
+    [showToast],
+  );
+
   const saveDraftIfNeeded = useCallback(
     async (values: Partial<ComposeFormValues>, shouldShowToast = false) => {
       if (!isComposeOpen || isSendingRef.current || !hasDraftContent(values)) {
@@ -455,8 +465,8 @@ export default function ComposeModal() {
           </div>
 
           <AttachmentUploader
-            onChange={setUploadedAttachments}
-            onError={(message) => showToast({ title: message, variant: "error" })}
+            onChange={handleAttachmentChange}
+            onError={handleAttachmentError}
           />
         </div>
 

@@ -239,11 +239,30 @@ export class StorageService {
     storageKey: string,
     expirySeconds: number = 3600,
   ): Promise<string> {
-    return this.minioClient.presignedGetObject(
+    const presigned = await this.minioClient.presignedGetObject(
       this.bucket,
       storageKey,
       expirySeconds,
     );
+
+    const publicBase = process.env.MINIO_PUBLIC_URL;
+    if (publicBase) {
+      const presignedUrl = new URL(presigned);
+      const publicUrl = new URL(publicBase.replace(/\/$/, ""));
+      presignedUrl.protocol = publicUrl.protocol;
+      presignedUrl.hostname = publicUrl.hostname;
+      presignedUrl.port = publicUrl.port;
+      if (publicUrl.pathname && publicUrl.pathname !== "/") {
+        presignedUrl.pathname = publicUrl.pathname.replace(/\/$/, "") + presignedUrl.pathname;
+      }
+      return presignedUrl.toString();
+    }
+
+    return presigned;
+  }
+
+  async getObjectStream(storageKey: string): Promise<Readable> {
+    return this.minioClient.getObject(this.bucket, storageKey);
   }
 
   getPublicUrl(storageKey: string): string {
@@ -294,10 +313,7 @@ export class StorageService {
 
   async deleteMany(storageKeys: string[]): Promise<void> {
     if (!storageKeys.length) return;
-    const objects: Minio.BucketItem[] = storageKeys.map((name) => ({
-      name,
-    } as Minio.BucketItem));
-    await this.minioClient.removeObjects(this.bucket, objects);
+    await this.minioClient.removeObjects(this.bucket, storageKeys);
   }
 
   // ─── Object existence ─────────────────────────────────────────────────────
