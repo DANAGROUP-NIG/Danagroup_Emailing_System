@@ -1,7 +1,9 @@
 import Image from "next/image";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AuthModeSwitch } from "@/components/auth/AuthModeSwitch";
 import logoBg from "@/assets/Elegantly designed envelope with gradient swoosh.jpg";
 import logo from "@/assets/logo.png";
+import { Suspense } from "react";
 
 export default function AuthLayout({
   children,
@@ -78,7 +80,13 @@ export default function AuthLayout({
 
           {/* Vertically centred form area */}
           <div className="flex flex-1 items-center justify-center px-6 py-10">
-            <div className="w-full max-w-md">{children}</div>
+            <div className="w-full max-w-md">
+              <Suspense fallback={null}>
+                <AuthModeSwitch />
+              </Suspense>
+              
+              {children}
+            </div>
           </div>
         </div>
       </div>
