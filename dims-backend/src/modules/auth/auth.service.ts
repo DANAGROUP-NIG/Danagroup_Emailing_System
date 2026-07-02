@@ -10,6 +10,7 @@ import { UserRole } from "@modules/users/entities/user.entity";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import { Request } from "express";
+import { SignupDto } from "./dto/signup.dto";
 
 export interface UserShape {
   id: string;
@@ -149,6 +150,12 @@ export class AuthService {
         role: fullUser.role,
       },
     };
+  }
+
+  async signup(dto: SignupDto, userAgent?: string, ip?: string, req?: Request) {
+    const employee = await this.usersService.createEmployee(dto);
+
+    return this.login(employee, userAgent, ip, req);
   }
 
   async refresh(refreshToken: string) {

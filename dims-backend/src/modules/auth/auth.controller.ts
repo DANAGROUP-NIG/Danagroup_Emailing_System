@@ -14,6 +14,7 @@ import { Response, Request } from "express";
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiResponse,
@@ -21,8 +22,10 @@ import {
 } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { UsersService } from "../users/users.service";
+import { DepartmentsService } from "../departments/departments.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { SignupDto } from "./dto/signup.dto";
 import { ApiResponseDto } from "@common/dto/api-response.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { Throttle } from "@nestjs/throttler";
@@ -46,7 +49,69 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly departmentsService: DepartmentsService,
   ) {}
+
+  private setAuthCookies(
+    res: Response,
+    result: { accessToken: string; refreshToken: string },
+  ) {
+    res.cookie("access_token", result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refresh_token", result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post("signup")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiBody({ type: SignupDto })
+  @ApiOperation({ summary: "Create an employee account" })
+  @ApiCreatedResponse({
+    description: "Employee account created",
+    type: LoginResponseDto,
+  })
+  @ApiResponse({ status: 400, description: "Invalid signup details" })
+  @ApiResponse({ status: 409, description: "Email is already registered" })
+  async signup(
+    @Body() signupDto: SignupDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ) {
+    const result = await this.authService.signup(
+      signupDto,
+      req.headers["user-agent"],
+      req.ip,
+      req,
+    );
+
+    this.setAuthCookies(res, result);
+
+    return new ApiResponseDto(true, "Signup successful", {
+      user: result.user,
+    });
+  }
+
+  @Public()
+  @Get("signup-options")
+  @ApiOperation({ summary: "Get domains and departments available for signup" })
+  @ApiOkResponse({ description: "Signup options returned" })
+  async signupOptions() {
+    const subsidiaries = await this.departmentsService.findAllSubsidiaries();
+    return new ApiResponseDto(true, "Signup options fetched", {
+      subsidiaries,
+    });
+  }
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -72,20 +137,7 @@ export class AuthController {
       req,
     );
 
-    // Set Cookies
-    res.cookie("access_token", result.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 min
-    });
-
-    res.cookie("refresh_token", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    this.setAuthCookies(res, result);
 
     return new ApiResponseDto(true, "Login successful", {
       user: result.user,
