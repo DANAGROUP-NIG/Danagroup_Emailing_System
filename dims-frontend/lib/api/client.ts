@@ -58,6 +58,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as RetriableRequestConfig | undefined;
     const isLoginRequest = originalRequest?.url?.includes("/auth/login");
+    const isSignupRequest = originalRequest?.url?.includes("/auth/signup");
     const isRefreshRequest = originalRequest?.url?.includes("/auth/refresh");
 
     if (
@@ -65,6 +66,7 @@ apiClient.interceptors.response.use(
       originalRequest &&
       !originalRequest._retry &&
       !isLoginRequest &&
+      !isSignupRequest &&
       !isRefreshRequest
     ) {
       originalRequest._retry = true;
