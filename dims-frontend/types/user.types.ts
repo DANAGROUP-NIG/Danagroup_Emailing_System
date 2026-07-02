@@ -5,6 +5,7 @@ export interface Subsidiary {
   name: string;
   domain: string;
   description?: string;
+  departments?: Department[];
   createdAt: string;
 }
 

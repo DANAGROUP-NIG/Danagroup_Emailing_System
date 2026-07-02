@@ -17,7 +17,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { jwtVerify, decodeJwt } from "jose";
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 // Admin-only route patterns that require group_admin role
 const ADMIN_ONLY_ROUTES = ["/admin/subsidiaries"];

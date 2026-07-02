@@ -8,10 +8,12 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
 import { UsersModule } from "../users/users.module";
 import { SessionSerializer } from "./session.serializer";
+import { DepartmentsModule } from "@modules/departments/departments.module";
 
 @Module({
   imports: [
     UsersModule,
+    DepartmentsModule,
     PassportModule.register({ session: true }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
