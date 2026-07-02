@@ -26,13 +26,13 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=/api
-        - NEXT_PUBLIC_WS_URL=ws://localhost:3000
+        - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:3000}
         - INTERNAL_API_ORIGIN=http://api:8000
         - "NEXT_PUBLIC_APP_NAME=DIMS — Dana Internal Mail"
     container_name: dims_frontend
     environment:
       - NEXT_PUBLIC_API_URL=/api
-      - NEXT_PUBLIC_WS_URL=ws://localhost:3000
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-ws://localhost:3000}
       - "NEXT_PUBLIC_APP_NAME=DIMS — Dana Internal Mail"
       - INTERNAL_API_ORIGIN=http://api:8000
     ports:
