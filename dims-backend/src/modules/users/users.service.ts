@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   forwardRef,
   ForbiddenException,
   Inject,
@@ -19,6 +20,15 @@ import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import * as bcrypt from "bcrypt";
 import { MailService } from "@modules/mail/mail.service";
+
+export interface CreateEmployeeUserInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  departmentId: string;
+  jobTitle?: string;
+}
 
 @Injectable()
 export class UsersService {
@@ -41,7 +51,10 @@ export class UsersService {
 
   private readonly logger = new Logger(UsersService.name);
 
-  private handleError(method: string, error: Error & { stack?: string }) {
+  private handleError(
+    method: string,
+    error: Error & { stack?: string },
+  ): never {
     // Do not mask NestJS known exceptions (BadRequestException, etc.)
     this.logger.error(
       `UsersService.${method} failed: ${error.message}`,
@@ -92,7 +105,7 @@ export class UsersService {
           limit,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("findAll", error);
     }
   }
@@ -109,8 +122,10 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+
     return this.userRepo.findOne({
-      where: { email },
+      where: { email: ILike(normalizedEmail) },
       select: [
         "id",
         "email",
@@ -122,6 +137,78 @@ export class UsersService {
       ],
     });
   }
+
+  async createEmployee(dto: CreateEmployeeUserInput): Promise<User> {
+    const email = dto.email.trim().toLowerCase();
+    const emailDomain = email.split("@")[1]?.toLowerCase();
+
+    if (!emailDomain) {
+      throw new BadRequestException("A valid company email is required");
+    }
+
+    const existingUser = await this.userRepo.findOne({
+      where: { email: ILike(email) },
+      select: ["id"],
+    });
+
+    if (existingUser) {
+      throw new ConflictException("Email is already registered");
+    }
+
+    const subsidiary = await this.subsidiaryRepo.findOneBy({
+      domain: ILike(emailDomain),
+    });
+
+    if (!subsidiary) {
+      throw new BadRequestException(
+        "Email domain is not registered to a subsidiary",
+      );
+    }
+
+    const department = await this.departRepo.findOne({
+      where: {
+        id: dto.departmentId,
+        subsidiaryId: subsidiary.id,
+      },
+    });
+
+    if (!department) {
+      throw new BadRequestException(
+        "Department does not belong to the subsidiary matched by this email domain",
+      );
+    }
+
+    try {
+      const passwordHash = await bcrypt.hash(dto.password, 12);
+      const employee = this.userRepo.create({
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        email,
+        passwordHash,
+        role: "employee",
+        jobTitle: dto.jobTitle?.trim() || undefined,
+        subsidiary,
+        subsidiaryId: subsidiary.id,
+        department,
+        departmentId: department.id,
+        isActive: true,
+        sessions: [],
+      });
+
+      const saved = await this.userRepo.save(employee);
+      await this.jobsService.enqueueUserIndex({ userId: saved.id });
+
+      const { passwordHash: _, ...safeUser } = saved;
+      return safeUser as User;
+    } catch (error: any) {
+      if ((error as { code?: string }).code === "23505") {
+        throw new ConflictException("Email is already registered");
+      }
+
+      this.handleError("createEmployee", error);
+    }
+  }
+
   async search(
     query: string,
     filters: { department?: string; subsidiary?: string; role?: string },
@@ -146,7 +233,7 @@ export class UsersService {
         limit,
         lastPage: Math.ceil(parseInt(result.total.toString()) / limit),
       };
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("search", error);
     }
   }
@@ -196,7 +283,7 @@ export class UsersService {
       }
 
       return saved;
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("create", error);
     }
   }
@@ -224,7 +311,7 @@ export class UsersService {
       });
       await this.jobsService.enqueueUserIndex({ userId: updatedUser.id });
       return updatedUser;
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("update", error);
     }
   }
@@ -250,7 +337,7 @@ export class UsersService {
           avatarPublicId: updatedUser.avatarPublicId,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("updateProfilePic", error);
     }
   }
@@ -270,7 +357,7 @@ export class UsersService {
       this.logger.log(
         `User ${user.firstName} ${user.lastName} deactivated successfully`,
       );
-    } catch (error) {
+    } catch (error: any) {
       this.handleError("deactivate", error);
     }
   }
