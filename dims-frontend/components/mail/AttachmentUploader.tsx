@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { AlertCircle, Loader2, Upload } from 'lucide-react';
+import { AlertCircle, Loader2, Paperclip } from 'lucide-react';
 import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { validateFileSecurity, stripExifMetadata, formatFileSize } from '@/lib/fileValidation';
@@ -183,7 +183,7 @@ export default function AttachmentUploader({
   );
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-3">
       <div
         onDragEnter={(e) => {
           e.preventDefault();
@@ -206,10 +206,10 @@ export default function AttachmentUploader({
           void addFiles(e.dataTransfer.files);
         }}
         className={cn(
-          'relative rounded-lg border-2 border-dashed p-5 transition-colors',
+          'relative rounded-xl border border-dashed p-5 transition-colors',
           isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 bg-gray-50 hover:border-gray-400',
+            ? 'border-dana-blue-500 bg-dana-blue-50'
+            : 'border-slate-300 bg-white hover:border-dana-blue-300',
         )}
       >
         <input
@@ -225,18 +225,25 @@ export default function AttachmentUploader({
           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
         />
 
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Upload className="h-7 w-7 text-gray-400" />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="font-semibold text-blue-600 hover:underline"
-          >
-            Upload attachments
-          </button>
-          <p className="text-xs text-gray-500">
-            PDF, DOC, XLS, images up to 20MB each (50MB total)
-          </p>
+        <div className="flex items-center gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-dana-blue-50 text-dana-blue-700">
+            <Paperclip className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 text-left">
+            <p className="text-base font-medium text-slate-900">
+              Drag & drop files here or{" "}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="font-semibold text-dana-blue-700 hover:text-dana-blue-900 hover:underline"
+              >
+                browse
+              </button>
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              PDF, DOC, DOCX, XLS, XLSX, PNG, JPG up to 20MB each (50MB total)
+            </p>
+          </div>
         </div>
       </div>
 
@@ -252,19 +259,19 @@ export default function AttachmentUploader({
           {uploadedFiles.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
+              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">
+                <p className="truncate text-sm font-medium text-slate-900">
                   {file.filename}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
 
               <div className="w-24">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all',
@@ -275,12 +282,13 @@ export default function AttachmentUploader({
                 </div>
               </div>
 
-              {file.isUploading ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : null}
+              {file.isUploading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
 
               <button
                 type="button"
                 onClick={() => void removeFile(file.id)}
-                className="text-gray-400 transition-colors hover:text-red-600"
+                className="text-slate-400 transition-colors hover:text-red-600"
+                aria-label={`Remove ${file.filename}`}
               >
                 ×
               </button>
@@ -289,7 +297,7 @@ export default function AttachmentUploader({
         </div>
       ) : null}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-slate-500">
         Total: {(totalSize / 1024 / 1024).toFixed(1)}MB / 50MB
       </p>
     </div>
