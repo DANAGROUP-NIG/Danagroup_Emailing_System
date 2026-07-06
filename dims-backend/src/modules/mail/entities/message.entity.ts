@@ -43,6 +43,12 @@ export class Message {
   @Column({ nullable: true, type: "timestamptz" })
   senderDeletedAt: Date;
 
+  @Column({ default: false })
+  isInbound: boolean;
+
+  @Column({ type: "varchar", length: 320, nullable: true })
+  externalSenderEmail: string | null;
+
   @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 

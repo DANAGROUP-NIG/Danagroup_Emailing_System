@@ -21,10 +21,18 @@ import { HealthModule } from "./health/health.module";
 // Config
 import databaseConfig from "./config/database.config";
 import { TerminusModule } from "@nestjs/terminus";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { RolesGuard } from "@common/guards/roles.guards";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 import { MailModule } from "@modules/mail/mail.module";
+import { ChatModule } from "@modules/chat/chat.module";
+import { MailRulesModule } from "@modules/mail-rules/mail-rules.module";
+import { ChannelsModule } from "@modules/channels/channels.module";
+import { SmtpModule } from "@modules/smtp/smtp.module";
+import { DistributionListsModule } from "@modules/distribution-lists/distribution-lists.module";
+import { TwoFactorModule } from "@modules/two-factor/two-factor.module";
+import { AuditModule } from "@modules/audit/audit.module";
+import { AuditInterceptor } from "@modules/audit/audit.interceptor";
 import { CacheModule } from "@nestjs/cache-manager";
 import { StorageModule } from "@modules/storage/storage.module";
 
@@ -133,6 +141,13 @@ function buildRedisUrl(config: ConfigService): string {
     JobsModule,
     HealthModule,
     StorageModule,
+    ChatModule,
+    MailRulesModule,
+    ChannelsModule,
+    SmtpModule,
+    DistributionListsModule,
+    TwoFactorModule,
+    AuditModule,
   ],
 
   providers: [
@@ -143,6 +158,10 @@ function buildRedisUrl(config: ConfigService): string {
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })

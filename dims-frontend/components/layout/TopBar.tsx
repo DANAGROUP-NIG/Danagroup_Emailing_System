@@ -34,10 +34,13 @@ const routeLabels: Array<{ match: RegExp; title: string; subtitle: string }> = [
   { match: /^\/mail\/starred/, title: "Starred", subtitle: "Messages you've pinned for quick return" },
   { match: /^\/mail\/trash/, title: "Trash", subtitle: "Messages pending deletion or recovery" },
   { match: /^\/directory/, title: "Directory", subtitle: "People, teams, and organisational details" },
+  { match: /^\/chat/, title: "Messages", subtitle: "Real-time 1-on-1 conversations" },
+  { match: /^\/channels/, title: "Channels", subtitle: "Department and project group messaging" },
   { match: /^\/announcements/, title: "Announcements", subtitle: "Broadcast updates and company notices" },
   { match: /^\/admin\/users/, title: "User Admin", subtitle: "Manage access, roles, and employee records" },
   { match: /^\/admin\/departments/, title: "Department Admin", subtitle: "Edit department structure and ownership" },
   { match: /^\/admin\/subsidiaries/, title: "Subsidiary Admin", subtitle: "Manage subsidiary records and domains" },
+  { match: /^\/admin\/audit-logs/, title: "Audit Logs", subtitle: "Track all mutating actions across the system" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────

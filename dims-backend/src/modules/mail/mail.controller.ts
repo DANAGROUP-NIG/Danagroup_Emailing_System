@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -201,8 +200,11 @@ export class MailController {
   @ApiOperation({
     summary: " return a single message by ID, including its recipients.",
   })
-  async getMessage(@Param("id") id: string, @Req() req) {
-    return this.mailService.getMessageById(id, req.user.id);
+  async getMessage(
+    @Param("id") id: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.mailService.getMessageById(id, user.userId);
   }
 
   @Delete("messages/:id/permanent")

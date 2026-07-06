@@ -1,0 +1,31 @@
+#!/bin/sh
+# Postfix pipe transport: reads raw email from stdin, POSTs it to DIMS inbound webhook.
+# Called by Postfix for every inbound message destined for @danagroup.net.
+#
+# Postfix master.cf entry (add to /etc/postfix/master.cf inside the container):
+#   dims     unix  -       n       n       -       -       pipe
+#     flags=Rq user=nobody argv=/usr/local/bin/pipe-to-dims.sh
+
+set -e
+
+DIMS_API="${DIMS_API_URL:-http://api:8000/api}"
+SECRET="${INBOUND_WEBHOOK_SECRET:-}"
+
+TMPFILE=$(mktemp)
+cat > "$TMPFILE"
+
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST \
+  -H "Content-Type: message/rfc822" \
+  -H "X-Inbound-Secret: ${SECRET}" \
+  --data-binary "@${TMPFILE}" \
+  "${DIMS_API}/mail/inbound")
+
+rm -f "$TMPFILE"
+
+if [ "$STATUS" = "200" ]; then
+  exit 0
+else
+  echo "DIMS inbound webhook returned HTTP ${STATUS}" >&2
+  exit 75  # EX_TEMPFAIL — Postfix will retry
+fi

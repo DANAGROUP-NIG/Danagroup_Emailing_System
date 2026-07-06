@@ -1,0 +1,19 @@
+{
+  "name": "dims-imap-migration",
+  "version": "1.0.0",
+  "description": "Batch IMAP → DIMS migration scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate:single": "node imap-migrate.mjs",
+    "migrate:batch": "node batch-migrate.mjs"
+  },
+  "dependencies": {
+    "imap-simple": "^5.1.0",
+    "mailparser": "^3.7.1",
+    "nodemailer": "^6.9.0",
+    "dotenv": "^16.4.5",
+    "p-limit": "^5.0.0",
+    "chalk": "^5.3.0"
+  }
+}

@@ -55,8 +55,17 @@ export class User {
   @Column({ length: 500, nullable: true })
   avatarUrl?: string;
 
+  @Column({ type: "text", nullable: true })
+  signature?: string;
+
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: "varchar", length: 64, nullable: true, select: false })
+  totpSecret: string | null;
+
+  @Column({ default: false })
+  totpEnabled: boolean;
 
   @Column({ nullable: true, type: "timestamptz" })
   lastLoginAt: Date;

@@ -151,7 +151,7 @@ export default function AnnouncementFeed({ onEditAnnouncement, initialFilters }:
       </div>
 
       {/* Pinned Announcements */}
-      {pinnedLoading || (pinnedData && pinnedData.length > 0) && (
+      {(pinnedLoading || (pinnedData && pinnedData.length > 0)) && (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase">Pinned</h3>
           {pinnedLoading ? (

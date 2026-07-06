@@ -7,3 +7,4 @@ export { announcementsApi } from "./announcements";
 export { notificationsApi } from "./notifications";
 export { departmentsApi } from "./departments";
 export { searchApi } from "./search";
+export { chatApi } from "./chat";

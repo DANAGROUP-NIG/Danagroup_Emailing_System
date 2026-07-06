@@ -16,6 +16,7 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       abortOnError: true, // This will force the app to crash and show the error
       logger: ["error", "warn", "log", "debug"], // Enable debug logs
+      rawBody: true,
     });
 
     // Trust the first proxy (nginx / Cloudflare tunnel) so that

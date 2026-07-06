@@ -19,6 +19,7 @@ import { UsersSearchService } from "./users-search.service";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import * as bcrypt from "bcrypt";
+import DOMPurify from "isomorphic-dompurify";
 import { MailService } from "@modules/mail/mail.service";
 import { StorageService } from "@modules/storage/storage.service";
 
@@ -385,6 +386,57 @@ export class UsersService {
     } catch (error: any) {
       this.handleError("updateProfilePic", error);
     }
+  }
+
+  async getSignature(userId: string): Promise<{ signature: string | null }> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ["id", "signature"],
+    });
+    if (!user) throw new NotFoundException("User not found");
+    return { signature: user.signature ?? null };
+  }
+
+  async updateSignature(userId: string, signature: string | null): Promise<{ signature: string | null }> {
+    const sanitized = signature
+      ? DOMPurify.sanitize(signature, {
+          ALLOWED_TAGS: ["p", "br", "b", "i", "strong", "em", "u", "a", "span", "div", "hr"],
+          ALLOWED_ATTR: ["href", "target", "style", "class"],
+        })
+      : null;
+
+    await this.userRepo.update(userId, { signature: sanitized ?? undefined });
+    return { signature: sanitized };
+  }
+
+  async getSignatureForSend(userId: string): Promise<string | null> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ["id", "signature"],
+    });
+    return user?.signature ?? null;
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    await this.userRepo
+      .createQueryBuilder()
+      .update()
+      .set({ passwordHash })
+      .where("id = :userId", { userId })
+      .execute();
+  }
+
+  async deliverPasswordResetNotification(
+    userId: string,
+    resetLink: string,
+    expiryMinutes: number,
+  ): Promise<void> {
+    await this.jobsService.enqueueNotification({
+      userId,
+      type: "system",
+      title: "Password reset requested",
+      body: `A password reset was requested for your account. Use the link below to set a new password (valid for ${expiryMinutes} minutes):\n\n${resetLink}\n\nIf you did not request this, you can ignore this notification.`,
+    });
   }
 
   async deactivate(id: string): Promise<void> {

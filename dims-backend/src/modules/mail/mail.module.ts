@@ -3,7 +3,13 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { BullModule } from "@nestjs/bullmq";
 import { MailController } from "./mail.controller";
 import { MailService } from "./mail.service";
+import { MailCoreService } from "./mail-core.service";
+import { MailboxService } from "./mailbox.service";
+import { ComposeService } from "./compose.service";
+import { MailActionService } from "./mail-action.service";
 import { MailGateway } from "./mail.gateway";
+import { InboundMailService } from "./inbound-mail.service";
+import { InboundMailController } from "./inbound-mail.controller";
 import { Message } from "./entities/message.entity";
 import { Thread } from "./entities/thread.entity";
 import { MessageRecipient } from "./entities/message-recipient.entity";
@@ -37,8 +43,17 @@ import { QUEUES } from "@jobs/queue.constants";
     NotificationsModule,
     forwardRef(() => UsersModule),
   ],
-  controllers: [MailController],
-  providers: [MailService, MailGateway, Logger],
+  controllers: [MailController, InboundMailController],
+  providers: [
+    MailCoreService,
+    MailboxService,
+    ComposeService,
+    MailActionService,
+    MailService,
+    MailGateway,
+    InboundMailService,
+    Logger,
+  ],
   exports: [MailService, MailGateway, TypeOrmModule],
 })
 export class MailModule {}

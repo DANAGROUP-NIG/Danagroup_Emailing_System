@@ -39,6 +39,8 @@ import {
 } from "./dto/auth-response.dto";
 import { UserShape } from "./auth.service";
 import { StorageService } from "@modules/storage/storage.service";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 
 type AuthenticatedRequest = Request & {
   user: UserShape;
@@ -223,6 +225,32 @@ export class AuthController {
       avatarUrl: this.storageService.resolveAvatarUrl(fullUser.avatarUrl) ?? undefined,
     };
     return new ApiResponseDto(true, "User fetched", resolved);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Request a password reset link" })
+  @ApiOkResponse({ description: "Reset notification sent if email is registered" })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.forgotPassword(dto.email);
+    return new ApiResponseDto(
+      true,
+      "If that email is registered, a reset link has been sent",
+    );
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post("reset-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Reset password using a one-time token" })
+  @ApiOkResponse({ description: "Password updated successfully" })
+  @ApiResponse({ status: 400, description: "Token invalid or expired" })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto.token, dto.password);
+    return new ApiResponseDto(true, "Password updated successfully");
   }
 
   @Roles("group_admin")

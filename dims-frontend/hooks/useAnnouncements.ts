@@ -20,14 +20,13 @@ export function useAnnouncements(filters: AnnouncementFilters = {}, pageSize = 1
   return useInfiniteQuery({
     queryKey: ['announcements', filters],
     queryFn: async ({ pageParam = 1 }) => {
-      const params = new URLSearchParams();
-      params.append('page', pageParam.toString());
-      params.append('limit', pageSize.toString());
-      if (filters.subsidiaryId) params.append('subsidiaryId', filters.subsidiaryId);
-      if (filters.departmentId) params.append('departmentId', filters.departmentId);
-      if (filters.target) params.append('target', filters.target);
-
-      const res = await announcementsApi.list(Object.fromEntries(params));
+      const res = await announcementsApi.list({
+        page: pageParam as number,
+        limit: pageSize,
+        ...(filters.subsidiaryId ? { subsidiaryId: filters.subsidiaryId } : {}),
+        ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+        ...(filters.target ? { target: filters.target } : {}),
+      });
       return res.data as AnnouncementListResponse;
     },
     getNextPageParam: (lastPage: AnnouncementListResponse) => {
@@ -46,14 +45,13 @@ export function usePinnedAnnouncements(filters: AnnouncementFilters = {}) {
   return useQuery({
     queryKey: ['announcements', 'pinned', filters],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append('isPinned', 'true');
-      params.append('limit', '5');
-      if (filters.subsidiaryId) params.append('subsidiaryId', filters.subsidiaryId);
-      if (filters.departmentId) params.append('departmentId', filters.departmentId);
-      if (filters.target) params.append('target', filters.target);
-
-      const res = await announcementsApi.list(Object.fromEntries(params));
+      const res = await announcementsApi.list({
+        isPinned: true,
+        limit: 5,
+        ...(filters.subsidiaryId ? { subsidiaryId: filters.subsidiaryId } : {}),
+        ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+        ...(filters.target ? { target: filters.target } : {}),
+      });
       return res.data.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes

@@ -9,6 +9,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Job, Queue } from "bullmq";
 import { Repository } from "typeorm";
 import { MessageRecipient } from "../modules/mail/entities/message-recipient.entity";
+import { MailRulesService } from "../modules/mail-rules/mail-rules.service";
+import { SmtpService } from "../modules/smtp/smtp.service";
 import { Message } from "../modules/mail/entities/message.entity";
 import {
   MailDeliveryJobData,
@@ -33,6 +35,8 @@ export class MailDeliveryProcessor extends WorkerHost {
     private readonly recipientRepo: Repository<MessageRecipient>,
     @InjectQueue(QUEUES.NOTIFICATIONS)
     private readonly notificationsQueue: Queue,
+    private readonly mailRulesService: MailRulesService,
+    private readonly smtpService: SmtpService,
   ) {
     super();
   }
@@ -44,6 +48,64 @@ export class MailDeliveryProcessor extends WorkerHost {
         return;
       default:
         this.logger.warn(`Skipping unsupported mail job: ${job.name}`);
+    }
+  }
+
+  private async applyRules(
+    recipient: MessageRecipient,
+    message: Message,
+  ): Promise<void> {
+    try {
+      const rules = await this.mailRulesService.getActiveRulesForUser(recipient.recipientId);
+      if (!rules.length) return;
+
+      const actions = this.mailRulesService.evaluateRules(rules, {
+        subject: message.subject ?? "",
+        body: message.body ?? "",
+        senderEmail: message.sender?.email ?? "",
+      });
+
+      if (!actions.size) return;
+
+      const updates: Partial<MessageRecipient> = {};
+      if (actions.has("star")) updates.isStarred = true;
+      if (actions.has("archive")) updates.isArchived = true;
+      if (actions.has("trash")) updates.isDeleted = true;
+      if (actions.has("mark_read")) {
+        updates.isRead = true;
+        updates.readAt = new Date();
+      }
+
+      if (Object.keys(updates).length) {
+        await this.recipientRepo.update(recipient.id, updates);
+      }
+    } catch (err) {
+      this.logger.error(
+        `Failed to apply mail rules for recipient ${recipient.recipientId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private async sendExternal(toEmail: string, message: Message): Promise<void> {
+    const senderName = [message.sender?.firstName, message.sender?.lastName]
+      .filter(Boolean)
+      .join(" ");
+
+    const fromEmail = message.sender?.email ?? this.smtpService.fromAddress;
+    const fromAddress = senderName ? `"${senderName}" <${fromEmail}>` : fromEmail;
+
+    const sent = await this.smtpService.sendMail({
+      from: fromAddress,
+      to: toEmail,
+      subject: message.subject ?? "(no subject)",
+      text: message.body ?? "",
+      html: message.bodyHtml ?? undefined,
+    });
+
+    if (!sent) {
+      this.logger.warn(
+        `External delivery to ${toEmail} skipped (SMTP not configured or failed)`,
+      );
     }
   }
 
@@ -86,6 +148,15 @@ export class MailDeliveryProcessor extends WorkerHost {
     });
 
     for (const recipient of recipients) {
+      // External recipient: deliver via SMTP
+      if (recipient.externalEmail) {
+        await this.sendExternal(recipient.externalEmail, message);
+        continue;
+      }
+
+      // Apply mail rules for this recipient
+      await this.applyRules(recipient, message);
+
       const senderName = [message.sender?.firstName, message.sender?.lastName]
         .filter(Boolean)
         .join(" ");

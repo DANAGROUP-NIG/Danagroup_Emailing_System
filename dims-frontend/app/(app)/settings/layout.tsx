@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { User, Lock, Bell, Palette } from 'lucide-react';
+import { User, Lock, Bell, Palette, PenLine, Filter, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const settingsTabs = [
@@ -9,6 +9,9 @@ const settingsTabs = [
   { href: '/settings/security', label: 'Security', icon: Lock },
   { href: '/settings/notifications', label: 'Notifications', icon: Bell },
   { href: '/settings/appearance', label: 'Appearance', icon: Palette },
+  { href: '/settings/signature', label: 'Signature', icon: PenLine },
+  { href: '/settings/mail-rules', label: 'Mail Rules', icon: Filter },
+  { href: '/settings/distribution-lists', label: 'Dist. Lists', icon: Users },
 ];
 
 export default function SettingsLayout({

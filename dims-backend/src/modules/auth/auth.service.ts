@@ -1,8 +1,14 @@
 import "express-session";
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 
 import { UsersService } from "../users/users.service";
 import Redis from "ioredis";
@@ -36,7 +42,11 @@ export interface UserShape {
 }
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private redis: Redis;
+
+  private readonly RESET_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
+  private readonly RESET_TOKEN_PREFIX = "pwd_reset:";
 
   constructor(
     private readonly jwtService: JwtService,
@@ -251,5 +261,63 @@ export class AuthService {
     }
 
     return { message: "Logged out successfully" };
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.usersService.findByEmail(email);
+
+    // Always resolve silently — never reveal whether the email exists.
+    if (!user || !user.isActive) {
+      return;
+    }
+
+    const token = randomBytes(32).toString("hex");
+    const redisKey = `${this.RESET_TOKEN_PREFIX}${token}`;
+
+    await this.redis.set(
+      redisKey,
+      user.id,
+      "EX",
+      this.RESET_TOKEN_TTL_SECONDS,
+    );
+
+    const frontendUrl = this.config.get<string>(
+      "FRONTEND_URL",
+      "http://localhost:3000",
+    ).split(",")[0].trim();
+
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+    const expiryMinutes = this.RESET_TOKEN_TTL_SECONDS / 60;
+
+    this.logger.log(
+      `Password reset token issued for user ${user.id} (expires in ${expiryMinutes}m)`,
+    );
+
+    await this.usersService.deliverPasswordResetNotification(user.id, resetLink, expiryMinutes);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const redisKey = `${this.RESET_TOKEN_PREFIX}${token}`;
+    const userId = await this.redis.get(redisKey);
+
+    if (!userId) {
+      throw new BadRequestException("Reset token is invalid or has expired");
+    }
+
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.isActive) {
+      throw new BadRequestException("Reset token is invalid or has expired");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.updatePasswordHash(userId, passwordHash);
+
+    // Consume the token — single-use only
+    await this.redis.del(redisKey);
+
+    // Invalidate all existing sessions so old tokens can't be reused
+    await this.usersService.updateAuthState(userId, { sessions: [] });
+
+    this.logger.log(`Password successfully reset for user ${userId}`);
   }
 }

@@ -26,7 +26,11 @@ export class AnnouncementsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
-    const qb = this.announcementRepo.createQueryBuilder("announcement");
+    const qb = this.announcementRepo
+      .createQueryBuilder("announcement")
+      .leftJoinAndSelect("announcement.author", "author")
+      .leftJoinAndSelect("announcement.subsidiary", "subsidiary")
+      .leftJoinAndSelect("announcement.department", "department");
 
     if (query.target) {
       qb.andWhere("announcement.target = :target", { target: query.target });
@@ -42,6 +46,10 @@ export class AnnouncementsService {
       });
     }
 
+    if (query.isPinned !== undefined) {
+      qb.andWhere("announcement.isPinned = :isPinned", { isPinned: query.isPinned });
+    }
+
     qb.orderBy("announcement.isPinned", "DESC")
       .addOrderBy("announcement.publishedAt", "DESC", "NULLS LAST")
       .addOrderBy("announcement.createdAt", "DESC")
@@ -53,7 +61,10 @@ export class AnnouncementsService {
   }
 
   async findById(id: string) {
-    const announcement = await this.announcementRepo.findOne({ where: { id } });
+    const announcement = await this.announcementRepo.findOne({
+      where: { id },
+      relations: { author: true, subsidiary: true, department: true },
+    });
     if (!announcement) {
       throw new NotFoundException("Announcement not found");
     }
@@ -113,7 +124,8 @@ export class AnnouncementsService {
     }
 
     Object.assign(announcement, dto);
-    return this.announcementRepo.save(announcement);
+    await this.announcementRepo.save(announcement);
+    return this.findById(id);
   }
 
   async togglePin(id: string, requesterId: string, requesterRole: string) {
@@ -126,7 +138,8 @@ export class AnnouncementsService {
 
     const announcement = await this.findById(id);
     announcement.isPinned = !announcement.isPinned;
-    return this.announcementRepo.save(announcement);
+    await this.announcementRepo.save(announcement);
+    return this.findById(id);
   }
 
   async delete(id: string, requesterId: string, requesterRole: string) {

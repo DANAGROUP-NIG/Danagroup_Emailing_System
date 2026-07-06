@@ -22,6 +22,7 @@ import { RolesGuard } from "@common/guards/roles.guards";
 import { Roles } from "@common/decorators/roles.decorator";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { UpdateSignatureDto } from "./dto/update-signature.dto";
 import { QueryUserDto } from "./dto/query-user.dto";
 import { SearchService } from "@modules/search/search.service";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
@@ -124,6 +125,24 @@ export class UsersController {
       body,
       currentUser.userId,
       currentUser.role,
+    );
+  }
+
+  @Get("me/signature")
+  @ApiOperation({ summary: "Get the current user's email signature" })
+  async getSignature(@CurrentUser() user: { userId: string }) {
+    return this.usersService.getSignature(user.userId);
+  }
+
+  @Patch("me/signature")
+  @ApiOperation({ summary: "Update the current user's email signature" })
+  async updateSignature(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: UpdateSignatureDto,
+  ) {
+    return this.usersService.updateSignature(
+      user.userId,
+      dto.signature ?? null,
     );
   }
 

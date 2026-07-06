@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api/notifications';
+import { useNotificationStore } from '@/store/notificationStore';
 import type { AppNotification, BackendPageResponse } from '@/types/api.types';
 
 export type NotificationFilter = 'all' | 'unread' | 'mail' | 'announcements' | 'system';
@@ -34,11 +35,15 @@ export function useNotifications(options?: UseNotificationsOptions) {
  * Get unread notification count with automatic refetch
  */
 export function useUnreadCount() {
+  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
+
   return useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: async () => {
       const response = await notificationsApi.unreadCount();
-      return response.data.count;
+      const count = response.data.count ?? 0;
+      setUnreadCount(count);
+      return count;
     },
     refetchInterval: 30000, // Refetch every 30s as fallback to WS
   });

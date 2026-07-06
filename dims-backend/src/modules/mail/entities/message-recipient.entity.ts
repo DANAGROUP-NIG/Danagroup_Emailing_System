@@ -44,6 +44,9 @@ export class MessageRecipient {
   @Column({ nullable: true, type: "timestamptz" })
   readAt: Date;
 
+  @Column({ type: "varchar", length: 320, nullable: true })
+  externalEmail: string | null;
+
   @CreateDateColumn({ type: "timestamptz" })
   createdAt: Date;
 
@@ -61,6 +64,6 @@ export class MessageRecipient {
   @JoinColumn()
   recipient: User;
 
-  @Column({ type: "uuid" })
-  recipientId: string;
+  @Column({ type: "uuid", nullable: true })
+  recipientId: string | null;
 }

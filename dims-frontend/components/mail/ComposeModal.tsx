@@ -12,6 +12,7 @@ import AttachmentUploader, { UploadedAttachment } from "./AttachmentUploader";
 import { ComposeInput } from "../ui/Input";
 import { Message } from "@/types/mail.types";
 import type { ComposeData } from "@/types/mail.types";
+import { useSignature } from "@/hooks/useSignature";
 
 const parseEmailList = (value?: string) =>
   (value ?? "")
@@ -78,10 +79,17 @@ const buildBodyHtml = (body: string) => `<p>${escapeHtml(body).replace(/\n/g, '<
 const getRecipientAddress = (recipient: Message["recipients"][number]) =>
   recipient.email || recipient.recipient?.email || "";
 
+const buildBodyHtmlWithSignature = (body: string, signature: string | null) => {
+  const bodyHtml = buildBodyHtml(body);
+  if (!signature) return bodyHtml;
+  return `${bodyHtml}<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${signature}`;
+};
+
 const mapComposeValuesToPayload = (
   values: ComposeFormValues,
   threadId?: string,
   draftId?: string | null,
+  signature?: string | null,
 ): ComposeData => ({
   draftId: draftId || undefined,
   threadId: threadId || undefined,
@@ -90,13 +98,14 @@ const mapComposeValuesToPayload = (
   bccEmails: parseEmailList(values.bcc),
   subject: values.subject,
   body: values.body,
-  bodyHtml: buildBodyHtml(values.body),
+  bodyHtml: buildBodyHtmlWithSignature(values.body, signature ?? null),
 });
 
 export default function ComposeModal() {
   const titleId = useId();
   const bodyId = useId();
   const { showToast } = useToast();
+  const { signature } = useSignature();
   const { isComposeOpen, closeCompose, composeDraftId, composeDefaults, setComposeDraftId } =
     useMailStore();
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
@@ -349,6 +358,7 @@ export default function ComposeModal() {
         data,
         composeDefaults?.threadId,
         currentDraftIdRef.current || composeDraftId,
+        signature,
       ),
       attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
     };
@@ -463,6 +473,18 @@ export default function ComposeModal() {
             />
             {errors.body && <span id={`${bodyId}-err`} role="alert" className="text-xs text-red-500 px-1">{errors.body.message}</span>}
           </div>
+
+          {signature && (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 space-y-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                Signature (auto-appended on send)
+              </p>
+              <div
+                className="text-xs text-foreground/70 prose prose-xs max-w-none line-clamp-3"
+                dangerouslySetInnerHTML={{ __html: signature }}
+              />
+            </div>
+          )}
 
           <AttachmentUploader
             onChange={handleAttachmentChange}

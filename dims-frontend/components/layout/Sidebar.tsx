@@ -7,6 +7,8 @@ import {
   Bell,
   Bug,
   Building2,
+  MessageSquare,
+  Hash,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -58,6 +60,8 @@ const primaryNav = (unreadCount: number): NavItem[] => [
 
 const secondaryNav: NavItem[] = [
   { href: "/directory", label: "Directory", icon: Users },
+  { href: "/chat", label: "Messages", icon: MessageSquare },
+  { href: "/channels", label: "Channels", icon: Hash },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
@@ -80,6 +84,12 @@ const adminNav: NavItem[] = [
     label: "Subsidiaries",
     icon: Bell,
     roles: ["group_admin"],
+  },
+  {
+    href: "/admin/audit-logs",
+    label: "Audit Logs",
+    icon: Shield,
+    roles: ["subsidiary_admin", "group_admin"],
   },
 ];
 

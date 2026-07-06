@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Info, Mail, Megaphone, X, ChevronRight } from 'lucide-react';
 import { useNotifications, useMarkNotificationRead, useMarkAllRead, useUnreadCount } from '@/hooks/useNotifications';
+import { useNotificationStore } from '@/store/notificationStore';
 import { timeAgo } from '@/lib/utils';
 import type { AppNotification } from '@/types/api.types';
 
@@ -99,12 +100,11 @@ export default function NotificationPanel({ userId: _userId }: NotificationPanel
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const { data: unreadCountData } = useUnreadCount();
+  useUnreadCount(); // keeps store in sync via REST polling + WS invalidation
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
   const { data, isLoading } = useNotifications({ filter: 'all' });
   const markAsRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
-
-  const unreadCount = unreadCountData || 0;
   const allNotifications = data?.pages.flatMap((page) => page.data).slice(0, 10) || [];
 
   useEffect(() => {

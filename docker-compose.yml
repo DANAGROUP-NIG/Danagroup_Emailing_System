@@ -69,6 +69,14 @@ services:
       - MINIO_USE_SSL=false
       - ELASTICSEARCH_NODE=http://elasticsearch:9200
       - ES_NODE=http://elasticsearch:9200
+      # ── External email (SMTP)
+      - SMTP_HOST=${SMTP_HOST:-postfix}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@danagroup.net}
+      - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
     ports:
       - "8000:8000"  # Direct API access (full stack via nginx on :3000)
     healthcheck:
@@ -151,6 +159,32 @@ services:
     networks:
       - dims_net
 
+  # ─── Postfix MTA ───────────────────────────────────────────────────────────
+  postfix:
+    image: boky/postfix:latest
+    container_name: dims_postfix
+    hostname: ${MAIL_HOSTNAME:-mail.danagroup.net}
+    environment:
+      - ALLOWED_SENDER_DOMAINS=${MAIL_DOMAIN:-danagroup.net}
+      - RELAYHOST=${SMTP_RELAY:-}
+      - POSTFIX_myhostname=${MAIL_HOSTNAME:-mail.danagroup.net}
+      - POSTFIX_mydestination=${MAIL_DOMAIN:-danagroup.net} localhost
+      # Pipe inbound mail to DIMS webhook
+      - POSTFIX_transport_maps=hash:/etc/postfix/transport
+    volumes:
+      - postfix_data:/var/spool/postfix
+      - ./postfix/transport:/etc/postfix/transport:ro
+      - ./postfix/pipe-to-dims.sh:/usr/local/bin/pipe-to-dims.sh:ro
+    ports:
+      - "25:25"    # Inbound SMTP from internet
+      - "587:587"  # Submission (DIMS → Postfix → internet)
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dims_net
+
   # ─── Elasticsearch ───────────────────────────────────────────────────────────
   elasticsearch:
     image: elasticsearch:8.11.0
@@ -181,6 +215,7 @@ volumes:
   minio_data:
   es_data:
   nginx_logs:
+  postfix_data:
 
 # ─── Networks ─────────────────────────────────────────────────────────────────
 networks:

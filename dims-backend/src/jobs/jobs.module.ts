@@ -6,6 +6,7 @@ import { MessageRecipient } from "../modules/mail/entities/message-recipient.ent
 import { Message } from "../modules/mail/entities/message.entity";
 import { MailModule } from "../modules/mail/mail.module";
 import { NotificationsModule } from "../modules/notifications/notifications.module";
+import { MailRulesModule } from "../modules/mail-rules/mail-rules.module";
 import { SearchModule } from "../modules/search/search.module";
 import { CleanupProcessor } from "./cleanup.processor";
 import { JobsController } from "./jobs.controller";
@@ -27,6 +28,7 @@ import { SearchIndexerProcessor } from "./search-indexer.processor";
     ),
     NotificationsModule,
     SearchModule,
+    MailRulesModule,
     forwardRef(() => MailModule),
   ],
   controllers: [JobsController],

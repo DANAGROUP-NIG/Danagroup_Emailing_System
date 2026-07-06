@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Mail, Building2, Calendar, Briefcase } from 'lucide-react';
+import { Mail, Building2, Calendar, Briefcase, MessageSquare } from 'lucide-react';
 import { useUser } from '@/hooks/useDirectory';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { useMailStore } from '@/store/mailStore';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 
 interface EmployeeProfileProps {
   userId?: string;
@@ -19,6 +21,8 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
   const userId = userIdProp || (params?.userId as string);
   const { data: user, isLoading, error } = useUser(userId);
   const openCompose = useMailStore((state) => state.openCompose);
+  const router = useRouter();
+  const currentUser = useAuthStore((s) => s.user);
 
   if (!userId) {
     return (
@@ -99,14 +103,24 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
               </div>
             </div>
           </div>
-          <Button
-            onClick={handleSendMail}
-            variant="outline"
-            className="self-start"
-          >
-            <Mail size={16} className="mr-2" />
-            Send Mail
-          </Button>
+          <div className="flex gap-2 self-start">
+            <Button
+              onClick={handleSendMail}
+              variant="outline"
+            >
+              <Mail size={16} className="mr-2" />
+              Send Mail
+            </Button>
+            {currentUser?.id !== user.id && (
+              <Button
+                onClick={() => router.push(`/chat?with=${user.id}`)}
+                variant="outline"
+              >
+                <MessageSquare size={16} className="mr-2" />
+                Message
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -79,4 +79,10 @@ export const usersApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
+
+  getSignature: () =>
+    apiClient.get<{ signature: string | null }>("/users/me/signature"),
+
+  updateSignature: (signature: string | null) =>
+    apiClient.patch<{ signature: string | null }>("/users/me/signature", { signature }),
 };
