@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, Mail, User } from 'lucide-react';
 import { searchApi } from '@/lib/api';
@@ -22,7 +22,7 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const allResults = [...results.mails, ...results.users];
+  const allResults = useMemo(() => [...results.mails, ...results.users], [results]);
   const hasResults = allResults.length > 0;
 
   // Search mails and users
@@ -53,6 +53,13 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleSelect = useCallback((result: SearchResult) => {
+    router.push(result.url);
+    setQuery('');
+    setIsOpen(false);
+    setResults({ mails: [], users: [] });
+  }, [router]);
+
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!hasResults) return;
@@ -78,14 +85,7 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
         inputRef.current?.blur();
         break;
     }
-  }, [hasResults, allResults, activeIndex]);
-
-  const handleSelect = (result: SearchResult) => {
-    router.push(result.url);
-    setQuery('');
-    setIsOpen(false);
-    setResults({ mails: [], users: [] });
-  };
+  }, [hasResults, allResults, activeIndex, handleSelect]);
 
   const clearSearch = () => {
     setQuery('');
@@ -115,6 +115,7 @@ export default function SearchBar({ placeholder = 'Search mail, contacts...' }: 
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+          role="combobox"
           aria-label="Search"
           aria-expanded={isOpen}
           aria-controls="search-results"

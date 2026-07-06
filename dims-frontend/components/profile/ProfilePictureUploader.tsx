@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useRef, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
@@ -14,19 +14,90 @@ interface ProfilePictureUploaderProps {
   user: User;
 }
 
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+function createImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", reject);
+    image.src = src;
+  });
+}
+
+async function getCroppedImageFile(
+  imageSrc: string,
+  cropPixels: Area,
+  sourceFile: File,
+): Promise<File> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Could not prepare image crop");
+  }
+
+  canvas.width = cropPixels.width;
+  canvas.height = cropPixels.height;
+
+  context.drawImage(
+    image,
+    cropPixels.x,
+    cropPixels.y,
+    cropPixels.width,
+    cropPixels.height,
+    0,
+    0,
+    cropPixels.width,
+    cropPixels.height,
+  );
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error("Could not create cropped image"));
+    }, sourceFile.type || "image/png");
+  });
+
+  return new File([blob], sourceFile.name, {
+    type: blob.type,
+    lastModified: Date.now(),
+  });
+}
+
 export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateAvatar = useUpdateAvatar();
 
+  const resetSelection = () => {
+    setSelectedFile(null);
+    setPreview(null);
+    setCroppedAreaPixels(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const closeCropModal = () => {
+    setShowCropModal(false);
+    resetSelection();
+  };
+
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
       alert('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      alert('Please select an image smaller than 5MB');
       return;
     }
 
@@ -52,13 +123,13 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
   };
 
   const handleCropComplete = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !preview || !croppedAreaPixels) return;
 
     try {
-      await updateAvatar.mutateAsync(selectedFile);
-      setSelectedFile(null);
-      setPreview(null);
+      const croppedFile = await getCroppedImageFile(preview, croppedAreaPixels, selectedFile);
+      await updateAvatar.mutateAsync(croppedFile);
       setShowCropModal(false);
+      resetSelection();
     } catch (_error) {
       // Upload failure is surfaced via TanStack Query's error state on updateAvatar
     }
@@ -127,11 +198,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
       {/* Crop Modal */}
       <Modal
         open={showCropModal}
-        onClose={() => {
-          setShowCropModal(false);
-          setSelectedFile(null);
-          setPreview(null);
-        }}
+        onClose={closeCropModal}
         title="Crop Your Photo"
         size="lg"
       >
@@ -146,7 +213,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
                 cropShape="round"
                 showGrid={false}
                 onCropChange={setCrop}
-                onCropAreaChange={(_area: Area, areaPixels: Area) => setCroppedAreaPixels(areaPixels)}
+                onCropComplete={(_area: Area, areaPixels: Area) => setCroppedAreaPixels(areaPixels)}
                 onZoomChange={setZoom}
               />
             </div>
@@ -177,11 +244,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
               {updateAvatar.isPending ? 'Uploading...' : 'Upload Photo'}
             </Button>
             <Button
-              onClick={() => {
-                setShowCropModal(false);
-                setSelectedFile(null);
-                setPreview(null);
-              }}
+              onClick={closeCropModal}
               variant="outline"
               className="flex-1"
             >

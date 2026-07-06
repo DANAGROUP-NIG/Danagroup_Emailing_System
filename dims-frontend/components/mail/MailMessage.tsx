@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
-import { ChevronDown, Forward, Reply, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { Forward, Reply, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
@@ -12,7 +12,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { htmlToText } from "@/lib/utils";
 import { sanitizeHtml, containsDangerousHtml } from "@/lib/sanitize";
-import { getEmailDomain } from "@/utils/helpers";
 
 export default function MailMessage({ 
   message, 
@@ -26,8 +25,7 @@ export default function MailMessage({
   const markRead = useMarkRead();
   const starMail = useStarMail();
   const deleteMail = useDeleteMail();
-  const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const isCollapsed = initialCollapsed;
   const markedReadIdsRef = useRef(new Set<string>());
 
   const myRecipient = message.recipients.find(
@@ -66,20 +64,16 @@ export default function MailMessage({
   const fullName = message.sender?.name || message.sender?.email || "Unknown sender";
   const senderEmail = message.sender?.email || "unknown@danagroup.internal";
   const toLine = formatRecipients(message.recipients, "to");
-  const ccLine = formatRecipients(message.recipients, "cc");
-  const bccLine = formatRecipients(message.recipients, "bcc");
-  const toDisplay = myRecipient ? "me" : toLine || "me";
-  const senderDomain = getEmailDomain(senderEmail);
-  const mailedBy = senderDomain ? `send.${senderDomain}` : senderEmail;
-  const signedBy = senderDomain || senderEmail;
   const replyTo = buildReplyRecipients(message, user?.email);
   const replySubject = withSubjectPrefix(message.subject, "Re:");
   const forwardSubject = withSubjectPrefix(message.subject, "Fwd:");
   const originalText = formatOriginalMessageText(message.bodyHtml, message.body);
-  const sentDate = format(new Date(message.sentAt || message.createdAt), "PPP p");
+  const sentDate = format(new Date(message.sentAt || message.createdAt), "MMMM d, yyyy 'at' h:mm a");
   const senderLabel = `${fullName} <${senderEmail}>`;
   const replyBody = buildReplyBody(sentDate, senderLabel, originalText);
-  const forwardBody = `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\nSubject: ${message.subject || "(No Subject)"}${toLine ? `\nTo: ${toLine}` : ""}\n\n${originalText}`;
+  const replyBodyHtml = buildReplyBodyHtml(sentDate, senderLabel, originalText);
+  const forwardBody = buildForwardBody(sentDate, senderLabel, message.subject, toLine, originalText);
+  const forwardBodyHtml = buildForwardBodyHtml(sentDate, senderLabel, message.subject, toLine, originalText);
   const handleReply = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -90,6 +84,7 @@ export default function MailMessage({
       to: replyTo,
       subject: replySubject,
       body: replyBody,
+      bodyHtml: replyBodyHtml,
     });
   };
 
@@ -101,6 +96,7 @@ export default function MailMessage({
       mode: "forward",
       subject: forwardSubject,
       body: forwardBody,
+      bodyHtml: forwardBodyHtml,
     });
   };
 
@@ -282,12 +278,75 @@ function quoteText(value: string) {
     .join("\n");
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildReplyBody(sentDate: string, senderLabel: string, originalText: string) {
   const quotedOriginal = quoteText(originalText);
 
   return quotedOriginal
     ? `\n\nOn ${sentDate}, ${senderLabel} wrote:\n${quotedOriginal}`
     : `\n\nOn ${sentDate}, ${senderLabel} wrote:`;
+}
+
+function buildReplyBodyHtml(sentDate: string, senderLabel: string, originalText: string) {
+  const quoted = escapeHtml(originalText)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${line}</p>`)
+    .join("");
+
+  return [
+    "<p><br></p>",
+    '<div class="dims-quoted-message dims-reply-quote">',
+    `<p class="dims-quoted-meta">On ${escapeHtml(sentDate)}, ${escapeHtml(senderLabel)} wrote:</p>`,
+    `<blockquote>${quoted || "<p>...</p>"}</blockquote>`,
+    "</div>",
+  ].join("");
+}
+
+function buildForwardBody(
+  sentDate: string,
+  senderLabel: string,
+  subject: string | undefined,
+  toLine: string,
+  originalText: string,
+) {
+  return `\n\n---------- Forwarded message ---------\nFrom: ${senderLabel}\nDate: ${sentDate}\n${toLine ? `To: ${toLine}\n` : ""}Subject: ${subject || "(No Subject)"}\n\n${originalText}`;
+}
+
+function buildForwardBodyHtml(
+  sentDate: string,
+  senderLabel: string,
+  subject: string | undefined,
+  toLine: string,
+  originalText: string,
+) {
+  const quoted = escapeHtml(originalText)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${line}</p>`)
+    .join("");
+
+  return [
+    "<p><br></p>",
+    '<div class="dims-quoted-message dims-forwarded-message">',
+    '<p class="dims-quoted-meta">---------- Forwarded message ---------</p>',
+    `<p>From: ${escapeHtml(senderLabel)}</p>`,
+    `<p>Date: ${escapeHtml(sentDate)}</p>`,
+    toLine ? `<p>To: ${escapeHtml(toLine)}</p>` : "",
+    `<p>Subject: ${escapeHtml(subject || "(No Subject)")}</p>`,
+    `<blockquote>${quoted || "<p>...</p>"}</blockquote>`,
+    "</div>",
+  ].join("");
 }
 
 function formatOriginalMessageText(
