@@ -105,11 +105,10 @@
 
   .dims-sidebar {
     width: var(--sidebar-width);
-    background:
-      radial-gradient(circle at top right, rgb(76 102 196 / 0.24), transparent 32%),
-      linear-gradient(180deg, theme('colors.dana-blue.900') 0%, theme('colors.dana-blue.700') 58%, theme('colors.dana-blue.600') 100%);
-    color: white;
-    box-shadow: 0 18px 45px rgb(15 23 42 / 0.18);
+    background: #ffffff;
+    color: #0f172a;
+    border-right: 1px solid rgb(226 232 240);
+    box-shadow: 8px 0 28px rgb(15 23 42 / 0.06);
     height: 100vh;
     overflow: hidden;
   }
@@ -119,7 +118,76 @@
   }
 
   .badge-unread {
-    @apply inline-flex min-w-5 items-center justify-center rounded-full bg-background px-1.5 py-0.5 text-[10px] font-semibold text-dana-blue-700;
+    @apply inline-flex min-w-5 items-center justify-center rounded-full bg-dana-blue-700 px-1.5 py-0.5 text-[10px] font-semibold text-white;
+  }
+
+  .dims-compose-editor:empty::before {
+    content: attr(data-placeholder);
+    color: rgb(148 163 184);
+    pointer-events: none;
+  }
+
+  .dims-compose-editor p {
+    margin: 0 0 0.75rem;
+  }
+
+  .dims-compose-editor h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .dims-compose-editor ul,
+  .dims-compose-editor ol {
+    margin: 0.5rem 0 0.75rem 1.25rem;
+    padding-left: 1rem;
+  }
+
+  .dims-compose-editor ul {
+    list-style: disc;
+  }
+
+  .dims-compose-editor ol {
+    list-style: decimal;
+  }
+
+  .dims-compose-editor a {
+    color: theme('colors.dana-blue.700');
+    text-decoration: underline;
+  }
+
+  .dims-compose-editor img {
+    max-width: 100%;
+    border-radius: 0.75rem;
+  }
+
+  .dims-compose-editor blockquote,
+  .dims-quoted-message blockquote {
+    margin: 1rem 0 0;
+    border-left: 2px solid rgb(203 213 225);
+    padding-left: 1rem;
+    color: rgb(15 23 42);
+  }
+
+  .dims-compose-editor .dims-quoted-message,
+  .dims-quoted-message {
+    margin-top: 8rem;
+    border-radius: 0.75rem;
+    background: rgb(248 250 252);
+    padding: 1.25rem;
+    color: rgb(15 23 42);
+  }
+
+  .dims-compose-editor .dims-forwarded-message,
+  .dims-forwarded-message {
+    margin-top: 6rem;
+  }
+
+  .dims-compose-editor .dims-quoted-meta,
+  .dims-quoted-meta {
+    color: theme('colors.dana-blue.800');
+    font-weight: 500;
   }
 }
 
