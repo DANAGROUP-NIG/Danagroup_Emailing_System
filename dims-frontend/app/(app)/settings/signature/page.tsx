@@ -110,7 +110,7 @@ export default function SignatureSettingsPage() {
           Supports basic HTML:{" "}
           <code className="bg-muted px-1 rounded text-xs">&lt;b&gt;</code>{" "}
           <code className="bg-muted px-1 rounded text-xs">&lt;i&gt;</code>{" "}
-          <code className="bg-muted px-1 rounded text-xs">&lt;a href="..."&gt;</code>{" "}
+          <code className="bg-muted px-1 rounded text-xs">&lt;a href=&quot;...&quot;&gt;</code>{" "}
           <code className="bg-muted px-1 rounded text-xs">&lt;br&gt;</code>
         </p>
 

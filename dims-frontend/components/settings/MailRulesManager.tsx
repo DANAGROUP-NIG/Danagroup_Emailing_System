@@ -348,7 +348,7 @@ export default function MailRulesManager() {
                           {i > 0 && " AND "}
                           <span className="font-medium text-foreground">{fieldLabels[c.field]}</span>
                           {" "}{operatorLabels[c.operator]}{" "}
-                          <span className="font-medium text-foreground">"{c.value}"</span>
+                          <span className="font-medium text-foreground">&ldquo;{c.value}&rdquo;</span>
                         </span>
                       ))}
                     </p>
