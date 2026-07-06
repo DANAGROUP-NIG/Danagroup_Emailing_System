@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Card } from "@/components/ui/Card";
@@ -196,7 +196,13 @@ function HealthDashboard() {
             Health monitoring and diagnostic information
           </p>
         </div>
-        <Button onClick={() => void refetchApi()} variant="outline" size="sm">
+        <Button
+          onClick={() => {
+            void refetchApi().finally(() => setLastChecked(new Date()));
+          }}
+          variant="outline"
+          size="sm"
+        >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>

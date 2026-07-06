@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -89,13 +89,8 @@ export default function LoginPage() {
   return (
     <div className="dims-card space-y-8">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          Welcome back
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your DIMS account to continue.
-        </p>
+      <div className="flex items-center justify-self-center bg-dana-blue-100/60 p-4 rounded-full w-16 h-16">
+        <Mail className="mx-auto h-10 w-10 text-primary" />
       </div>
 
       {/* Form */}
@@ -110,10 +105,10 @@ export default function LoginPage() {
         <Input
           {...register("email")}
           id="email"
-          label="Email address"
+          label=""
           type="email"
           autoComplete="email"
-          placeholder="you@danagroup.internal"
+          placeholder="Email address"
           error={errors.email?.message}
           fullWidth
         />
@@ -123,10 +118,10 @@ export default function LoginPage() {
           <Input
             {...register("password")}
             id="password"
-            label="Password"
+            label=""
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder="Password"
             error={errors.password?.message}
             fullWidth
             rightIcon={

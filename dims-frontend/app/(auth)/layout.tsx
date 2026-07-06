@@ -1,9 +1,7 @@
 import Image from "next/image";
 import { ToastProvider } from "@/components/ui/Toast";
-import { AuthModeSwitch } from "@/components/auth/AuthModeSwitch";
-import logoBg from "@/assets/Elegantly designed envelope with gradient swoosh.jpg";
 import logo from "@/assets/logo.png";
-import { Suspense } from "react";
+import bgImage from "@/assets/auth_image.png";
 
 export default function AuthLayout({
   children,
@@ -14,9 +12,9 @@ export default function AuthLayout({
     <ToastProvider>
       <div className="min-h-screen flex bg-background">
         {/* ── Left panel (brand) — hidden below lg ── */}
-        <div className="relative hidden lg:flex lg:w-[45%] xl:w-[40%] flex-col">
+        <div className="relative hidden lg:flex lg:w-[45%] xl:w-[50%] flex-col">
           {/* Background image + overlay */}
-          <Image
+          {/* <Image
             src={logoBg}
             alt=""
             aria-hidden="true"
@@ -25,12 +23,25 @@ export default function AuthLayout({
             className="object-cover"
             sizes="45vw"
           />
-          <div className="absolute inset-0 bg-dana-blue-900/80" />
+          <div className="absolute inset-0 bg-dana-blue-900/80" /> */}
 
           {/* Content layered above overlay */}
-          <div className="relative z-10 flex flex-1 flex-col justify-between p-10 text-white">
+          <div className="relative z-10 flex h-full flex-col items-center justify-between gap-6 px-6 py-10 text-center text-white">
+
+            {/* Left Banner */}
+            <Image 
+              src={bgImage}
+              alt=""
+              aria-hidden="true"
+              fill
+              priority
+              className="object-cover"
+              sizes="45vw"
+            />
+
+
             {/* Logo */}
-            <div className="flex items-center gap-3">
+            {/* <div className="flex items-center gap-3">
               <Image
                 src={logo}
                 alt="Dana Group logo"
@@ -41,10 +52,10 @@ export default function AuthLayout({
               <span className="text-lg font-semibold tracking-wide">
                 Dana Group
               </span>
-            </div>
+            </div> */}
 
             {/* Centre tagline */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <p className="text-3xl font-bold leading-tight text-balance">
                 Internal Communication.{" "}
                 <span className="text-dana-blue-200">Reimagined.</span>
@@ -53,7 +64,7 @@ export default function AuthLayout({
                 DIMS keeps every message, announcement, and conversation across
                 Dana Group subsidiaries in one secure place.
               </p>
-            </div>
+            </div> */}
 
             {/* Footer quote */}
             <p className="text-xs text-dana-blue-300">
@@ -81,9 +92,9 @@ export default function AuthLayout({
           {/* Vertically centred form area */}
           <div className="flex flex-1 items-center justify-center px-6 py-10">
             <div className="w-full max-w-md">
-              <Suspense fallback={null}>
+              {/* <Suspense fallback={null}>
                 <AuthModeSwitch />
-              </Suspense>
+              </Suspense> */}
               
               {children}
             </div>
