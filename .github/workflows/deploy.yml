@@ -69,12 +69,37 @@ jobs:
         if: failure()
         run: echo "Staging deployment FAILED — ${{ github.sha }}"
 
+  # ─── Wait for CI checks before production deployment ─────────────────────────
+  wait-for-ci:
+    name: Wait for CI checks
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/production'
+
+    steps:
+      - name: Wait for frontend CI
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: "Frontend — Lint, Type-check & Build"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+          allowed-conclusions: success,skipped
+
+      - name: Wait for backend CI
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.sha }}
+          check-name: "Backend — Lint, Type-check & Test"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+          allowed-conclusions: success,skipped
+
   # ─── Deploy to Production on Azure VM (manual approval required) ─────────────
   deploy-production:
     name: Deploy to Production (Azure VM)
     runs-on: ubuntu-latest
     environment: production  # Requires manual approval in GitHub Environments
-    needs: []
+    needs: [wait-for-ci]
     if: github.ref == 'refs/heads/production'
 
     steps:
