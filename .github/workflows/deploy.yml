@@ -2,9 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
-    tags:
-      - "v*.*.*"
+    branches: [main, production]
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -71,63 +69,83 @@ jobs:
         if: failure()
         run: echo "Staging deployment FAILED — ${{ github.sha }}"
 
-  # ─── Deploy to Production (manual approval required) ─────────────────────────
+  # ─── Deploy to Production on Azure VM (manual approval required) ─────────────
   deploy-production:
-    name: Deploy to Production
-    runs-on: self-hosted
+    name: Deploy to Production (Azure VM)
+    runs-on: ubuntu-latest
     environment: production  # Requires manual approval in GitHub Environments
     needs: []
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/production'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_AZURE_HOST }}
+          username: ${{ secrets.PROD_AZURE_USER }}
+          key: ${{ secrets.PROD_AZURE_SSH_KEY }}
+          port: ${{ secrets.PROD_AZURE_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.PROD_DEPLOY_PATH }}"
 
-      - name: Create .env from secrets
-        run: |
-          cat > .env << EOF
-          NODE_ENV=production
-          APP_URL=${{ secrets.PROD_APP_URL }}
-          DB_HOST=${{ secrets.PROD_DB_HOST }}
-          DB_PORT=${{ secrets.PROD_DB_PORT }}
-          DB_NAME=${{ secrets.PROD_DB_NAME }}
-          DB_USER=${{ secrets.PROD_DB_USER }}
-          DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
-          REDIS_HOST=${{ secrets.PROD_REDIS_HOST }}
-          REDIS_PORT=${{ secrets.PROD_REDIS_PORT }}
-          REDIS_PASSWORD=${{ secrets.PROD_REDIS_PASSWORD }}
-          MINIO_ENDPOINT=${{ secrets.PROD_MINIO_ENDPOINT }}
-          MINIO_PORT=${{ secrets.PROD_MINIO_PORT }}
-          MINIO_ACCESS_KEY=${{ secrets.PROD_MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY=${{ secrets.PROD_MINIO_SECRET_KEY }}
-          MINIO_BUCKET=${{ secrets.PROD_MINIO_BUCKET }}
-          ES_NODE=${{ secrets.PROD_ES_NODE }}
-          JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
-          JWT_ACCESS_EXPIRY=15m
-          JWT_REFRESH_EXPIRY=7d
-          FRONTEND_URL=${{ secrets.PROD_FRONTEND_URL }}
-          SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}
-          EOF
+            echo "Pulling latest production branch..."
+            git fetch origin
+            git reset --hard origin/production
 
-      - name: Backup database before deploy
-        run: |
-          DATE=$(date +%Y-%m-%d-%H%M%S)
-          docker compose exec -T postgres pg_dump -U ${{ secrets.PROD_DB_USER }} ${{ secrets.PROD_DB_NAME }} | gzip > /backups/db/pre_deploy_${DATE}.sql.gz
+            echo "Writing production environment..."
+            cat > .env << 'ENV_EOF'
+            NODE_ENV=production
+            APP_URL=${{ secrets.PROD_APP_URL }}
+            DB_HOST=${{ secrets.PROD_DB_HOST }}
+            DB_PORT=${{ secrets.PROD_DB_PORT }}
+            DB_NAME=${{ secrets.PROD_DB_NAME }}
+            DB_USER=${{ secrets.PROD_DB_USER }}
+            DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+            REDIS_HOST=${{ secrets.PROD_REDIS_HOST }}
+            REDIS_PORT=${{ secrets.PROD_REDIS_PORT }}
+            REDIS_PASSWORD=${{ secrets.PROD_REDIS_PASSWORD }}
+            MINIO_ENDPOINT=${{ secrets.PROD_MINIO_ENDPOINT }}
+            MINIO_PORT=${{ secrets.PROD_MINIO_PORT }}
+            MINIO_ACCESS_KEY=${{ secrets.PROD_MINIO_ACCESS_KEY }}
+            MINIO_SECRET_KEY=${{ secrets.PROD_MINIO_SECRET_KEY }}
+            MINIO_BUCKET=${{ secrets.PROD_MINIO_BUCKET }}
+            ES_NODE=${{ secrets.PROD_ES_NODE }}
+            JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
+            JWT_ACCESS_EXPIRY=15m
+            JWT_REFRESH_EXPIRY=7d
+            FRONTEND_URL=${{ secrets.PROD_FRONTEND_URL }}
+            SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}
+            SMTP_HOST=${{ secrets.PROD_SMTP_HOST }}
+            SMTP_PORT=${{ secrets.PROD_SMTP_PORT }}
+            SMTP_USER=${{ secrets.PROD_SMTP_USER }}
+            SMTP_PASS=${{ secrets.PROD_SMTP_PASS }}
+            SMTP_FROM=${{ secrets.PROD_SMTP_FROM }}
+            MAIL_DOMAIN=${{ secrets.PROD_MAIL_DOMAIN }}
+            MAIL_HOSTNAME=${{ secrets.PROD_MAIL_HOSTNAME }}
+            INBOUND_WEBHOOK_SECRET=${{ secrets.PROD_INBOUND_WEBHOOK_SECRET }}
+            SMTP_RELAY=${{ secrets.PROD_SMTP_RELAY }}
+            NEXT_PUBLIC_API_URL=${{ secrets.PROD_FRONTEND_URL }}/api
+            NEXT_PUBLIC_WS_URL=${{ secrets.PROD_WS_URL }}
+            NEXT_PUBLIC_APP_NAME=${{ secrets.PROD_APP_NAME }}
+            ENV_EOF
 
-      - name: Pull latest images and restart
-        run: |
-          docker compose pull
-          docker compose build --no-cache
-          docker compose up -d --remove-orphans
+            echo "Backing up database before deploy..."
+            mkdir -p /backups/db
+            DATE=$(date +%Y-%m-%d-%H%M%S)
+            docker compose exec -T postgres pg_dump -U "${{ secrets.PROD_DB_USER }}" "${{ secrets.PROD_DB_NAME }}" | gzip > "/backups/db/pre_deploy_${DATE}.sql.gz"
 
-      - name: Run database migrations
-        run: |
-          docker compose exec -T api npm run migration:run
+            echo "Pulling and restarting services..."
+            docker compose pull
+            docker compose build --no-cache
+            docker compose up -d --remove-orphans
 
-      - name: Health check
-        run: |
-          sleep 20
-          curl -f http://localhost/api/health || exit 1
+            echo "Running database migrations..."
+            docker compose exec -T api npm run migration:run
 
-      - name: Tag release
-        run: echo "Production deployment successful — ${{ github.ref_name }} (${{ github.sha }})"
+            echo "Waiting for health check..."
+            sleep 20
+            curl -f http://localhost/api/health || exit 1
+
+            echo "Production deployment successful — ${{ github.sha }}"
