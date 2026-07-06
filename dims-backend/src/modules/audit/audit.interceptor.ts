@@ -1,5 +1,8 @@
 import {
-  CallHandler, ExecutionContext, Injectable, NestInterceptor,
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
 } from "@nestjs/common";
 import { Observable, tap } from "rxjs";
 import type { Request, Response } from "express";
@@ -7,16 +10,19 @@ import { AuditService } from "./audit.service";
 
 const AUDITED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-const SKIP_PATHS = [
-  "/api/health",
-  "/api/auth/refresh",
-  "/api/mail/inbound",
-];
+const SKIP_PATHS = ["/api/health", "/api/auth/refresh", "/api/mail/inbound"];
 
-function inferResource(path: string): { resource: string; resourceId: string | null } {
-  const segments = path.replace(/^\/api\//, "").split("/").filter(Boolean);
+function inferResource(path: string): {
+  resource: string;
+  resourceId: string | null;
+} {
+  const segments = path
+    .replace(/^\/api\//, "")
+    .split("/")
+    .filter(Boolean);
   const resource = segments[0] ?? "unknown";
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const resourceId = segments.find((s) => uuidPattern.test(s)) ?? null;
   return { resource, resourceId };
 }
@@ -29,7 +35,10 @@ export class AuditInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest<Request>();
     const { method, path, ip, headers } = req;
 
-    if (!AUDITED_METHODS.has(method) || SKIP_PATHS.some((p) => path.startsWith(p))) {
+    if (
+      !AUDITED_METHODS.has(method) ||
+      SKIP_PATHS.some((p) => path.startsWith(p))
+    ) {
       return next.handle();
     }
 
@@ -47,7 +56,10 @@ export class AuditInterceptor implements NestInterceptor {
             action,
             resource,
             resourceId,
-            ipAddress: (ip ?? headers["x-forwarded-for"] as string ?? null)?.split(",")[0].trim() ?? null,
+            ipAddress:
+              (ip ?? (headers["x-forwarded-for"] as string) ?? null)
+                ?.split(",")[0]
+                .trim() ?? null,
             userAgent: headers["user-agent"] ?? null,
             statusCode: res.statusCode,
           });
@@ -59,7 +71,10 @@ export class AuditInterceptor implements NestInterceptor {
             action,
             resource,
             resourceId,
-            ipAddress: (ip ?? headers["x-forwarded-for"] as string ?? null)?.split(",")[0].trim() ?? null,
+            ipAddress:
+              (ip ?? (headers["x-forwarded-for"] as string) ?? null)
+                ?.split(",")[0]
+                .trim() ?? null,
             userAgent: headers["user-agent"] ?? null,
             statusCode: err?.status ?? 500,
             meta: { error: true },

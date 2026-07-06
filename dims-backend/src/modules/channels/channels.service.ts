@@ -50,7 +50,9 @@ export class ChannelsService {
               .createQueryBuilder("msg")
               .where("msg.channelId = :id", { id: ch.id })
               .andWhere("msg.senderId != :userId", { userId })
-              .andWhere("msg.createdAt > :lastRead", { lastRead: membership.lastReadAt })
+              .andWhere("msg.createdAt > :lastRead", {
+                lastRead: membership.lastReadAt,
+              })
               .getCount()
           : await this.messageRepo.count({ where: { channelId: ch.id } });
 
@@ -61,7 +63,9 @@ export class ChannelsService {
             })
           : null;
 
-        const memberCount = await this.memberRepo.count({ where: { channelId: ch.id } });
+        const memberCount = await this.memberRepo.count({
+          where: { channelId: ch.id },
+        });
 
         return { ...ch, unreadCount: unread, lastMessage, memberCount };
       }),
@@ -120,44 +124,76 @@ export class ChannelsService {
   }
 
   async join(channelId: string, userId: string): Promise<void> {
-    const channel = await this.channelRepo.findOne({ where: { id: channelId } });
+    const channel = await this.channelRepo.findOne({
+      where: { id: channelId },
+    });
     if (!channel) throw new NotFoundException("Channel not found");
-    if (channel.type === "private") throw new ForbiddenException("This is a private channel");
+    if (channel.type === "private")
+      throw new ForbiddenException("This is a private channel");
 
-    const existing = await this.memberRepo.findOne({ where: { channelId, userId } });
+    const existing = await this.memberRepo.findOne({
+      where: { channelId, userId },
+    });
     if (existing) return;
 
-    await this.memberRepo.save(this.memberRepo.create({ channelId, userId, role: "member" }));
+    await this.memberRepo.save(
+      this.memberRepo.create({ channelId, userId, role: "member" }),
+    );
   }
 
   async leave(channelId: string, userId: string): Promise<void> {
-    const member = await this.memberRepo.findOne({ where: { channelId, userId } });
+    const member = await this.memberRepo.findOne({
+      where: { channelId, userId },
+    });
     if (!member) throw new NotFoundException("Not a member of this channel");
     await this.memberRepo.remove(member);
   }
 
-  async addMember(channelId: string, requesterId: string, targetUserId: string): Promise<void> {
+  async addMember(
+    channelId: string,
+    requesterId: string,
+    targetUserId: string,
+  ): Promise<void> {
     const member = await this.requireMembership(channelId, requesterId);
-    if (member.role === "member") throw new ForbiddenException("Only admins/owners can add members");
+    if (member.role === "member")
+      throw new ForbiddenException("Only admins/owners can add members");
 
-    const existing = await this.memberRepo.findOne({ where: { channelId, userId: targetUserId } });
+    const existing = await this.memberRepo.findOne({
+      where: { channelId, userId: targetUserId },
+    });
     if (existing) return;
 
-    await this.memberRepo.save(this.memberRepo.create({ channelId, userId: targetUserId, role: "member" }));
+    await this.memberRepo.save(
+      this.memberRepo.create({
+        channelId,
+        userId: targetUserId,
+        role: "member",
+      }),
+    );
   }
 
-  async removeMember(channelId: string, requesterId: string, targetUserId: string): Promise<void> {
+  async removeMember(
+    channelId: string,
+    requesterId: string,
+    targetUserId: string,
+  ): Promise<void> {
     const requester = await this.requireMembership(channelId, requesterId);
-    if (requester.role === "member") throw new ForbiddenException("Only admins/owners can remove members");
+    if (requester.role === "member")
+      throw new ForbiddenException("Only admins/owners can remove members");
 
-    const target = await this.memberRepo.findOne({ where: { channelId, userId: targetUserId } });
+    const target = await this.memberRepo.findOne({
+      where: { channelId, userId: targetUserId },
+    });
     if (!target) return;
     await this.memberRepo.remove(target);
   }
 
   // ─── Messages ─────────────────────────────────────────────────────────────
 
-  async sendMessage(senderId: string, dto: SendChannelMessageDto): Promise<ChannelMessage> {
+  async sendMessage(
+    senderId: string,
+    dto: SendChannelMessageDto,
+  ): Promise<ChannelMessage> {
     await this.requireMembership(dto.channelId, senderId);
 
     const msg = this.messageRepo.create({
@@ -179,7 +215,12 @@ export class ChannelsService {
     }) as Promise<ChannelMessage>;
   }
 
-  async getMessages(channelId: string, userId: string, before?: string, limit = 30) {
+  async getMessages(
+    channelId: string,
+    userId: string,
+    before?: string,
+    limit = 30,
+  ) {
     await this.requireMembership(channelId, userId);
 
     const qb = this.messageRepo
@@ -197,7 +238,10 @@ export class ChannelsService {
 
   async markRead(channelId: string, userId: string): Promise<void> {
     await this.requireMembership(channelId, userId);
-    await this.memberRepo.update({ channelId, userId }, { lastReadAt: new Date() });
+    await this.memberRepo.update(
+      { channelId, userId },
+      { lastReadAt: new Date() },
+    );
   }
 
   async getMemberIds(channelId: string): Promise<string[]> {
@@ -210,8 +254,13 @@ export class ChannelsService {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  private async requireMembership(channelId: string, userId: string): Promise<ChannelMember> {
-    const member = await this.memberRepo.findOne({ where: { channelId, userId } });
+  private async requireMembership(
+    channelId: string,
+    userId: string,
+  ): Promise<ChannelMember> {
+    const member = await this.memberRepo.findOne({
+      where: { channelId, userId },
+    });
     if (!member) throw new ForbiddenException("Not a member of this channel");
     return member;
   }

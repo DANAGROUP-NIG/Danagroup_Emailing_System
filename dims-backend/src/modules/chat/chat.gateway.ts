@@ -107,7 +107,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit("chat:message", payload);
 
     // Emit to recipient
-    this.server.to(this.userRoom(dto.recipientId)).emit("chat:message", payload);
+    this.server
+      .to(this.userRoom(dto.recipientId))
+      .emit("chat:message", payload);
 
     return payload;
   }
@@ -121,9 +123,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.chatService.markMessagesRead(body.conversationId, user.userId);
 
     // Notify the other party their messages were read
-    const conv = await this.chatService.getConversationById(body.conversationId, user.userId);
+    const conv = await this.chatService.getConversationById(
+      body.conversationId,
+      user.userId,
+    );
     const otherId =
-      conv.participantAId === user.userId ? conv.participantBId : conv.participantAId;
+      conv.participantAId === user.userId
+        ? conv.participantBId
+        : conv.participantAId;
 
     this.server.to(this.userRoom(otherId)).emit("chat:read", {
       conversationId: body.conversationId,
@@ -168,7 +175,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const cookie = client.handshake.headers.cookie;
     if (typeof cookie === "string") {
-      const match = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith("access_token="));
+      const match = cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("access_token="));
       if (match) return decodeURIComponent(match.slice("access_token=".length));
     }
 

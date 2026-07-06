@@ -20,7 +20,23 @@ import { MailMapper } from "./mappers/mail.mapper";
 import { UsersService } from "@modules/users/users.service";
 import { JobsService } from "@jobs/jobs.service";
 
-const ALLOWED_SEND_TAGS = ["p", "br", "b", "i", "strong", "em", "u", "a", "ul", "ol", "li", "blockquote", "hr", "span", "div"] as const;
+const ALLOWED_SEND_TAGS = [
+  "p",
+  "br",
+  "b",
+  "i",
+  "strong",
+  "em",
+  "u",
+  "a",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "hr",
+  "span",
+  "div",
+] as const;
 const ALLOWED_SEND_ATTR = ["href", "target", "style"] as const;
 
 @Injectable()
@@ -37,7 +53,10 @@ export class ComposeService {
 
   // ─── Send ─────────────────────────────────────────────────────────────────
 
-  async send(dto: SendMailDto, senderEmail: string): Promise<SendMailResponseDto> {
+  async send(
+    dto: SendMailDto,
+    senderEmail: string,
+  ): Promise<SendMailResponseDto> {
     try {
       const sender = await this.userService.findByEmail(senderEmail);
       if (!sender) throw new NotFoundException("Sender not found");
@@ -62,7 +81,10 @@ export class ComposeService {
           message.body = dto.body;
           message.bodyHtml = DOMPurify.sanitize(
             dto.bodyHtml ?? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`,
-            { ALLOWED_TAGS: [...ALLOWED_SEND_TAGS], ALLOWED_ATTR: [...ALLOWED_SEND_ATTR] },
+            {
+              ALLOWED_TAGS: [...ALLOWED_SEND_TAGS],
+              ALLOWED_ATTR: [...ALLOWED_SEND_ATTR],
+            },
           );
           message.isDraft = false;
           message.sentAt = sentAt;
@@ -75,7 +97,10 @@ export class ComposeService {
             body: dto.body,
             bodyHtml: DOMPurify.sanitize(
               dto.bodyHtml ?? `<p>${dto.body.replace(/\n/g, "<br>")}</p>`,
-              { ALLOWED_TAGS: [...ALLOWED_SEND_TAGS], ALLOWED_ATTR: [...ALLOWED_SEND_ATTR] },
+              {
+                ALLOWED_TAGS: [...ALLOWED_SEND_TAGS],
+                ALLOWED_ATTR: [...ALLOWED_SEND_ATTR],
+              },
             ),
             isDraft: false,
             sentAt,
@@ -87,7 +112,12 @@ export class ComposeService {
         await this.core.replaceRecipients(manager, saved.id, recipients);
 
         if (dto.attachmentIds?.length) {
-          await this.attachFiles(manager, saved.id, sender.id, dto.attachmentIds);
+          await this.attachFiles(
+            manager,
+            saved.id,
+            sender.id,
+            dto.attachmentIds,
+          );
         }
 
         if (subject) {
@@ -153,7 +183,18 @@ export class ComposeService {
           draft.subject = dto.subject ?? draft.subject;
           draft.body = dto.body ?? draft.body ?? "";
           draft.bodyHtml = DOMPurify.sanitize(dto.bodyHtml, {
-            ALLOWED_TAGS: ["p", "br", "b", "i", "strong", "em", "a", "ul", "ol", "li"],
+            ALLOWED_TAGS: [
+              "p",
+              "br",
+              "b",
+              "i",
+              "strong",
+              "em",
+              "a",
+              "ul",
+              "ol",
+              "li",
+            ],
             ALLOWED_ATTR: ["href", "target"],
           });
           draft.isDraft = true;
@@ -171,7 +212,20 @@ export class ComposeService {
             body: dto.body ?? "",
             bodyHtml: dto.bodyHtml
               ? DOMPurify.sanitize(dto.bodyHtml, {
-                  ALLOWED_TAGS: ["p", "br", "b", "i", "strong", "em", "u", "a", "ul", "ol", "li", "blockquote"],
+                  ALLOWED_TAGS: [
+                    "p",
+                    "br",
+                    "b",
+                    "i",
+                    "strong",
+                    "em",
+                    "u",
+                    "a",
+                    "ul",
+                    "ol",
+                    "li",
+                    "blockquote",
+                  ],
                   ALLOWED_ATTR: ["href", "target"],
                 })
               : generatedHtml,
@@ -188,7 +242,12 @@ export class ComposeService {
         }
 
         if (dto.attachmentIds) {
-          await this.attachFiles(manager, savedDraft.id, senderId, dto.attachmentIds);
+          await this.attachFiles(
+            manager,
+            savedDraft.id,
+            senderId,
+            dto.attachmentIds,
+          );
         }
 
         if (subject) {
@@ -248,14 +307,23 @@ export class ComposeService {
   private async buildRecipientInputs(
     dto: Partial<
       Pick<SendMailDto, "toEmails" | "ccEmails" | "bccEmails"> &
-      Pick<SaveDraftDto, "toEmails" | "ccEmails" | "bccEmails">
+        Pick<SaveDraftDto, "toEmails" | "ccEmails" | "bccEmails">
     >,
     requireAtLeastOne: boolean,
   ): Promise<RecipientInput[]> {
     const rawRecipients = [
-      ...(dto.toEmails ?? []).map((email) => ({ email: email.toLowerCase().trim(), type: "to" })),
-      ...(dto.ccEmails ?? []).map((email) => ({ email: email.toLowerCase().trim(), type: "cc" })),
-      ...(dto.bccEmails ?? []).map((email) => ({ email: email.toLowerCase().trim(), type: "bcc" })),
+      ...(dto.toEmails ?? []).map((email) => ({
+        email: email.toLowerCase().trim(),
+        type: "to",
+      })),
+      ...(dto.ccEmails ?? []).map((email) => ({
+        email: email.toLowerCase().trim(),
+        type: "cc",
+      })),
+      ...(dto.bccEmails ?? []).map((email) => ({
+        email: email.toLowerCase().trim(),
+        type: "bcc",
+      })),
     ];
 
     if (requireAtLeastOne && rawRecipients.length === 0) {
@@ -283,7 +351,11 @@ export class ComposeService {
         const recipientId = emailToIdMap.get(r.email) ?? null;
         return recipientId
           ? { recipientId, type: r.type as RecipientType }
-          : { recipientId: null, type: r.type as RecipientType, externalEmail: r.email };
+          : {
+              recipientId: null,
+              type: r.type as RecipientType,
+              externalEmail: r.email,
+            };
       }),
     );
   }
@@ -305,7 +377,10 @@ export class ComposeService {
     }
 
     const MAX_TOTAL_SIZE = 20 * 1024 * 1024;
-    const totalSize = attachments.reduce((sum, a) => sum + Number(a.sizeBytes), 0);
+    const totalSize = attachments.reduce(
+      (sum, a) => sum + Number(a.sizeBytes),
+      0,
+    );
     if (totalSize > MAX_TOTAL_SIZE) {
       throw new BadRequestException("Total attachment size exceeds 20MB limit");
     }

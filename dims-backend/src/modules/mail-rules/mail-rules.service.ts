@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { MailRule, RuleCondition } from "./entities/mail-rule.entity";
@@ -32,7 +36,11 @@ export class MailRulesService {
     return this.ruleRepo.save(rule);
   }
 
-  async update(id: string, userId: string, dto: UpdateMailRuleDto): Promise<MailRule> {
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdateMailRuleDto,
+  ): Promise<MailRule> {
     const rule = await this.findOwned(id, userId);
     Object.assign(rule, dto);
     return this.ruleRepo.save(rule);

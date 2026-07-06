@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ChatConversation } from "./entities/chat-conversation.entity";
@@ -17,7 +21,10 @@ export class ChatService {
 
   // ─── Conversations ────────────────────────────────────────────────────────
 
-  async getOrCreateConversation(userAId: string, userBId: string): Promise<ChatConversation> {
+  async getOrCreateConversation(
+    userAId: string,
+    userBId: string,
+  ): Promise<ChatConversation> {
     const [a, b] = [userAId, userBId].sort();
     let conv = await this.convRepo.findOne({
       where: { participantAId: a, participantBId: b },
@@ -27,10 +34,10 @@ export class ChatService {
     if (!conv) {
       conv = this.convRepo.create({ participantAId: a, participantBId: b });
       conv = await this.convRepo.save(conv);
-      conv = await this.convRepo.findOne({
+      conv = (await this.convRepo.findOne({
         where: { id: conv.id },
         relations: { participantA: true, participantB: true },
-      }) as ChatConversation;
+      })) as ChatConversation;
     }
 
     return conv;
@@ -41,14 +48,23 @@ export class ChatService {
       .createQueryBuilder("conv")
       .leftJoinAndSelect("conv.participantA", "pA")
       .leftJoinAndSelect("conv.participantB", "pB")
-      .where("conv.participantAId = :userId OR conv.participantBId = :userId", { userId })
+      .where("conv.participantAId = :userId OR conv.participantBId = :userId", {
+        userId,
+      })
       .orderBy("COALESCE(conv.lastMessageAt, conv.createdAt)", "DESC")
       .getMany();
 
     return Promise.all(
       conversations.map(async (conv) => {
         const unread = await this.msgRepo.count({
-          where: { conversationId: conv.id, isRead: false, senderId: conv.participantAId === userId ? conv.participantBId : conv.participantAId },
+          where: {
+            conversationId: conv.id,
+            isRead: false,
+            senderId:
+              conv.participantAId === userId
+                ? conv.participantBId
+                : conv.participantAId,
+          },
         });
         const lastMessage = conv.lastMessageId
           ? await this.msgRepo.findOne({ where: { id: conv.lastMessageId } })
@@ -58,7 +74,10 @@ export class ChatService {
     );
   }
 
-  async getConversationById(conversationId: string, userId: string): Promise<ChatConversation> {
+  async getConversationById(
+    conversationId: string,
+    userId: string,
+  ): Promise<ChatConversation> {
     const conv = await this.convRepo.findOne({
       where: { id: conversationId },
       relations: { participantA: true, participantB: true },
@@ -74,7 +93,10 @@ export class ChatService {
 
   // ─── Messages ─────────────────────────────────────────────────────────────
 
-  async sendMessage(senderId: string, dto: SendChatMessageDto): Promise<ChatMessage> {
+  async sendMessage(
+    senderId: string,
+    dto: SendChatMessageDto,
+  ): Promise<ChatMessage> {
     const conv = await this.getOrCreateConversation(senderId, dto.recipientId);
 
     const message = this.msgRepo.create({
@@ -96,7 +118,11 @@ export class ChatService {
     }) as Promise<ChatMessage>;
   }
 
-  async getMessages(conversationId: string, userId: string, query: QueryChatDto) {
+  async getMessages(
+    conversationId: string,
+    userId: string,
+    query: QueryChatDto,
+  ) {
     await this.getConversationById(conversationId, userId);
 
     const limit = Math.min(query.limit ?? 30, 100);
@@ -116,7 +142,10 @@ export class ChatService {
     return messages.reverse();
   }
 
-  async markMessagesRead(conversationId: string, userId: string): Promise<void> {
+  async markMessagesRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<void> {
     await this.getConversationById(conversationId, userId);
 
     await this.msgRepo

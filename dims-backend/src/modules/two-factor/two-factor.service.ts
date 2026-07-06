@@ -19,10 +19,14 @@ export class TwoFactorService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  async generateSetup(userId: string): Promise<{ otpauthUrl: string; qrDataUrl: string; secret: string }> {
+  async generateSetup(
+    userId: string,
+  ): Promise<{ otpauthUrl: string; qrDataUrl: string; secret: string }> {
     const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
     if (user.totpEnabled) {
-      throw new BadRequestException("2FA is already enabled. Disable it first before re-enrolling.");
+      throw new BadRequestException(
+        "2FA is already enabled. Disable it first before re-enrolling.",
+      );
     }
 
     const totp = new OTPAuth.TOTP({
@@ -37,9 +41,15 @@ export class TwoFactorService {
     const otpauthUrl = totp.toString();
 
     // Store pending secret (not yet confirmed)
-    await this.userRepo.update(userId, { totpSecret: secret, totpEnabled: false });
+    await this.userRepo.update(userId, {
+      totpSecret: secret,
+      totpEnabled: false,
+    });
 
-    const qrDataUrl = await QRCode.toDataURL(otpauthUrl, { width: 256, margin: 1 });
+    const qrDataUrl = await QRCode.toDataURL(otpauthUrl, {
+      width: 256,
+      margin: 1,
+    });
 
     return { otpauthUrl, qrDataUrl, secret };
   }
@@ -52,7 +62,9 @@ export class TwoFactorService {
       .getOneOrFail();
 
     if (!user.totpSecret) {
-      throw new BadRequestException("No pending 2FA setup found. Call /2fa/setup first.");
+      throw new BadRequestException(
+        "No pending 2FA setup found. Call /2fa/setup first.",
+      );
     }
 
     const valid = this.verifyToken(user.totpSecret, token);
@@ -74,7 +86,10 @@ export class TwoFactorService {
     const valid = this.verifyToken(user.totpSecret, token);
     if (!valid) throw new UnauthorizedException("Invalid TOTP code");
 
-    await this.userRepo.update(userId, { totpSecret: null, totpEnabled: false });
+    await this.userRepo.update(userId, {
+      totpSecret: null,
+      totpEnabled: false,
+    });
   }
 
   async validateToken(userId: string, token: string): Promise<boolean> {

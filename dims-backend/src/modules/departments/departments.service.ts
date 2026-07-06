@@ -16,7 +16,7 @@ import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import type { Cache } from "cache-manager";
 
 const CACHE_TTL_LIST = 10 * 60 * 1000; // 10 minutes
-const CACHE_TTL_ITEM = 5 * 60 * 1000;  // 5 minutes
+const CACHE_TTL_ITEM = 5 * 60 * 1000; // 5 minutes
 
 @Injectable()
 export class DepartmentsService {
@@ -113,9 +113,7 @@ export class DepartmentsService {
     subsidiaryId?: string,
     departmentId?: string,
   ) {
-    const keys: Promise<unknown>[] = [
-      this.cache.del(`departments:all`),
-    ];
+    const keys: Promise<unknown>[] = [this.cache.del(`departments:all`)];
     if (subsidiaryId) {
       keys.push(this.cache.del(`departments:by-subsidiary:${subsidiaryId}`));
     }

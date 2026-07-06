@@ -17,9 +17,7 @@ export interface UnifiedSearchResponse {
 
 @Injectable()
 export class UsersSearchService {
-  constructor(
-    private readonly searchService: SearchService,
-  ) {}
+  constructor(private readonly searchService: SearchService) {}
 
   async unifiedSearch(
     query: string,
@@ -33,7 +31,12 @@ export class UsersSearchService {
     let total = 0;
 
     if (type === "users" || type === "all") {
-      const userResult = await this.searchService.searchUsers(query, page, limit, filters);
+      const userResult = await this.searchService.searchUsers(
+        query,
+        page,
+        limit,
+        filters,
+      );
       const userResults: UnifiedSearchResult[] = userResult.hits.map((h) => ({
         type: "user" as const,
         id: h.id,
@@ -46,7 +49,11 @@ export class UsersSearchService {
     }
 
     if ((type === "mail" || type === "all") && requesterId) {
-      const mailResult = await this.searchService.searchMail(requesterId, query, limit);
+      const mailResult = await this.searchService.searchMail(
+        requesterId,
+        query,
+        limit,
+      );
       const mailResults: UnifiedSearchResult[] = mailResult.hits.map((m) => ({
         type: "mail" as const,
         id: m.id,

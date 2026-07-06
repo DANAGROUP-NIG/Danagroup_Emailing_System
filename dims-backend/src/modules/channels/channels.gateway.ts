@@ -45,7 +45,9 @@ function isOriginAllowed(origin: string, patterns: string[]): boolean {
   pingInterval: 25000,
   pingTimeout: 20000,
 })
-export class ChannelsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChannelsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -64,7 +66,9 @@ export class ChannelsGateway implements OnGatewayConnection, OnGatewayDisconnect
 
       // Auto-join socket rooms for all the user's channels
       const channels = await this.channelsService.listForUser(user.userId);
-      await Promise.all(channels.map((ch) => client.join(this.channelRoom(ch.id))));
+      await Promise.all(
+        channels.map((ch) => client.join(this.channelRoom(ch.id))),
+      );
 
       client.emit("connected", { userId: user.userId });
     } catch {
@@ -113,7 +117,9 @@ export class ChannelsGateway implements OnGatewayConnection, OnGatewayDisconnect
         : null,
     };
 
-    this.server.to(this.channelRoom(dto.channelId)).emit("channel:message", payload);
+    this.server
+      .to(this.channelRoom(dto.channelId))
+      .emit("channel:message", payload);
     return payload;
   }
 
@@ -127,7 +133,11 @@ export class ChannelsGateway implements OnGatewayConnection, OnGatewayDisconnect
     return { ok: true };
   }
 
-  emitToChannel(channelId: string, event: string, payload: Record<string, unknown>) {
+  emitToChannel(
+    channelId: string,
+    event: string,
+    payload: Record<string, unknown>,
+  ) {
     this.server.to(this.channelRoom(channelId)).emit(event, payload);
   }
 
@@ -162,7 +172,10 @@ export class ChannelsGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     const cookie = client.handshake.headers.cookie;
     if (typeof cookie === "string") {
-      const match = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith("access_token="));
+      const match = cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("access_token="));
       if (match) return decodeURIComponent(match.slice("access_token=".length));
     }
     return null;

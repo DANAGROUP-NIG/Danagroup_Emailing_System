@@ -11,7 +11,11 @@ import {
 import { User } from "@modules/users/entities/user.entity";
 
 export type RuleConditionField = "from" | "subject" | "body";
-export type RuleConditionOperator = "contains" | "equals" | "starts_with" | "ends_with";
+export type RuleConditionOperator =
+  | "contains"
+  | "equals"
+  | "starts_with"
+  | "ends_with";
 export type RuleAction = "star" | "archive" | "trash" | "mark_read";
 
 export interface RuleCondition {

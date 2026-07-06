@@ -99,7 +99,11 @@ export class StorageService {
     const folder = options.folder ?? "uploads";
     const originalFilename = options.filename ?? "file";
     const safeFilename = originalFilename.replace(/[^\w.\-]/g, "_");
-    const ext = safeFilename.split(".").pop()?.replace(/[^a-z0-9]/gi, "") ?? "bin";
+    const ext =
+      safeFilename
+        .split(".")
+        .pop()
+        ?.replace(/[^a-z0-9]/gi, "") ?? "bin";
     const uniqueName = options.filename
       ? `${uuid()}.${ext}`
       : `${uuid()}/${safeFilename}`;
@@ -184,9 +188,7 @@ export class StorageService {
       throw new BadRequestException("Avatar exceeds 5 MB limit");
   }
 
-  async uploadAttachment(
-    file: Express.Multer.File,
-  ): Promise<UploadResult> {
+  async uploadAttachment(file: Express.Multer.File): Promise<UploadResult> {
     this.validateAttachment(file);
     return this.uploadBuffer(file.buffer, file.size, file.mimetype, {
       folder: "attachments",
@@ -224,9 +226,7 @@ export class StorageService {
     });
   }
 
-  async uploadImport(
-    file: Express.Multer.File,
-  ): Promise<UploadResult> {
+  async uploadImport(file: Express.Multer.File): Promise<UploadResult> {
     return this.uploadBuffer(file.buffer, file.size, file.mimetype, {
       folder: "imports",
       filename: file.originalname,
@@ -253,7 +253,8 @@ export class StorageService {
       presignedUrl.hostname = publicUrl.hostname;
       presignedUrl.port = publicUrl.port;
       if (publicUrl.pathname && publicUrl.pathname !== "/") {
-        presignedUrl.pathname = publicUrl.pathname.replace(/\/$/, "") + presignedUrl.pathname;
+        presignedUrl.pathname =
+          publicUrl.pathname.replace(/\/$/, "") + presignedUrl.pathname;
       }
       return presignedUrl.toString();
     }
@@ -307,7 +308,9 @@ export class StorageService {
       await this.minioClient.removeObject(this.bucket, storageKey);
       this.logger.log(`Deleted ${storageKey}`);
     } catch (err) {
-      this.logger.warn(`Failed to delete ${storageKey}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to delete ${storageKey}: ${(err as Error).message}`,
+      );
     }
   }
 

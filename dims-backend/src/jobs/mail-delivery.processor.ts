@@ -56,7 +56,9 @@ export class MailDeliveryProcessor extends WorkerHost {
     message: Message,
   ): Promise<void> {
     try {
-      const rules = await this.mailRulesService.getActiveRulesForUser(recipient.recipientId);
+      const rules = await this.mailRulesService.getActiveRulesForUser(
+        recipient.recipientId,
+      );
       if (!rules.length) return;
 
       const actions = this.mailRulesService.evaluateRules(rules, {
@@ -92,7 +94,9 @@ export class MailDeliveryProcessor extends WorkerHost {
       .join(" ");
 
     const fromEmail = message.sender?.email ?? this.smtpService.fromAddress;
-    const fromAddress = senderName ? `"${senderName}" <${fromEmail}>` : fromEmail;
+    const fromAddress = senderName
+      ? `"${senderName}" <${fromEmail}>`
+      : fromEmail;
 
     const sent = await this.smtpService.sendMail({
       from: fromAddress,

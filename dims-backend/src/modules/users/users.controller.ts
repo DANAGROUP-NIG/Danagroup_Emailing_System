@@ -49,7 +49,9 @@ export class UsersController {
   }
 
   @Get("search")
-  @ApiOperation({ summary: "Search users by name or email (Elasticsearch-backed)" })
+  @ApiOperation({
+    summary: "Search users by name or email (Elasticsearch-backed)",
+  })
   async search(@Query() queryDto: QueryUserDto) {
     this.logger.log(`Search query received: ${JSON.stringify(queryDto)}`);
     return await this.searchService.searchUsers(
@@ -88,7 +90,9 @@ export class UsersController {
       try {
         await this.storageService.delete(user.avatarUrl);
       } catch (err) {
-        this.logger.warn(`Failed to delete old avatar for user ${userId}: ${(err as Error).message}`);
+        this.logger.warn(
+          `Failed to delete old avatar for user ${userId}: ${(err as Error).message}`,
+        );
       }
     }
 

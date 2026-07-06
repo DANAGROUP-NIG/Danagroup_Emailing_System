@@ -106,15 +106,23 @@ export class FilesController {
   ) {
     // Delete old avatar from MinIO if it exists
     const existingUser = await this.usersService.findById(user.userId);
-    if (existingUser?.avatarUrl && this.storageService.isStorageKey(existingUser.avatarUrl)) {
+    if (
+      existingUser?.avatarUrl &&
+      this.storageService.isStorageKey(existingUser.avatarUrl)
+    ) {
       try {
         await this.storageService.delete(existingUser.avatarUrl);
       } catch (err) {
-        this.logger.warn(`Failed to delete old avatar: ${(err as Error).message}`);
+        this.logger.warn(
+          `Failed to delete old avatar: ${(err as Error).message}`,
+        );
       }
     }
 
-    const { storageKey } = await this.filesService.uploadAvatar(file, user.userId);
+    const { storageKey } = await this.filesService.uploadAvatar(
+      file,
+      user.userId,
+    );
 
     await this.usersService.update(
       user.userId,

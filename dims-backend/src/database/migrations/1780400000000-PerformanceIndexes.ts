@@ -67,8 +67,12 @@ export class PerformanceIndexes1780400000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_threads_last_message_at"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_threads_last_activity_at"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_threads_last_message_at"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_threads_last_activity_at"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_uts_user_id"`);
     await queryRunner.query(
       `DROP INDEX IF EXISTS "IDX_announcements_is_pinned_published_at"`,
@@ -89,12 +93,8 @@ export class PerformanceIndexes1780400000000 implements MigrationInterface {
       `DROP INDEX IF EXISTS "IDX_messages_sender_id_is_draft"`,
     );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_is_active"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_users_subsidiary_id"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_users_department_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_subsidiary_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_department_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_users_email"`);
   }
 }

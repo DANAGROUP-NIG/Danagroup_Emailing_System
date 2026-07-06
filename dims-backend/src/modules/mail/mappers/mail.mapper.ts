@@ -11,11 +11,20 @@ type UserSummary = {
   avatarUrl?: string | null;
 };
 
-const STORAGE_KEY_PREFIXES = ["avatars/", "attachments/", "uploads/", "exports/", "imports/", "logos/", "signatures/"];
+const STORAGE_KEY_PREFIXES = [
+  "avatars/",
+  "attachments/",
+  "uploads/",
+  "exports/",
+  "imports/",
+  "logos/",
+  "signatures/",
+];
 
 function resolveAvatarUrl(rawUrl?: string | null): string | null {
   if (!rawUrl) return null;
-  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) return rawUrl;
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"))
+    return rawUrl;
   const isKey = STORAGE_KEY_PREFIXES.some((p) => rawUrl.startsWith(p));
   if (!isKey) return rawUrl;
 

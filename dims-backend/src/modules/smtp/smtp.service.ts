@@ -38,7 +38,10 @@ export class SmtpService implements OnModuleInit {
       return;
     }
 
-    const port = parseInt(this.configService.get<string>("SMTP_PORT") ?? "587", 10);
+    const port = parseInt(
+      this.configService.get<string>("SMTP_PORT") ?? "587",
+      10,
+    );
     const user = this.configService.get<string>("SMTP_USER");
     const pass = this.configService.get<string>("SMTP_PASS");
     const secure = port === 465;
@@ -48,7 +51,10 @@ export class SmtpService implements OnModuleInit {
       port,
       secure,
       auth: user && pass ? { user, pass } : undefined,
-      tls: { rejectUnauthorized: this.configService.get<string>("NODE_ENV") === "production" },
+      tls: {
+        rejectUnauthorized:
+          this.configService.get<string>("NODE_ENV") === "production",
+      },
       pool: true,
       maxConnections: 5,
       maxMessages: 100,
@@ -97,7 +103,9 @@ export class SmtpService implements OnModuleInit {
       await this.transporter.verify();
       return true;
     } catch (err) {
-      this.logger.error(`SMTP connection verification failed: ${(err as Error).message}`);
+      this.logger.error(
+        `SMTP connection verification failed: ${(err as Error).message}`,
+      );
       return false;
     }
   }

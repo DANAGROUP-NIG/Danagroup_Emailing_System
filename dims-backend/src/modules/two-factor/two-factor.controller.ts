@@ -18,7 +18,9 @@ export class TwoFactorController {
   constructor(private readonly tfService: TwoFactorService) {}
 
   @Get("setup")
-  @ApiOperation({ summary: "Generate TOTP secret and QR code for 2FA enrollment" })
+  @ApiOperation({
+    summary: "Generate TOTP secret and QR code for 2FA enrollment",
+  })
   setup(@CurrentUser() user: User) {
     return this.tfService.generateSetup(user.id);
   }
@@ -32,7 +34,9 @@ export class TwoFactorController {
 
   @Post("disable")
   @HttpCode(200)
-  @ApiOperation({ summary: "Disable 2FA after confirming with a valid TOTP code" })
+  @ApiOperation({
+    summary: "Disable 2FA after confirming with a valid TOTP code",
+  })
   disable(@Body() dto: TotpTokenDto, @CurrentUser() user: User) {
     return this.tfService.disable(user.id, dto.token);
   }

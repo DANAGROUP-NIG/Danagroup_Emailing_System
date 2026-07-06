@@ -39,15 +39,20 @@ export class MailActionService {
         )
         .leftJoinAndSelect("recipient.recipient", "recipientUser")
         .where("message.id = :messageId", { messageId })
-        .andWhere("(message.senderId = :userId OR recipient.id IS NOT NULL)", { userId })
+        .andWhere("(message.senderId = :userId OR recipient.id IS NOT NULL)", {
+          userId,
+        })
         .getOne();
 
       if (!message) throw new NotFoundException("Message not found");
 
-      const isRecipient = message.recipients.some((r) => r.recipientId === userId);
+      const isRecipient = message.recipients.some(
+        (r) => r.recipientId === userId,
+      );
       const isSender = message.senderId === userId;
 
-      if (!isRecipient && !isSender) throw new ForbiddenException("Access denied");
+      if (!isRecipient && !isSender)
+        throw new ForbiddenException("Access denied");
 
       await this.markRead(messageId, userId, true);
 
@@ -61,27 +66,46 @@ export class MailActionService {
 
   async markRead(messageId: string, userId: string, isRead = true) {
     try {
-      const message = await this.core.messageRepo.findOne({ where: { id: messageId } });
+      const message = await this.core.messageRepo.findOne({
+        where: { id: messageId },
+      });
       if (!message) throw new NotFoundException("Message not found");
 
       if (message.senderId === userId) return { success: true };
-      if (message.isDraft) return { data: { messageId, isRead: false, readAt: null } };
+      if (message.isDraft)
+        return { data: { messageId, isRead: false, readAt: null } };
 
       const recipient = await this.core.recipientRepo.findOne({
         where: { messageId, recipientId: userId },
       });
 
-      if (!recipient) throw new NotFoundException("Message not found in recipient mailbox");
+      if (!recipient)
+        throw new NotFoundException("Message not found in recipient mailbox");
 
       if (recipient.isRead === isRead) {
-        return { data: { messageId, isRead: recipient.isRead, readAt: recipient.readAt } };
+        return {
+          data: {
+            messageId,
+            isRead: recipient.isRead,
+            readAt: recipient.readAt,
+          },
+        };
       }
 
       recipient.isRead = isRead;
       recipient.readAt = isRead ? new Date() : null;
       await this.core.recipientRepo.save(recipient);
-      await this.core.refreshUserThreadState(this.core.dataSource.manager, message.threadId, userId);
-      this.core.emitMailReadEvent(userId, messageId, message.threadId, recipient.readAt);
+      await this.core.refreshUserThreadState(
+        this.core.dataSource.manager,
+        message.threadId,
+        userId,
+      );
+      this.core.emitMailReadEvent(
+        userId,
+        messageId,
+        message.threadId,
+        recipient.readAt,
+      );
       this.core.emitMailboxChanged(userId, {
         action: "read_state_changed",
         messageId,
@@ -89,7 +113,9 @@ export class MailActionService {
         folders: recipient.isStarred ? ["inbox", "starred"] : ["inbox"],
       });
 
-      return { data: { messageId, isRead: recipient.isRead, readAt: recipient.readAt } };
+      return {
+        data: { messageId, isRead: recipient.isRead, readAt: recipient.readAt },
+      };
     } catch (error) {
       this.core.handleError("MailActionService.markRead", error);
     }
@@ -114,12 +140,21 @@ export class MailActionService {
 
       await Promise.all(
         [...new Set(messages.map((m) => m.threadId))].map((threadId) =>
-          this.core.refreshUserThreadState(this.core.dataSource.manager, threadId, userId),
+          this.core.refreshUserThreadState(
+            this.core.dataSource.manager,
+            threadId,
+            userId,
+          ),
         ),
       );
 
       for (const message of messages) {
-        this.core.emitMailReadEvent(userId, message.id, message.threadId, new Date());
+        this.core.emitMailReadEvent(
+          userId,
+          message.id,
+          message.threadId,
+          new Date(),
+        );
       }
 
       this.core.emitMailboxChanged(userId, {
@@ -156,7 +191,11 @@ export class MailActionService {
         .execute();
 
       if ((updateResult.affected ?? 0) > 0) {
-        await this.core.refreshUserThreadState(this.core.dataSource.manager, threadId, userId);
+        await this.core.refreshUserThreadState(
+          this.core.dataSource.manager,
+          threadId,
+          userId,
+        );
         this.core.mailGateway.emitMailRead(userId, {
           threadId,
           isRead: true,
@@ -178,8 +217,11 @@ export class MailActionService {
   async readThread(threadId: string, userId: string) {
     try {
       await this.markThreadAsRead(threadId, userId);
-      const visibleMessages = await this.mailboxService.getVisibleThreadMessages(threadId, userId);
-      return { data: MailMapper.toThreadDetail(threadId, visibleMessages, userId) };
+      const visibleMessages =
+        await this.mailboxService.getVisibleThreadMessages(threadId, userId);
+      return {
+        data: MailMapper.toThreadDetail(threadId, visibleMessages, userId),
+      };
     } catch (error) {
       this.core.handleError("MailActionService.readThread", error);
     }
@@ -193,7 +235,8 @@ export class MailActionService {
         where: { messageId, recipientId: userId },
       });
 
-      if (!recipient) throw new NotFoundException("Message not found in recipient mailbox");
+      if (!recipient)
+        throw new NotFoundException("Message not found in recipient mailbox");
 
       recipient.isStarred = isStarred ?? !recipient.isStarred;
       await this.core.recipientRepo.save(recipient);
@@ -204,12 +247,18 @@ export class MailActionService {
       });
 
       if (message) {
-        await this.core.refreshUserThreadState(this.core.dataSource.manager, message.threadId, userId);
+        await this.core.refreshUserThreadState(
+          this.core.dataSource.manager,
+          message.threadId,
+          userId,
+        );
         this.core.emitMailboxChanged(userId, {
           action: "star_state_changed",
           messageId,
           threadId: message.threadId,
-          folders: recipient.isDeleted ? ["trash", "starred"] : ["inbox", "starred"],
+          folders: recipient.isDeleted
+            ? ["trash", "starred"]
+            : ["inbox", "starred"],
         });
       }
 
@@ -230,7 +279,10 @@ export class MailActionService {
 
       if (!message) throw new NotFoundException("Message not found");
 
-      const previousFolders = this.core.getUserMailboxFoldersForMessage(message, userId);
+      const previousFolders = this.core.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
       let changed = false;
       const now = new Date();
 
@@ -240,7 +292,9 @@ export class MailActionService {
         changed = true;
       }
 
-      const recipient = message.recipients.find((r) => r.recipientId === userId);
+      const recipient = message.recipients.find(
+        (r) => r.recipientId === userId,
+      );
       if (recipient) {
         recipient.isDeleted = true;
         recipient.deletedAt = now;
@@ -251,8 +305,15 @@ export class MailActionService {
       if (!changed) throw new ForbiddenException("No access to this message");
 
       await Promise.all([
-        this.core.refreshThreadAfterMutation(this.core.dataSource.manager, message.threadId),
-        this.core.refreshUserThreadState(this.core.dataSource.manager, message.threadId, userId),
+        this.core.refreshThreadAfterMutation(
+          this.core.dataSource.manager,
+          message.threadId,
+        ),
+        this.core.refreshUserThreadState(
+          this.core.dataSource.manager,
+          message.threadId,
+          userId,
+        ),
       ]);
 
       this.core.emitMailboxChanged(userId, {
@@ -293,7 +354,10 @@ export class MailActionService {
               );
             }),
           )
-          .addSelect("COALESCE(message.sentAt, message.createdAt)", "messageSortDate")
+          .addSelect(
+            "COALESCE(message.sentAt, message.createdAt)",
+            "messageSortDate",
+          )
           .orderBy("messageSortDate", "DESC")
           .getOne();
 
@@ -303,7 +367,10 @@ export class MailActionService {
         }
       }
 
-      const previousFolders = this.core.getUserMailboxFoldersForMessage(message, userId);
+      const previousFolders = this.core.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
       let changed = false;
 
       if (message.senderId === userId && message.senderDeletedAt !== null) {
@@ -312,7 +379,9 @@ export class MailActionService {
         changed = true;
       }
 
-      const recipient = message.recipients.find((r) => r.recipientId === userId);
+      const recipient = message.recipients.find(
+        (r) => r.recipientId === userId,
+      );
       if (recipient && recipient.isDeleted) {
         recipient.isDeleted = false;
         recipient.deletedAt = null;
@@ -327,8 +396,15 @@ export class MailActionService {
       }
 
       await Promise.all([
-        this.core.refreshThreadAfterMutation(this.core.dataSource.manager, message.threadId),
-        this.core.refreshUserThreadState(this.core.dataSource.manager, message.threadId, userId),
+        this.core.refreshThreadAfterMutation(
+          this.core.dataSource.manager,
+          message.threadId,
+        ),
+        this.core.refreshUserThreadState(
+          this.core.dataSource.manager,
+          message.threadId,
+          userId,
+        ),
       ]);
 
       this.core.emitMailboxChanged(userId, {
@@ -356,12 +432,18 @@ export class MailActionService {
 
       if (!message) throw new NotFoundException("Message not found");
 
-      const previousFolders = this.core.getUserMailboxFoldersForMessage(message, userId);
+      const previousFolders = this.core.getUserMailboxFoldersForMessage(
+        message,
+        userId,
+      );
 
       if (message.senderId === userId && message.senderDeletedAt !== null) {
         const threadId = message.threadId;
         await this.core.messageRepo.delete(messageId);
-        await this.core.refreshThreadAfterMutation(this.core.dataSource.manager, threadId);
+        await this.core.refreshThreadAfterMutation(
+          this.core.dataSource.manager,
+          threadId,
+        );
         await this.jobsService.enqueueMessageDelete({ messageId });
         this.core.emitMailboxChanged(userId, {
           action: "permanently_deleted",
@@ -372,12 +454,21 @@ export class MailActionService {
         return { messageId, status: "permanently_deleted_by_sender" };
       }
 
-      const recipient = message.recipients.find((r) => r.recipientId === userId);
+      const recipient = message.recipients.find(
+        (r) => r.recipientId === userId,
+      );
       if (recipient && recipient.isDeleted) {
         await this.core.recipientRepo.remove(recipient);
         await Promise.all([
-          this.core.refreshThreadAfterMutation(this.core.dataSource.manager, message.threadId),
-          this.core.refreshUserThreadState(this.core.dataSource.manager, message.threadId, userId),
+          this.core.refreshThreadAfterMutation(
+            this.core.dataSource.manager,
+            message.threadId,
+          ),
+          this.core.refreshUserThreadState(
+            this.core.dataSource.manager,
+            message.threadId,
+            userId,
+          ),
         ]);
         this.core.emitMailboxChanged(userId, {
           action: "permanently_deleted",
@@ -385,7 +476,9 @@ export class MailActionService {
           threadId: message.threadId,
           folders: this.core.uniqueFolders([...previousFolders, "trash"]),
         });
-        return { data: { messageId, status: "permanently_deleted_by_recipient" } };
+        return {
+          data: { messageId, status: "permanently_deleted_by_recipient" },
+        };
       }
 
       throw new BadRequestException(
@@ -408,7 +501,10 @@ export class MailActionService {
 
       const threadId = draft.threadId;
       await this.core.messageRepo.delete(draftId);
-      await this.core.refreshThreadAfterMutation(this.core.dataSource.manager, threadId);
+      await this.core.refreshThreadAfterMutation(
+        this.core.dataSource.manager,
+        threadId,
+      );
       await this.jobsService.enqueueMessageDelete({ messageId: draftId });
 
       this.core.emitMailboxChanged(userId, {
@@ -448,7 +544,9 @@ export class MailActionService {
         ...new Set(
           [
             ...recipientMessages.map((m) => m.threadId),
-            ...senderMessages.filter((m) => !!m.senderDeletedAt).map((m) => m.threadId),
+            ...senderMessages
+              .filter((m) => !!m.senderDeletedAt)
+              .map((m) => m.threadId),
           ].filter(Boolean),
         ),
       ];
@@ -470,13 +568,22 @@ export class MailActionService {
       await Promise.all(
         senderMessages
           .filter((m) => !!m.senderDeletedAt)
-          .map((m) => this.jobsService.enqueueMessageDelete({ messageId: m.id })),
+          .map((m) =>
+            this.jobsService.enqueueMessageDelete({ messageId: m.id }),
+          ),
       );
 
       await Promise.all(
         affectedThreadIds.flatMap((threadId) => [
-          this.core.refreshUserThreadState(this.core.dataSource.manager, threadId, userId),
-          this.core.refreshThreadAfterMutation(this.core.dataSource.manager, threadId),
+          this.core.refreshUserThreadState(
+            this.core.dataSource.manager,
+            threadId,
+            userId,
+          ),
+          this.core.refreshThreadAfterMutation(
+            this.core.dataSource.manager,
+            threadId,
+          ),
         ]),
       );
 
@@ -526,7 +633,9 @@ export class MailActionService {
           select: ["id", "threadId"],
         });
         for (const m of recipientMessages) affectedThreadIds.add(m.threadId);
-        await this.core.recipientRepo.delete(expiredRecipientRows.map((r) => r.id));
+        await this.core.recipientRepo.delete(
+          expiredRecipientRows.map((r) => r.id),
+        );
       }
 
       for (const message of senderMessages) {
@@ -548,14 +657,21 @@ export class MailActionService {
 
       await Promise.all(
         threadIdArray.map((threadId) =>
-          this.core.refreshThreadAfterMutation(this.core.dataSource.manager, threadId),
+          this.core.refreshThreadAfterMutation(
+            this.core.dataSource.manager,
+            threadId,
+          ),
         ),
       );
 
       await Promise.all(
         userIdArray.flatMap((userId) =>
           threadIdArray.map((threadId) =>
-            this.core.refreshUserThreadState(this.core.dataSource.manager, threadId, userId),
+            this.core.refreshUserThreadState(
+              this.core.dataSource.manager,
+              threadId,
+              userId,
+            ),
           ),
         ),
       );

@@ -53,7 +53,12 @@ export class AuditService {
     }
   }
 
-  async query(dto: AuditQueryDto): Promise<{ data: AuditLog[]; total: number; page: number; lastPage: number }> {
+  async query(dto: AuditQueryDto): Promise<{
+    data: AuditLog[];
+    total: number;
+    page: number;
+    lastPage: number;
+  }> {
     const page = Math.max(1, dto.page ?? 1);
     const limit = Math.min(100, Math.max(1, dto.limit ?? 50));
 

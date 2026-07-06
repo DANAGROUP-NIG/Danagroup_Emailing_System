@@ -44,7 +44,11 @@ export class InboundMailService {
     const ccAddresses = this.extractAddresses(parsed.cc);
     const bccAddresses = this.extractAddresses(parsed.bcc);
 
-    const allRecipientEmails = [...toAddresses, ...ccAddresses, ...bccAddresses];
+    const allRecipientEmails = [
+      ...toAddresses,
+      ...ccAddresses,
+      ...bccAddresses,
+    ];
 
     if (!allRecipientEmails.length) {
       this.logger.warn("Inbound email has no recipients — skipping");
@@ -139,13 +143,17 @@ export class InboundMailService {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  private extractFirstAddress(addr: AddressObject | AddressObject[] | undefined): string | null {
+  private extractFirstAddress(
+    addr: AddressObject | AddressObject[] | undefined,
+  ): string | null {
     if (!addr) return null;
     const obj = Array.isArray(addr) ? addr[0] : addr;
     return obj?.value?.[0]?.address?.toLowerCase() ?? null;
   }
 
-  private extractAddresses(addr: AddressObject | AddressObject[] | undefined): string[] {
+  private extractAddresses(
+    addr: AddressObject | AddressObject[] | undefined,
+  ): string[] {
     if (!addr) return [];
     const objs = Array.isArray(addr) ? addr : [addr];
     return objs

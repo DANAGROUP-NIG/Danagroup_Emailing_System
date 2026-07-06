@@ -1,5 +1,11 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
 } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
@@ -33,7 +39,11 @@ export class DistributionListsController {
   }
 
   @Patch(":id")
-  update(@Param("id") id: string, @Body() dto: UpdateDistributionListDto, @CurrentUser() user: User) {
+  update(
+    @Param("id") id: string,
+    @Body() dto: UpdateDistributionListDto,
+    @CurrentUser() user: User,
+  ) {
     return this.service.update(id, dto, user.id);
   }
 
@@ -43,7 +53,11 @@ export class DistributionListsController {
   }
 
   @Post(":id/members")
-  addMembers(@Param("id") id: string, @Body() dto: AddMembersDto, @CurrentUser() user: User) {
+  addMembers(
+    @Param("id") id: string,
+    @Body() dto: AddMembersDto,
+    @CurrentUser() user: User,
+  ) {
     return this.service.addMembers(id, dto, user.id);
   }
 

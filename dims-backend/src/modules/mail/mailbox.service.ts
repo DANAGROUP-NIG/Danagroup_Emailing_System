@@ -86,7 +86,11 @@ export class MailboxService {
     const threads = this.prepareThreads(
       rows,
       userId,
-      folder === "trash" ? "trash" : folder === "starred" ? "starred" : "visible",
+      folder === "trash"
+        ? "trash"
+        : folder === "starred"
+          ? "starred"
+          : "visible",
     );
 
     const data =
@@ -113,24 +117,36 @@ export class MailboxService {
         case "inbox":
           return this.buildMailboxResponse(
             this.core.getInboxBaseQuery(userId),
-            userId, page, limit, "inbox",
+            userId,
+            page,
+            limit,
+            "inbox",
           );
         case "sent":
           return this.buildMailboxResponse(
             this.core.getSentBaseQuery(userId),
-            userId, page, limit, "sent",
+            userId,
+            page,
+            limit,
+            "sent",
           );
         case "drafts":
           return this.getDrafts(userId, query);
         case "starred":
           return this.buildMailboxResponse(
             this.core.getStarredBaseQuery(userId),
-            userId, page, limit, "starred",
+            userId,
+            page,
+            limit,
+            "starred",
           );
         case "trash":
           return this.buildMailboxResponse(
             this.core.getTrashBaseQuery(userId),
-            userId, page, limit, "trash",
+            userId,
+            page,
+            limit,
+            "trash",
           );
         default:
           throw new BadRequestException("Unknown folder");
@@ -167,7 +183,10 @@ export class MailboxService {
       const { page, limit } = this.core.normalizePagination(query);
       return this.buildMailboxResponse(
         this.core.getTrashBaseQuery(normalizedUserId),
-        normalizedUserId, page, limit, "trash",
+        normalizedUserId,
+        page,
+        limit,
+        "trash",
       );
     } catch (error) {
       this.core.handleError("MailboxService.getTrash", error);
@@ -204,8 +223,13 @@ export class MailboxService {
 
   async getThread(threadId: string, userId: string) {
     try {
-      const visibleMessages = await this.getVisibleThreadMessages(threadId, userId);
-      return { data: MailMapper.toThreadDetail(threadId, visibleMessages, userId) };
+      const visibleMessages = await this.getVisibleThreadMessages(
+        threadId,
+        userId,
+      );
+      return {
+        data: MailMapper.toThreadDetail(threadId, visibleMessages, userId),
+      };
     } catch (error) {
       this.core.handleError("MailboxService.getThread", error);
     }
@@ -225,7 +249,8 @@ export class MailboxService {
       },
     });
 
-    if (!message) throw new NotFoundException("Message not found in recipient mailbox");
+    if (!message)
+      throw new NotFoundException("Message not found in recipient mailbox");
 
     return { data: MailMapper.toMessage(message, userId) };
   }
@@ -239,7 +264,8 @@ export class MailboxService {
         .andWhere(
           new Brackets((qb) => {
             qb.where("message.senderId = :userId", { userId }).orWhere(
-              "recipient.recipientId = :userId", { userId },
+              "recipient.recipientId = :userId",
+              { userId },
             );
           }),
         )

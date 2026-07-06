@@ -47,7 +47,9 @@ export class AnnouncementsService {
     }
 
     if (query.isPinned !== undefined) {
-      qb.andWhere("announcement.isPinned = :isPinned", { isPinned: query.isPinned });
+      qb.andWhere("announcement.isPinned = :isPinned", {
+        isPinned: query.isPinned,
+      });
     }
 
     qb.orderBy("announcement.isPinned", "DESC")

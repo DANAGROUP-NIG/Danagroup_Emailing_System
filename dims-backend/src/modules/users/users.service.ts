@@ -83,7 +83,11 @@ export class UsersService {
       const limit = Number(query.limit) || 10;
       const { search, department, subsidiary, role, sortBy } = query;
 
-      const allowedSortColumns = ["firstName", "lastName", "createdAt"] as const;
+      const allowedSortColumns = [
+        "firstName",
+        "lastName",
+        "createdAt",
+      ] as const;
       const sortColumn: string = allowedSortColumns.includes(
         sortBy as (typeof allowedSortColumns)[number],
       )
@@ -142,7 +146,8 @@ export class UsersService {
 
       const resolved = data.map((u) => ({
         ...u,
-        avatarUrl: this.storageService.resolveAvatarUrl(u.avatarUrl) ?? undefined,
+        avatarUrl:
+          this.storageService.resolveAvatarUrl(u.avatarUrl) ?? undefined,
       }));
 
       return {
@@ -168,7 +173,8 @@ export class UsersService {
 
     return {
       ...user,
-      avatarUrl: this.storageService.resolveAvatarUrl(user.avatarUrl) ?? undefined,
+      avatarUrl:
+        this.storageService.resolveAvatarUrl(user.avatarUrl) ?? undefined,
     } as User;
   }
 
@@ -364,10 +370,7 @@ export class UsersService {
     }
   }
 
-  async updateProfilePic(
-    userId: string,
-    data: { avatarUrl: string },
-  ) {
+  async updateProfilePic(userId: string, data: { avatarUrl: string }) {
     try {
       const user = await this.userRepo.findOne({ where: { id: userId } });
 
@@ -397,10 +400,25 @@ export class UsersService {
     return { signature: user.signature ?? null };
   }
 
-  async updateSignature(userId: string, signature: string | null): Promise<{ signature: string | null }> {
+  async updateSignature(
+    userId: string,
+    signature: string | null,
+  ): Promise<{ signature: string | null }> {
     const sanitized = signature
       ? DOMPurify.sanitize(signature, {
-          ALLOWED_TAGS: ["p", "br", "b", "i", "strong", "em", "u", "a", "span", "div", "hr"],
+          ALLOWED_TAGS: [
+            "p",
+            "br",
+            "b",
+            "i",
+            "strong",
+            "em",
+            "u",
+            "a",
+            "span",
+            "div",
+            "hr",
+          ],
           ALLOWED_ATTR: ["href", "target", "style", "class"],
         })
       : null;
@@ -417,7 +435,10 @@ export class UsersService {
     return user?.signature ?? null;
   }
 
-  async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+  async updatePasswordHash(
+    userId: string,
+    passwordHash: string,
+  ): Promise<void> {
     await this.userRepo
       .createQueryBuilder()
       .update()

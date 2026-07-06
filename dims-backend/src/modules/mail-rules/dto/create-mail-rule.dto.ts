@@ -9,7 +9,12 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import type { RuleAction, RuleCondition, RuleConditionField, RuleConditionOperator } from "../entities/mail-rule.entity";
+import type {
+  RuleAction,
+  RuleCondition,
+  RuleConditionField,
+  RuleConditionOperator,
+} from "../entities/mail-rule.entity";
 
 export class RuleConditionDto implements RuleCondition {
   @IsEnum(["from", "subject", "body"])

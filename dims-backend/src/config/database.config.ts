@@ -8,13 +8,12 @@ const parseBoolean = (value: string | undefined, fallback = false): boolean => {
   return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 };
 
-const parseOptionalBoolean = (value: string | undefined): boolean | undefined =>
+const parseOptionalBoolean = (
+  value: string | undefined,
+): boolean | undefined =>
   value === undefined ? undefined : parseBoolean(value);
 
-const parseInteger = (
-  value: string | undefined,
-  fallback: number,
-): number => {
+const parseInteger = (value: string | undefined, fallback: number): number => {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isNaN(parsed) ? fallback : parsed;
 };
@@ -28,10 +27,7 @@ export const buildPostgresOptions = (
     Boolean(
       databaseUrl?.match(/sslmode=(require|verify-full|verify-ca|prefer)/),
     );
-  const rejectUnauthorized = parseBoolean(
-    env.DB_SSL_REJECT_UNAUTHORIZED,
-    true,
-  );
+  const rejectUnauthorized = parseBoolean(env.DB_SSL_REJECT_UNAUTHORIZED, true);
   const queryLogging =
     parseOptionalBoolean(env.DB_LOGGING) ?? env.NODE_ENV === "development";
 
@@ -69,25 +65,24 @@ export const buildPostgresOptions = (
   };
 };
 
-export default (config: ConfigService): TypeOrmModuleOptions =>
-  ({
-    ...buildPostgresOptions({
-      DATABASE_URL: config.get<string>("DATABASE_URL"),
-      DB_HOST: config.get<string>("DB_HOST"),
-      DB_PORT: config.get<string>("DB_PORT"),
-      DB_NAME: config.get<string>("DB_NAME"),
-      DB_USER: config.get<string>("DB_USER"),
-      DB_PASSWORD: config.get<string>("DB_PASSWORD"),
-      DB_SSL: config.get<string>("DB_SSL"),
-      DB_SSL_REJECT_UNAUTHORIZED: config.get<string>(
-        "DB_SSL_REJECT_UNAUTHORIZED",
-      ),
-      DB_LOGGING: config.get<string>("DB_LOGGING"),
-      DB_POOL_MAX: config.get<string>("DB_POOL_MAX"),
-      DB_IDLE_TIMEOUT_MS: config.get<string>("DB_IDLE_TIMEOUT_MS"),
-      DB_CONNECTION_TIMEOUT_MS: config.get<string>("DB_CONNECTION_TIMEOUT_MS"),
-      NODE_ENV: config.get<string>("NODE_ENV"),
-    }),
-    autoLoadEntities: true,
-    keepConnectionAlive: true,
-  });
+export default (config: ConfigService): TypeOrmModuleOptions => ({
+  ...buildPostgresOptions({
+    DATABASE_URL: config.get<string>("DATABASE_URL"),
+    DB_HOST: config.get<string>("DB_HOST"),
+    DB_PORT: config.get<string>("DB_PORT"),
+    DB_NAME: config.get<string>("DB_NAME"),
+    DB_USER: config.get<string>("DB_USER"),
+    DB_PASSWORD: config.get<string>("DB_PASSWORD"),
+    DB_SSL: config.get<string>("DB_SSL"),
+    DB_SSL_REJECT_UNAUTHORIZED: config.get<string>(
+      "DB_SSL_REJECT_UNAUTHORIZED",
+    ),
+    DB_LOGGING: config.get<string>("DB_LOGGING"),
+    DB_POOL_MAX: config.get<string>("DB_POOL_MAX"),
+    DB_IDLE_TIMEOUT_MS: config.get<string>("DB_IDLE_TIMEOUT_MS"),
+    DB_CONNECTION_TIMEOUT_MS: config.get<string>("DB_CONNECTION_TIMEOUT_MS"),
+    NODE_ENV: config.get<string>("NODE_ENV"),
+  }),
+  autoLoadEntities: true,
+  keepConnectionAlive: true,
+});

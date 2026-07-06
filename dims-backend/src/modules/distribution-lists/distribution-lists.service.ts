@@ -50,9 +50,15 @@ export class DistributionListsService {
     return list;
   }
 
-  async create(dto: CreateDistributionListDto, ownerId: string): Promise<DistributionList> {
-    const existing = await this.listRepo.findOne({ where: { email: dto.email.toLowerCase() } });
-    if (existing) throw new BadRequestException("A list with this email already exists");
+  async create(
+    dto: CreateDistributionListDto,
+    ownerId: string,
+  ): Promise<DistributionList> {
+    const existing = await this.listRepo.findOne({
+      where: { email: dto.email.toLowerCase() },
+    });
+    if (existing)
+      throw new BadRequestException("A list with this email already exists");
 
     const list = this.listRepo.create({
       ...dto,
@@ -69,10 +75,15 @@ export class DistributionListsService {
     return this.findOne(saved.id, ownerId);
   }
 
-  async update(id: string, dto: UpdateDistributionListDto, userId: string): Promise<DistributionList> {
+  async update(
+    id: string,
+    dto: UpdateDistributionListDto,
+    userId: string,
+  ): Promise<DistributionList> {
     const list = await this.listRepo.findOne({ where: { id } });
     if (!list) throw new NotFoundException("Distribution list not found");
-    if (list.ownerId !== userId) throw new ForbiddenException("Only the owner can edit this list");
+    if (list.ownerId !== userId)
+      throw new ForbiddenException("Only the owner can edit this list");
 
     Object.assign(list, dto);
     await this.listRepo.save(list);
@@ -82,20 +93,30 @@ export class DistributionListsService {
   async remove(id: string, userId: string): Promise<void> {
     const list = await this.listRepo.findOne({ where: { id } });
     if (!list) throw new NotFoundException("Distribution list not found");
-    if (list.ownerId !== userId) throw new ForbiddenException("Only the owner can delete this list");
+    if (list.ownerId !== userId)
+      throw new ForbiddenException("Only the owner can delete this list");
     await this.listRepo.remove(list);
   }
 
-  async addMembers(id: string, dto: AddMembersDto, userId: string): Promise<DistributionList> {
+  async addMembers(
+    id: string,
+    dto: AddMembersDto,
+    userId: string,
+  ): Promise<DistributionList> {
     const list = await this.listRepo.findOne({ where: { id } });
     if (!list) throw new NotFoundException("Distribution list not found");
-    if (list.ownerId !== userId) throw new ForbiddenException("Only the owner can add members");
+    if (list.ownerId !== userId)
+      throw new ForbiddenException("Only the owner can add members");
 
     await this.addMembersToList(id, dto.userIds);
     return this.findOne(id, userId);
   }
 
-  async removeMember(id: string, targetUserId: string, requesterId: string): Promise<void> {
+  async removeMember(
+    id: string,
+    targetUserId: string,
+    requesterId: string,
+  ): Promise<void> {
     const list = await this.listRepo.findOne({ where: { id } });
     if (!list) throw new NotFoundException("Distribution list not found");
     if (list.ownerId !== requesterId && targetUserId !== requesterId) {
@@ -112,7 +133,10 @@ export class DistributionListsService {
     return members.map((m) => m.user?.email).filter(Boolean) as string[];
   }
 
-  private async addMembersToList(listId: string, userIds: string[]): Promise<void> {
+  private async addMembersToList(
+    listId: string,
+    userIds: string[],
+  ): Promise<void> {
     const users = await this.userRepo.find({
       where: { id: In(userIds), isActive: true },
       select: ["id"],

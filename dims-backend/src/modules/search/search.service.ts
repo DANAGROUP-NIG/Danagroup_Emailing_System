@@ -69,7 +69,11 @@ export class SearchService {
       await this.ensureMessageIndexExists();
       this.esAvailable = true;
     } catch (err: unknown) {
-      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
+      const e = err as {
+        name?: string;
+        message?: string;
+        meta?: { statusCode?: number };
+      };
       this.logger.warn(
         `ES index init failed: [${e?.name}] ${e?.message || "(no message)"} status=${e?.meta?.statusCode ?? "?"}. Searches will fall back to PostgreSQL.`,
       );
@@ -82,7 +86,11 @@ export class SearchService {
       await this.syncUsersToIndex();
       this.logger.log("Elasticsearch is ready and synced.");
     } catch (err: unknown) {
-      const e = err as { name?: string; message?: string; meta?: { statusCode?: number } };
+      const e = err as {
+        name?: string;
+        message?: string;
+        meta?: { statusCode?: number };
+      };
       this.logger.warn(
         `syncUsersToIndex failed: [${e?.name}] ${e?.message || "(no message)"}. Searches will fall back to PostgreSQL.`,
       );
@@ -191,7 +199,13 @@ export class SearchService {
           subject: {
             type: "text",
             analyzer: "fulltext_analyzer",
-            fields: { autocomplete: { type: "text", analyzer: "autocomplete_analyzer", search_analyzer: "standard" } },
+            fields: {
+              autocomplete: {
+                type: "text",
+                analyzer: "autocomplete_analyzer",
+                search_analyzer: "standard",
+              },
+            },
           },
           body: { type: "text", analyzer: "fulltext_analyzer" },
           senderId: { type: "keyword" },
@@ -257,10 +271,14 @@ export class SearchService {
     const filterClauses: object[] = [{ term: { isActive: true } }];
 
     if (filters?.department) {
-      filterClauses.push({ term: { "department.keyword": filters.department } });
+      filterClauses.push({
+        term: { "department.keyword": filters.department },
+      });
     }
     if (filters?.subsidiary) {
-      filterClauses.push({ term: { "subsidiary.keyword": filters.subsidiary } });
+      filterClauses.push({
+        term: { "subsidiary.keyword": filters.subsidiary },
+      });
     }
     if (filters?.role) {
       filterClauses.push({ term: { role: filters.role } });
@@ -277,7 +295,9 @@ export class SearchService {
             filter: filterClauses,
           },
         },
-        sort: query ? [{ _score: { order: "desc" } }] : [{ "firstName.keyword": { order: "asc" } }],
+        sort: query
+          ? [{ _score: { order: "desc" } }]
+          : [{ "firstName.keyword": { order: "asc" } }],
       });
 
       const total =
@@ -314,7 +334,9 @@ export class SearchService {
         `ES searchUsers failed, falling back to PostgreSQL: ${(error as Error).message}`,
       );
       this.esAvailable = false;
-      setTimeout(() => { this.esAvailable = true; }, 30_000);
+      setTimeout(() => {
+        this.esAvailable = true;
+      }, 30_000);
       return this.fallbackUserSearch(query, page, limit, filters);
     }
   }
@@ -382,8 +404,7 @@ export class SearchService {
         id: h._id,
         subject: h._source?.subject ?? "",
         bodySnippet:
-          h.highlight?.body?.[0] ??
-          (h._source?.body?.substring(0, 120) ?? ""),
+          h.highlight?.body?.[0] ?? h._source?.body?.substring(0, 120) ?? "",
         senderId: h._source?.senderId ?? "",
         sentAt: h._source?.sentAt ?? new Date(),
       }));
@@ -394,7 +415,9 @@ export class SearchService {
         `ES searchMail failed, falling back to PostgreSQL: ${(error as Error).message}`,
       );
       this.esAvailable = false;
-      setTimeout(() => { this.esAvailable = true; }, 30_000);
+      setTimeout(() => {
+        this.esAvailable = true;
+      }, 30_000);
       return this.fallbackMailSearch(userId, query, limit);
     }
   }
@@ -574,7 +597,9 @@ export class SearchService {
       .catch((err: unknown) => {
         const e = err as { meta?: { statusCode?: number } };
         if (e?.meta?.statusCode !== 404) {
-          this.logger.warn(`deleteUser(${userId}) failed in ES: ${(err as Error).message}`);
+          this.logger.warn(
+            `deleteUser(${userId}) failed in ES: ${(err as Error).message}`,
+          );
         }
       });
   }
@@ -589,7 +614,9 @@ export class SearchService {
       .catch((err: unknown) => {
         const e = err as { meta?: { statusCode?: number } };
         if (e?.meta?.statusCode !== 404) {
-          this.logger.warn(`deleteMessage(${messageId}) failed in ES: ${(err as Error).message}`);
+          this.logger.warn(
+            `deleteMessage(${messageId}) failed in ES: ${(err as Error).message}`,
+          );
         }
       });
   }

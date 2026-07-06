@@ -26,7 +26,11 @@ export class ChannelMember {
   @Column({ type: "uuid" })
   userId: string;
 
-  @Column({ type: "enum", enum: ["owner", "admin", "member"], default: "member" })
+  @Column({
+    type: "enum",
+    enum: ["owner", "admin", "member"],
+    default: "member",
+  })
   role: ChannelRole;
 
   @Column({ type: "timestamptz", nullable: true })

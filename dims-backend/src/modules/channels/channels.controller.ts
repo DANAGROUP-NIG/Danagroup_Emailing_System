@@ -97,7 +97,12 @@ export class ChannelsController {
     @CurrentUser() user: { userId: string },
     @Query() query: QueryChatDto,
   ) {
-    return this.channelsService.getMessages(id, user.userId, query.before, query.limit);
+    return this.channelsService.getMessages(
+      id,
+      user.userId,
+      query.before,
+      query.limit,
+    );
   }
 
   @Post(":id/messages")
@@ -107,7 +112,10 @@ export class ChannelsController {
     @CurrentUser() user: { userId: string },
     @Body("body") body: string,
   ) {
-    return this.channelsService.sendMessage(user.userId, { channelId: id, body });
+    return this.channelsService.sendMessage(user.userId, {
+      channelId: id,
+      body,
+    });
   }
 
   @Patch(":id/read")

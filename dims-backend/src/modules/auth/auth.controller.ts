@@ -54,7 +54,7 @@ export class AuthController {
     private readonly usersService: UsersService,
     private readonly departmentsService: DepartmentsService,
     private readonly storageService: StorageService,
-  ) { }
+  ) {}
 
   private setAuthCookies(
     res: Response,
@@ -222,7 +222,8 @@ export class AuthController {
     const fullUser = await this.usersService.findById(user.userId);
     const resolved = {
       ...fullUser,
-      avatarUrl: this.storageService.resolveAvatarUrl(fullUser.avatarUrl) ?? undefined,
+      avatarUrl:
+        this.storageService.resolveAvatarUrl(fullUser.avatarUrl) ?? undefined,
     };
     return new ApiResponseDto(true, "User fetched", resolved);
   }
@@ -232,7 +233,9 @@ export class AuthController {
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Request a password reset link" })
-  @ApiOkResponse({ description: "Reset notification sent if email is registered" })
+  @ApiOkResponse({
+    description: "Reset notification sent if email is registered",
+  })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);
     return new ApiResponseDto(

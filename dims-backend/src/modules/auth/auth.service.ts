@@ -249,9 +249,7 @@ export class AuthService {
       const matchResults = await Promise.all(
         user.sessions.map((s) => bcrypt.compare(refreshToken, s.refreshToken)),
       );
-      const filteredSessions = user.sessions.filter(
-        (_, i) => !matchResults[i],
-      );
+      const filteredSessions = user.sessions.filter((_, i) => !matchResults[i]);
 
       await this.usersService.updateAuthState(userId, {
         sessions: filteredSessions,
@@ -274,17 +272,12 @@ export class AuthService {
     const token = randomBytes(32).toString("hex");
     const redisKey = `${this.RESET_TOKEN_PREFIX}${token}`;
 
-    await this.redis.set(
-      redisKey,
-      user.id,
-      "EX",
-      this.RESET_TOKEN_TTL_SECONDS,
-    );
+    await this.redis.set(redisKey, user.id, "EX", this.RESET_TOKEN_TTL_SECONDS);
 
-    const frontendUrl = this.config.get<string>(
-      "FRONTEND_URL",
-      "http://localhost:3000",
-    ).split(",")[0].trim();
+    const frontendUrl = this.config
+      .get<string>("FRONTEND_URL", "http://localhost:3000")
+      .split(",")[0]
+      .trim();
 
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
     const expiryMinutes = this.RESET_TOKEN_TTL_SECONDS / 60;
@@ -293,7 +286,11 @@ export class AuthService {
       `Password reset token issued for user ${user.id} (expires in ${expiryMinutes}m)`,
     );
 
-    await this.usersService.deliverPasswordResetNotification(user.id, resetLink, expiryMinutes);
+    await this.usersService.deliverPasswordResetNotification(
+      user.id,
+      resetLink,
+      expiryMinutes,
+    );
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

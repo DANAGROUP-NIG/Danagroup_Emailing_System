@@ -1,6 +1,12 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
-import { IsDateString, IsIn, IsNumberString, IsOptional, IsUUID } from "class-validator";
+import {
+  IsDateString,
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsUUID,
+} from "class-validator";
 import { Roles } from "@common/decorators/roles.decorator";
 import { AuditService } from "./audit.service";
 
@@ -14,8 +20,15 @@ class AuditQueryDto {
 
   @IsOptional()
   @IsIn([
-    "auth", "users", "mail", "distribution-lists", "announcements",
-    "files", "channels", "chat", "2fa",
+    "auth",
+    "users",
+    "mail",
+    "distribution-lists",
+    "announcements",
+    "files",
+    "channels",
+    "chat",
+    "2fa",
   ])
   resource?: string;
 

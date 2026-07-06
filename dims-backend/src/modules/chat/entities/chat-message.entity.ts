@@ -36,7 +36,9 @@ export class ChatMessage {
   createdAt: Date;
 
   // ---- RELATIONSHIPS ----
-  @ManyToOne(() => ChatConversation, (conv) => conv.messages, { onDelete: "CASCADE" })
+  @ManyToOne(() => ChatConversation, (conv) => conv.messages, {
+    onDelete: "CASCADE",
+  })
   @JoinColumn({ name: "conversationId" })
   conversation: ChatConversation;
 
