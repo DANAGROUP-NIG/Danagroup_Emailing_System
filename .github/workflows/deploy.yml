@@ -122,26 +122,37 @@ jobs:
             echo "Writing production environment..."
             cat > .env << 'ENV_EOF'
             NODE_ENV=production
+            PORT=8000
             APP_URL=${{ secrets.PROD_APP_URL }}
+            DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}
             DB_HOST=${{ secrets.PROD_DB_HOST }}
             DB_PORT=${{ secrets.PROD_DB_PORT }}
             DB_NAME=${{ secrets.PROD_DB_NAME }}
             DB_USER=${{ secrets.PROD_DB_USER }}
             DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+            DB_SSL=${{ secrets.PROD_DB_SSL }}
+            DB_SSL_REJECT_UNAUTHORIZED=${{ secrets.PROD_DB_SSL_REJECT_UNAUTHORIZED }}
+            DB_POOL_MAX=${{ secrets.PROD_DB_POOL_MAX }}
+            DB_IDLE_TIMEOUT_MS=${{ secrets.PROD_DB_IDLE_TIMEOUT_MS }}
+            DB_CONNECTION_TIMEOUT_MS=${{ secrets.PROD_DB_CONNECTION_TIMEOUT_MS }}
             REDIS_HOST=${{ secrets.PROD_REDIS_HOST }}
             REDIS_PORT=${{ secrets.PROD_REDIS_PORT }}
             REDIS_PASSWORD=${{ secrets.PROD_REDIS_PASSWORD }}
             MINIO_ENDPOINT=${{ secrets.PROD_MINIO_ENDPOINT }}
             MINIO_PORT=${{ secrets.PROD_MINIO_PORT }}
+            MINIO_USE_SSL=${{ secrets.PROD_MINIO_USE_SSL }}
             MINIO_ACCESS_KEY=${{ secrets.PROD_MINIO_ACCESS_KEY }}
             MINIO_SECRET_KEY=${{ secrets.PROD_MINIO_SECRET_KEY }}
             MINIO_BUCKET=${{ secrets.PROD_MINIO_BUCKET }}
+            MINIO_PUBLIC_URL=${{ secrets.PROD_MINIO_PUBLIC_URL }}
             ES_NODE=${{ secrets.PROD_ES_NODE }}
             JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.PROD_JWT_REFRESH_SECRET }}
             JWT_ACCESS_EXPIRY=15m
             JWT_REFRESH_EXPIRY=7d
             FRONTEND_URL=${{ secrets.PROD_FRONTEND_URL }}
             SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}
+            LOG_LEVEL=${{ secrets.PROD_LOG_LEVEL }}
             SMTP_HOST=${{ secrets.PROD_SMTP_HOST }}
             SMTP_PORT=${{ secrets.PROD_SMTP_PORT }}
             SMTP_USER=${{ secrets.PROD_SMTP_USER }}
@@ -151,7 +162,7 @@ jobs:
             MAIL_HOSTNAME=${{ secrets.PROD_MAIL_HOSTNAME }}
             INBOUND_WEBHOOK_SECRET=${{ secrets.PROD_INBOUND_WEBHOOK_SECRET }}
             SMTP_RELAY=${{ secrets.PROD_SMTP_RELAY }}
-            NEXT_PUBLIC_API_URL=${{ secrets.PROD_FRONTEND_URL }}/api
+            NEXT_PUBLIC_API_URL=/api
             NEXT_PUBLIC_WS_URL=${{ secrets.PROD_WS_URL }}
             NEXT_PUBLIC_APP_NAME=${{ secrets.PROD_APP_NAME }}
             ENV_EOF
