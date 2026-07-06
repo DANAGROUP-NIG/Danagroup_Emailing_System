@@ -113,11 +113,11 @@ function NavSection({
             title={collapsed ? label : undefined}
             {...(onNavigate ? { onClick: onNavigate } : {})}
             className={cn(
-              "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+              "relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dana-blue-500/30",
               collapsed ? "justify-center" : "justify-between",
               active
-                ? "bg-white/15 text-white shadow-sm"
-                : "text-blue-50/80 hover:bg-white/10 hover:text-white",
+                ? "bg-dana-blue-50 text-dana-blue-800 shadow-sm"
+                : "hover:bg-slate-100 hover:text-slate-950",
             )}
           >
             <span className={cn("flex items-center", collapsed ? "" : "gap-3")}>
@@ -130,7 +130,7 @@ function NavSection({
               </span>
             ) : null}
             {badge && collapsed ? (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[8px] font-bold text-dana-blue-700">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-dana-blue-700 text-[8px] font-bold text-white">
                 {badge > 9 ? "9+" : badge}
               </span>
             ) : null}
@@ -142,9 +142,9 @@ function NavSection({
 }
 
 function SectionLabel({ children, collapsed = false }: { children: React.ReactNode; collapsed?: boolean }) {
-  if (collapsed) return <div className="my-2 h-px bg-white/10" />;
+  if (collapsed) return <div className="my-2 h-px bg-slate-200" />;
   return (
-    <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100/50">
+    <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
       {children}
     </p>
   );
@@ -167,7 +167,7 @@ function UserFooter() {
         <button
           type="button"
           aria-label="User menu"
-          className="group flex w-full items-center gap-3 rounded-xl bg-white/10 px-3 py-3 text-left transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dana-blue-500/30"
         >
           <Avatar
             src={user?.avatarUrl}
@@ -175,15 +175,15 @@ function UserFooter() {
             size="sm"
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">
+            <p className="truncate text-sm font-semibold text-slate-900">
               {fullName}
             </p>
-            <p className="truncate text-xs text-blue-100/60">
+            <p className="truncate text-xs text-slate-500">
               {user?.email ?? "user@danagroup.com"}
             </p>
           </div>
           <ChevronDown
-            className="h-4 w-4 shrink-0 text-blue-100/60 transition-transform group-data-[state=open]:rotate-180"
+            className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180"
             aria-hidden="true"
           />
         </button>
@@ -254,11 +254,11 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
   return (
     <div className="flex h-full flex-col">
       {/* Brand header */}
-      <div className={cn("border-b border-white/10 py-4 bg-slate-100", collapsed ? "px-2" : "px-5")}>
+      <div className={cn("border-b border-slate-200 bg-white py-4", collapsed ? "px-2" : "px-5")}>
         <Link
           href="/mail/inbox"
           {...(onNavigate ? { onClick: onNavigate } : {})}
-          className="mb-4 flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-lg"
+          className="mb-4 flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dana-blue-500/30"
           aria-label="DIMS — go to inbox"
         >
           <div className={cn("rounded-lg", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
@@ -271,7 +271,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
         </Link>
 
         {!collapsed && user?.subsidiary?.name && (
-          <p className="mb-3 truncate px-1 text-[11px] font-medium uppercase tracking-widest text-blue-100/50">
+          <p className="mb-3 truncate px-1 text-[11px] font-medium uppercase tracking-widest text-slate-400">
             {user.subsidiary.name}
           </p>
         )}
@@ -284,7 +284,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
           }}
           title={collapsed ? "Compose" : undefined}
           className={cn(
-            "flex w-full items-center justify-center rounded-lg bg-dana-blue-600 text-sm font-semibold text-white transition-colors hover:bg-dana-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+            "flex w-full items-center justify-center rounded-lg bg-dana-blue-700 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-dana-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dana-blue-500/30",
             collapsed ? "px-2 py-2.5" : "gap-2 px-4 py-2.5",
           )}
         >
@@ -294,7 +294,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
       </div>
 
       {/* Scrollable nav */}
-      <div className={cn("flex-1 space-y-5 overflow-y-auto py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20", collapsed ? "px-2" : "px-4")}>
+      <div className={cn("flex-1 space-y-5 overflow-y-auto bg-white py-4 text-slate-700 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200", collapsed ? "px-2" : "px-4")}>
         <NavSection
           items={primaryNav(unreadCount)}
           pathname={pathname}
@@ -321,7 +321,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
       </div>
 
       {/* User footer */}
-      <div className={cn("border-t border-white/10 py-4", collapsed ? "px-2" : "px-5")}>
+      <div className={cn("border-t border-slate-200 bg-white py-4", collapsed ? "px-2" : "px-5")}>
         {collapsed ? (
           <div className="flex justify-center">
             <Avatar
@@ -380,9 +380,9 @@ export default function Sidebar() {
           type="button"
           onClick={toggleSidebarCollapsed}
           aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute -right-4 top-24 z-50 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white/30 bg-dana-blue-700 text-white shadow-lg transition-all hover:bg-dana-blue-600 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          className="absolute -right-4 top-24 z-50 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/30 bg-dana-blue-700 text-white shadow-lg transition-all hover:bg-dana-blue-600 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
-          {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          {sidebarCollapsed ? <ChevronRight className="h-6 w-6" /> : <ChevronLeft className="h-6 w-6" />}
         </button>
       </aside>
 
