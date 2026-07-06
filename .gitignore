@@ -16,6 +16,13 @@ pnpm-debug.log*
 dims-frontend/.next/
 dims-frontend/out/
 dims-frontend/.vercel
+# Generated PWA service-worker artifacts
+dims-frontend/public/sw.js
+dims-frontend/public/sw.js.map
+dims-frontend/public/workbox-*.js
+dims-frontend/public/workbox-*.js.map
+# TypeScript incremental build info
+dims-frontend/tsconfig.tsbuildinfo
 
 # ─── NestJS / Build ───────────────────────────────────────────────────────────
 dims-backend/dist/
