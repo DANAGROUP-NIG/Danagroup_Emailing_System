@@ -1,18 +1,40 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { X, Send, Loader2 } from "lucide-react";
-import { useMailStore } from "@/store/mailStore";
-import { useToast } from "@/components/ui/Toast";
-import { useMail } from '@/hooks/useMail';
+import {
+  AlignLeft,
+  Bold,
+  ChevronDown,
+  Clock3,
+  ImageIcon,
+  Italic,
+  Link2,
+  List,
+  Loader2,
+  Minus,
+  MoreHorizontal,
+  Paperclip,
+  Pilcrow,
+  Save,
+  Send,
+  Smile,
+  Tag,
+  Trash2,
+  Type,
+  Underline,
+  Users,
+  X,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import AttachmentUploader, { UploadedAttachment } from "./AttachmentUploader";
-import { ComposeInput } from "../ui/Input";
-import { Message } from "@/types/mail.types";
-import type { ComposeData } from "@/types/mail.types";
-import { useSignature } from "@/hooks/useSignature";
+
+import AttachmentUploader, { type UploadedAttachment } from "./AttachmentUploader";
+import { useMail } from "@/hooks/useMail";
+import { cn, htmlToText } from "@/lib/utils";
+import { useMailStore } from "@/store/mailStore";
+import type { ComposeData, Message } from "@/types/mail.types";
+import { useToast } from "@/components/ui/Toast";
 
 const parseEmailList = (value?: string) =>
   (value ?? "")
@@ -74,7 +96,13 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const buildBodyHtml = (body: string) => `<p>${escapeHtml(body).replace(/\n/g, '<br>')}</p>`;
+const buildBodyHtml = (body: string) => `<p>${escapeHtml(body).replace(/\n/g, "<br>")}</p>`;
+
+const normalizeEditorHtml = (html: string) =>
+  html.trim() || "<p><br></p>";
+
+const getEditorPlainText = (element: HTMLElement | null) =>
+  (element?.innerText ?? "").replace(/\u00a0/g, " ").trim();
 
 const getRecipientAddress = (recipient: Message["recipients"][number]) =>
   recipient.email || recipient.recipient?.email || "";
@@ -89,7 +117,7 @@ const mapComposeValuesToPayload = (
   values: ComposeFormValues,
   threadId?: string,
   draftId?: string | null,
-  signature?: string | null,
+  bodyHtml?: string,
 ): ComposeData => ({
   draftId: draftId || undefined,
   threadId: threadId || undefined,
@@ -98,7 +126,7 @@ const mapComposeValuesToPayload = (
   bccEmails: parseEmailList(values.bcc),
   subject: values.subject,
   body: values.body,
-  bodyHtml: buildBodyHtmlWithSignature(values.body, signature ?? null),
+  bodyHtml: bodyHtml || buildBodyHtml(values.body),
 });
 
 export default function ComposeModal() {
@@ -111,6 +139,11 @@ export default function ComposeModal() {
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
   const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
   const [isClosing, setIsClosing] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
+  const [bodyHtml, setBodyHtml] = useState("");
+  const editorRef = useRef<HTMLDivElement>(null);
   const isSendingRef = useRef(false);
   const isClosingRef = useRef(false);
   const lastSavedSignatureRef = useRef("");
@@ -118,21 +151,29 @@ export default function ComposeModal() {
   const initializedComposeKeyRef = useRef<string | null>(null);
 
   const { data } = useGetMessage(composeDraftId || "");
-
   const { mutate: sendEmail, isPending } = useSendMail();
   const { mutateAsync: saveDraft } = useSaveDraft();
 
-  const { getValues, register, handleSubmit, reset, watch, formState: { errors } } = useForm<ComposeFormInput>({
+  const {
+    getValues,
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<ComposeFormInput>({
     resolver: zodResolver(sendSchema),
-    defaultValues: { to: '', cc: '', bcc: '', subject: '', body: '' }
+    defaultValues: { to: "", cc: "", bcc: "", subject: "", body: "" },
   });
 
-  const draftData = data as Message; 
+  const draftData = data as Message | undefined;
   const watchedValues = watch();
   const attachmentIds = useMemo(
     () => uploadedAttachments.map((attachment) => attachment.id),
     [uploadedAttachments],
   );
+  const recipientPreview = parseEmailList(watchedValues.to).join(", ");
 
   const buildDraftPayload = useCallback(
     (values: Partial<ComposeFormValues>): ComposeData => ({
@@ -143,10 +184,10 @@ export default function ComposeModal() {
       bccEmails: parseEmailList(values.bcc),
       subject: values.subject?.trim() || "(No Subject)",
       body: values.body || "",
-      bodyHtml: buildBodyHtml(values.body || ""),
+      bodyHtml: normalizeEditorHtml(bodyHtml || buildBodyHtml(values.body || "")),
       attachmentIds,
     }),
-    [attachmentIds, composeDefaults?.threadId, composeDraftId],
+    [attachmentIds, bodyHtml, composeDefaults?.threadId, composeDraftId],
   );
 
   const hasDraftContent = useCallback(
@@ -201,18 +242,82 @@ export default function ComposeModal() {
 
       return savedDraft;
     },
-    [
-      buildDraftPayload,
-      hasDraftContent,
-      isComposeOpen,
-      saveDraft,
-      showToast,
-    ],
+    [buildDraftPayload, hasDraftContent, isComposeOpen, saveDraft, showToast],
   );
 
+  const resetComposeState = useCallback(() => {
+    reset();
+    setUploadedAttachments([]);
+    setShowCc(false);
+    setShowBcc(false);
+    setIsMinimized(false);
+    setBodyHtml("");
+    if (editorRef.current) {
+      editorRef.current.innerHTML = "";
+    }
+    lastSavedSignatureRef.current = "";
+    currentDraftIdRef.current = null;
+    isSendingRef.current = false;
+  }, [reset]);
 
-  // Function to handle saving before closing
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const syncEditorBody = useCallback(() => {
+    const plainText = getEditorPlainText(editorRef.current);
+    const html = plainText ? normalizeEditorHtml(editorRef.current?.innerHTML ?? "") : "";
+
+    setBodyHtml(html);
+    setValue("body", plainText, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  }, [setValue]);
+
+  const setEditorContent = useCallback(
+    (html: string, plainTextFallback = "") => {
+      const normalizedHtml = html || (plainTextFallback ? buildBodyHtml(plainTextFallback) : "");
+      const plainText = htmlToText(normalizedHtml) || plainTextFallback;
+
+      setBodyHtml(normalizedHtml);
+      setValue("body", plainText.trim(), {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: false,
+      });
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML = normalizedHtml;
+      }
+    },
+    [setValue],
+  );
+
+  const focusEditor = useCallback(() => {
+    editorRef.current?.focus();
+  }, []);
+
+  const runEditorCommand = useCallback(
+    (command: string, value?: string) => {
+      focusEditor();
+      document.execCommand(command, false, value);
+      syncEditorBody();
+    },
+    [focusEditor, syncEditorBody],
+  );
+
+  const insertLink = useCallback(() => {
+    const url = window.prompt("Enter a link URL");
+    if (!url) return;
+
+    runEditorCommand("createLink", url);
+  }, [runEditorCommand]);
+
+  const insertImage = useCallback(() => {
+    const url = window.prompt("Enter an image URL");
+    if (!url) return;
+
+    runEditorCommand("insertImage", url);
+  }, [runEditorCommand]);
+
   const handleCloseAndSaveDraft = useCallback(async () => {
     if (isClosingRef.current) {
       return;
@@ -225,7 +330,7 @@ export default function ComposeModal() {
     if (hasDraftContent(values)) {
       try {
         await saveDraftIfNeeded(values, true);
-      } catch (err) {
+      } catch {
         showToast({ title: "Could not save draft", variant: "error" });
         isClosingRef.current = false;
         setIsClosing(false);
@@ -233,23 +338,36 @@ export default function ComposeModal() {
       }
     }
 
-    reset();
-    setUploadedAttachments([]);
-    lastSavedSignatureRef.current = "";
-    currentDraftIdRef.current = null;
+    resetComposeState();
     isClosingRef.current = false;
     setIsClosing(false);
     closeCompose();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closeCompose, getValues, hasDraftContent, reset, saveDraftIfNeeded, showToast]);
+  }, [closeCompose, getValues, hasDraftContent, resetComposeState, saveDraftIfNeeded, showToast]);
+
+  const handleDiscard = useCallback(() => {
+    resetComposeState();
+    setComposeDraftId(null);
+    closeCompose();
+  }, [closeCompose, resetComposeState, setComposeDraftId]);
+
+  const handleManualSaveDraft = useCallback(async () => {
+    try {
+      await saveDraftIfNeeded(getValues(), true);
+    } catch {
+      showToast({ title: "Could not save draft", variant: "error" });
+    }
+  }, [getValues, saveDraftIfNeeded, showToast]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isComposeOpen) handleCloseAndSaveDraft();
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isComposeOpen) {
+        void handleCloseAndSaveDraft();
+      }
     };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isComposeOpen, handleCloseAndSaveDraft]);
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [handleCloseAndSaveDraft, isComposeOpen]);
 
   useEffect(() => {
     if (!isComposeOpen || isClosing || isSendingRef.current) {
@@ -258,21 +376,13 @@ export default function ComposeModal() {
 
     const timeout = window.setTimeout(() => {
       void saveDraftIfNeeded(getValues()).catch(() => {
-        // Keep autosave quiet; explicit close still reports failures.
+        // Autosave stays quiet; explicit close/manual save reports failures.
       });
     }, 2000);
 
     return () => window.clearTimeout(timeout);
-  }, [
-    attachmentIds,
-    getValues,
-    isClosing,
-    isComposeOpen,
-    saveDraftIfNeeded,
-    watchedValues,
-  ]);
+  }, [attachmentIds, getValues, isClosing, isComposeOpen, saveDraftIfNeeded, watchedValues]);
 
-  // Inside your useEffect in ComposeModal
   useEffect(() => {
     if (!isComposeOpen) {
       initializedComposeKeyRef.current = null;
@@ -290,67 +400,71 @@ export default function ComposeModal() {
 
     currentDraftIdRef.current = composeDraftId || null;
     initializedComposeKeyRef.current = composeKey;
+    setIsMinimized(false);
 
-    // If we are editing an EXISTING draft
     if (composeDraftId && draftData) {
-      const toField = draftData.recipients
-        ?.filter((r: Message["recipients"][number]) => r.type === 'to')
-        .map(getRecipientAddress)
-        .filter(Boolean)
-        .join(', ') || '';
-        
-      const ccField = draftData.recipients
-        ?.filter((r: Message["recipients"][number]) => r.type === 'cc')
-        .map(getRecipientAddress)
-        .filter(Boolean)
-        .join(', ') || '';
-
-      const bccField = draftData.recipients
-        ?.filter((r: Message["recipients"][number]) => r.type === 'bcc')
-        .map(getRecipientAddress)
-        .filter(Boolean)
-        .join(', ') || '';
+      const toField =
+        draftData.recipients
+          ?.filter((recipient) => recipient.type === "to")
+          .map(getRecipientAddress)
+          .filter(Boolean)
+          .join(", ") || "";
+      const ccField =
+        draftData.recipients
+          ?.filter((recipient) => recipient.type === "cc")
+          .map(getRecipientAddress)
+          .filter(Boolean)
+          .join(", ") || "";
+      const bccField =
+        draftData.recipients
+          ?.filter((recipient) => recipient.type === "bcc")
+          .map(getRecipientAddress)
+          .filter(Boolean)
+          .join(", ") || "";
 
       reset({
         to: toField,
         cc: ccField,
         bcc: bccField,
-        subject: draftData.subject || '',
-        body: draftData.body || '',
+        subject: draftData.subject || "",
+        body: draftData.body || "",
       });
+      setEditorContent(draftData.bodyHtml || buildBodyHtml(draftData.body || ""), draftData.body || "");
+      setShowCc(Boolean(ccField));
+      setShowBcc(Boolean(bccField));
       lastSavedSignatureRef.current = JSON.stringify(
         buildDraftPayload({
           to: toField,
           cc: ccField,
           bcc: bccField,
-          subject: draftData.subject || '',
-          body: draftData.body || '',
+          subject: draftData.subject || "",
+          body: draftData.body || "",
         }),
       );
-    } 
-    
-    // If we are opening a FRESH compose modal
-    if (!composeDraftId) {
-      const toValue = composeDefaults?.to
-        ? Array.isArray(composeDefaults.to)
-          ? composeDefaults.to.map((r) => r.email).join(', ')
-          : composeDefaults.to
-        : '';
-      reset({
-        to: toValue,
-        cc: composeDefaults?.cc || '',
-        bcc: composeDefaults?.bcc || '',
-        subject: composeDefaults?.subject || '',
-        body: composeDefaults?.body || '',
-      });
-      setUploadedAttachments([]);
-      lastSavedSignatureRef.current = "";
-      isSendingRef.current = false;
+      return;
     }
-    
-  }, [buildDraftPayload, composeDefaults, draftData, isComposeOpen, composeDraftId, reset]);
 
-  // Transformation Logic
+    const toValue = composeDefaults?.to
+      ? Array.isArray(composeDefaults.to)
+        ? composeDefaults.to.map((recipient) => recipient.email).join(", ")
+        : composeDefaults.to
+      : "";
+
+    reset({
+      to: toValue,
+      cc: composeDefaults?.cc || "",
+      bcc: composeDefaults?.bcc || "",
+      subject: composeDefaults?.subject || "",
+      body: composeDefaults?.body || "",
+    });
+    setEditorContent(composeDefaults?.bodyHtml || buildBodyHtml(composeDefaults?.body || ""), composeDefaults?.body || "");
+    setShowCc(Boolean(composeDefaults?.cc));
+    setShowBcc(Boolean(composeDefaults?.bcc));
+    setUploadedAttachments([]);
+    lastSavedSignatureRef.current = "";
+    isSendingRef.current = false;
+  }, [buildDraftPayload, composeDefaults, composeDraftId, draftData, isComposeOpen, reset, setEditorContent]);
+
   const onSubmit = (data: ComposeFormValues) => {
     isSendingRef.current = true;
     const payload = {
@@ -358,7 +472,7 @@ export default function ComposeModal() {
         data,
         composeDefaults?.threadId,
         currentDraftIdRef.current || composeDraftId,
-        signature,
+        bodyHtml,
       ),
       attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
     };
@@ -366,145 +480,380 @@ export default function ComposeModal() {
     sendEmail(payload, {
       onSuccess: () => {
         showToast({ title: "Message sent", variant: "success" });
-        reset();
-        setUploadedAttachments([]);
+        resetComposeState();
         setComposeDraftId(null);
-        lastSavedSignatureRef.current = "";
         closeCompose();
       },
       onError: (err: unknown) => {
         isSendingRef.current = false;
         const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
-        const errorMessage = axiosErr.response?.data?.message || 'Failed to send';
+        const errorMessage = axiosErr.response?.data?.message || "Failed to send";
         showToast({
-          title: Array.isArray(errorMessage) ? (errorMessage[0] ?? 'Failed to send') : (errorMessage || 'Failed to send'),
+          title: Array.isArray(errorMessage) ? (errorMessage[0] ?? "Failed to send") : errorMessage,
           variant: "error",
         });
       },
     });
-
   };
-
-
 
   if (!isComposeOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop Overlay */}
-      <div
-        className="absolute inset-0 bg-black/20 backdrop-blur-[3px]"
-        onClick={handleCloseAndSaveDraft}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6">
+      <button
+        type="button"
+        aria-label="Close compose and save draft"
+        className="absolute inset-0 cursor-default bg-slate-950/20 backdrop-blur-[3px]"
+        onClick={() => void handleCloseAndSaveDraft()}
       />
 
-      {/* Modal form */}
       <form
         onSubmit={handleSubmit(onSubmit)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 flex flex-col bg-white rounded-lg w-[90vw] max-w-[700px] max-h-[85vh] shadow-dana-lg"
+        className={cn(
+          "relative z-10 flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.18)] transition-all duration-200",
+          isMinimized ? "max-w-[520px]" : "max-h-[92vh] max-w-[980px]",
+        )}
       >
-        {/* Header */}
-        <div className="flex shrink-0 justify-between items-center px-4 py-3 bg-dana-red-100/30 rounded-t-lg border-b-4 border-b-dana-blue-500/60">
-          <span id={titleId} className="text-sm font-bold">
-            {composeDefaults?.mode === "reply"
-              ? "Reply"
-              : composeDefaults?.mode === "forward"
-                ? "Forward"
-                : "New Message"}
-          </span>
-          <button
-            type="button"
-            aria-label="Close and save draft"
-            onClick={handleCloseAndSaveDraft}
-            disabled={isClosing}
-            className="hover:bg-red-100 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {isClosing ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
-          </button>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
-          <ComposeInput
-            {...register("to")}
-            type="text"
-            label="To:"
-            placeholder="To (comma separated)"
-            errors={errors.to}
-          />
-
-          <ComposeInput
-            type="text"
-            {...register("cc")}
-            placeholder="Add CC"
-            label="Cc:"
-            errors={errors.cc}
-          />
-
-          <ComposeInput
-            type="text"
-            label="Bcc:"
-            {...register("bcc")}
-            placeholder="Add BCC"
-            errors={errors.bcc}
-          />
-
-          <ComposeInput
-            type="text"
-            label="Subject"
-            {...register("subject")}
-            placeholder="Subject"
-            errors={errors.subject}
-          />
-
-          <div>
-            <label htmlFor={bodyId} className="text-xs font-medium text-muted-foreground">
-              Message body
-            </label>
-            <textarea
-              {...register("body")}
-              id={bodyId}
-              aria-describedby={errors.body ? `${bodyId}-err` : undefined}
-              aria-invalid={errors.body ? true : undefined}
-              placeholder="Write your message..."
-              className="mt-1 min-h-[180px] w-full resize-none rounded-lg border border-gray-200 p-4 text-sm text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            {errors.body && <span id={`${bodyId}-err`} role="alert" className="text-xs text-red-500 px-1">{errors.body.message}</span>}
+        <div className="flex shrink-0 items-center justify-between gap-4 px-5 py-5 sm:px-7">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-dana-blue-50 text-dana-blue-700">
+              <Send className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 id={titleId} className="truncate text-xl font-semibold text-slate-950">
+                {composeDefaults?.mode === "reply"
+                  ? "Reply"
+                  : composeDefaults?.mode === "forward"
+                    ? "Forward"
+                    : "New Message"}
+              </h2>
+              {isMinimized && (
+                <p className="truncate text-sm text-slate-500">
+                  {recipientPreview || watchedValues.subject || "Draft message"}
+                </p>
+              )}
+            </div>
           </div>
 
-          {signature && (
-            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 space-y-1">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                Signature (auto-appended on send)
-              </p>
-              <div
-                className="text-xs text-foreground/70 prose prose-xs max-w-none line-clamp-3"
-                dangerouslySetInnerHTML={{ __html: signature }}
-              />
+          <div className="flex items-center gap-1 text-slate-500">
+            <button
+              type="button"
+              aria-label={isMinimized ? "Restore compose" : "Minimize compose"}
+              onClick={() => setIsMinimized((value) => !value)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Minus className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Close and save draft"
+              onClick={() => void handleCloseAndSaveDraft()}
+              disabled={isClosing}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+            >
+              {isClosing ? <Loader2 size={18} className="animate-spin" /> : <X size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {!isMinimized && (
+          <>
+            <div className="flex-1 overflow-y-auto px-5 pb-5 sm:px-7 scrollbar-thin">
+              <div className="space-y-3">
+                <FieldShell
+                  icon={<Users className="h-5 w-5" aria-hidden="true" />}
+                  label="To"
+                  error={errors.to?.message}
+                  actions={
+                    <div className="flex items-center gap-4 text-sm font-medium text-dana-blue-700">
+                      <button type="button" onClick={() => setShowCc((value) => !value)} className="hover:text-dana-blue-900">
+                        Cc
+                      </button>
+                      <button type="button" onClick={() => setShowBcc((value) => !value)} className="hover:text-dana-blue-900">
+                        Bcc
+                      </button>
+                      <ChevronDown className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                    </div>
+                  }
+                >
+                  <input
+                    {...register("to")}
+                    type="text"
+                    placeholder="Add recipients..."
+                    className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                  />
+                </FieldShell>
+
+                {(showCc || errors.cc) && (
+                  <FieldShell label="Cc" error={errors.cc?.message}>
+                    <input
+                      {...register("cc")}
+                      type="text"
+                      placeholder="Add carbon copy recipients..."
+                      className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                  </FieldShell>
+                )}
+
+                {(showBcc || errors.bcc) && (
+                  <FieldShell label="Bcc" error={errors.bcc?.message}>
+                    <input
+                      {...register("bcc")}
+                      type="text"
+                      placeholder="Add blind copy recipients..."
+                      className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                    />
+                  </FieldShell>
+                )}
+
+                <FieldShell
+                  icon={<Tag className="h-5 w-5" aria-hidden="true" />}
+                  label="Subject"
+                  error={errors.subject?.message}
+                >
+                  <input
+                    {...register("subject")}
+                    type="text"
+                    placeholder="Add a subject..."
+                    className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
+                  />
+                </FieldShell>
+
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <EditorToolbar
+                    onBold={() => runEditorCommand("bold")}
+                    onItalic={() => runEditorCommand("italic")}
+                    onUnderline={() => runEditorCommand("underline")}
+                    onAlignLeft={() => runEditorCommand("justifyLeft")}
+                    onBulletedList={() => runEditorCommand("insertUnorderedList")}
+                    onNumberedList={() => runEditorCommand("insertOrderedList")}
+                    onParagraph={() => runEditorCommand("formatBlock", "p")}
+                    onHeading={() => runEditorCommand("formatBlock", "h3")}
+                    onLink={insertLink}
+                    onImage={insertImage}
+                  />
+                  <input type="hidden" {...register("body")} />
+                  <div
+                    ref={editorRef}
+                    id={bodyId}
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-describedby={errors.body ? `${bodyId}-err` : undefined}
+                    aria-invalid={errors.body ? true : undefined}
+                    contentEditable
+                    suppressContentEditableWarning
+                    data-placeholder="Write your message..."
+                    onInput={syncEditorBody}
+                    onBlur={syncEditorBody}
+                    onPaste={(event) => {
+                      event.preventDefault();
+                      const text = event.clipboardData.getData("text/plain");
+                      document.execCommand("insertText", false, text);
+                      syncEditorBody();
+                    }}
+                    className="dims-compose-editor min-h-[260px] w-full overflow-y-auto bg-white px-6 py-7 text-base leading-7 text-slate-800 outline-none md:min-h-[300px]"
+                  />
+                  {errors.body && (
+                    <span id={`${bodyId}-err`} role="alert" className="block px-6 pb-4 text-xs text-danger">
+                      {errors.body.message}
+                    </span>
+                  )}
+                </div>
+
+                <AttachmentUploader
+                  onChange={setUploadedAttachments}
+                  onError={(message) => showToast({ title: message, variant: "error" })}
+                />
+              </div>
             </div>
-          )}
 
-          <AttachmentUploader
-            onChange={handleAttachmentChange}
-            onError={handleAttachmentError}
-          />
-        </div>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:px-7">
+              <div className="flex min-w-0 items-center gap-3 text-dana-blue-900">
+                <button
+                  type="button"
+                  aria-label="Discard message"
+                  onClick={handleDiscard}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <span className="h-6 w-px bg-slate-200" aria-hidden="true" />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-dana-blue-900">
+                  <Clock3 className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleManualSaveDraft()}
+                  className="inline-flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Save className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="hidden sm:inline">Save draft</span>
+                </button>
+              </div>
 
-        {/* Footer with Submit Button */}
-        <div className="flex shrink-0 items-center justify-end px-4 py-3 border-t-4 border-t-dana-blue-500/60 bg-dana-red-100/30 rounded-b-lg">
-          <button
-            type="submit"
-            aria-label={isPending ? "Sending message…" : "Send message"}
-            disabled={isPending}
-            className="flex items-center gap-2 bg-gradient-to-br from-dana-blue-600 via-dana-blue-400 to-dana-red-500 text-white py-2 px-4 rounded-lg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-          >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
-            <span>Send</span>
-          </button>
-        </div>
+              <button
+                type="submit"
+                aria-label={isPending ? "Sending message..." : "Send message"}
+                disabled={isPending}
+                className="inline-flex h-12 min-w-[150px] items-center justify-center overflow-hidden rounded-xl bg-dana-blue-700 text-white shadow-dana transition-colors hover:bg-dana-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                <span className="inline-flex flex-1 items-center justify-center gap-3 px-5">
+                  {isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Send className="h-5 w-5" aria-hidden="true" />
+                  )}
+                  <span className="font-semibold">Send</span>
+                </span>
+                <span className="flex h-full w-12 items-center justify-center border-l border-white/20">
+                  <ChevronDown className="h-5 w-5" aria-hidden="true" />
+                </span>
+              </button>
+            </div>
+          </>
+        )}
       </form>
+    </div>
+  );
+}
+
+function FieldShell({
+  children,
+  error,
+  icon,
+  label,
+  actions,
+}: {
+  children: React.ReactNode;
+  error?: string | undefined;
+  icon?: React.ReactNode | undefined;
+  label: string;
+  actions?: React.ReactNode | undefined;
+}) {
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex min-h-[72px] items-center gap-4 rounded-xl border bg-white px-4 transition-colors focus-within:border-dana-blue-500 focus-within:ring-2 focus-within:ring-dana-blue-500/10",
+          error ? "border-danger" : "border-slate-200",
+        )}
+      >
+        {icon && (
+          <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-dana-blue-50 text-dana-blue-700 sm:flex">
+            {icon}
+          </span>
+        )}
+        <label className="w-16 shrink-0 text-base font-semibold text-slate-950">{label}</label>
+        {children}
+        {actions}
+      </div>
+      {error && <p className="mt-1 px-2 text-xs text-danger">{error}</p>}
+    </div>
+  );
+}
+
+function ToolbarButton({
+  children,
+  label,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </button>
+  );
+}
+
+function EditorToolbar({
+  onAlignLeft,
+  onBold,
+  onBulletedList,
+  onHeading,
+  onImage,
+  onItalic,
+  onLink,
+  onNumberedList,
+  onParagraph,
+  onUnderline,
+}: {
+  onAlignLeft: () => void;
+  onBold: () => void;
+  onBulletedList: () => void;
+  onHeading: () => void;
+  onImage: () => void;
+  onItalic: () => void;
+  onLink: () => void;
+  onNumberedList: () => void;
+  onParagraph: () => void;
+  onUnderline: () => void;
+}) {
+  return (
+    <div className="flex min-h-[60px] items-center gap-2 overflow-x-auto border-b border-slate-200 px-4 text-slate-600 scrollbar-thin">
+      <button
+        type="button"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={onParagraph}
+        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-medium transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Sans Serif
+        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+      <ToolbarButton label="Heading" onClick={onHeading}>
+        <Type className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Paragraph" onClick={onParagraph}>
+        <Pilcrow className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Bold" onClick={onBold}>
+        <Bold className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Italic" onClick={onItalic}>
+        <Italic className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Underline" onClick={onUnderline}>
+        <Underline className="h-5 w-5" />
+      </ToolbarButton>
+      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+      <ToolbarButton label="Align left" onClick={onAlignLeft}>
+        <AlignLeft className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Bulleted list" onClick={onBulletedList}>
+        <List className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Numbered list" onClick={onNumberedList}>
+        <span className="text-sm font-semibold">1.</span>
+      </ToolbarButton>
+      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+      <ToolbarButton label="Attach file">
+        <Paperclip className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Insert link" onClick={onLink}>
+        <Link2 className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Insert image" onClick={onImage}>
+        <ImageIcon className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="Emoji">
+        <Smile className="h-5 w-5" />
+      </ToolbarButton>
+      <ToolbarButton label="More options">
+        <MoreHorizontal className="h-5 w-5" />
+      </ToolbarButton>
     </div>
   );
 }

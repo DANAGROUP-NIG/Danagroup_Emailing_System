@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/components/ui/Toast";
+import Image from "next/image";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -89,14 +91,8 @@ export default function LoginPage() {
   return (
     <div className="dims-card space-y-8">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">
-          Welcome back
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your DIMS account to continue.
-        </p>
-      </div>
+      <Image src={logo} alt="Dana Group logo" width={144} height={28} className="object-contain mb-6 flex justify-self-center" />
+
 
       {/* Form */}
       <form
@@ -110,10 +106,10 @@ export default function LoginPage() {
         <Input
           {...register("email")}
           id="email"
-          label="Email address"
+          label=""
           type="email"
           autoComplete="email"
-          placeholder="you@danagroup.internal"
+          placeholder="Email address"
           error={errors.email?.message}
           fullWidth
         />
@@ -123,10 +119,10 @@ export default function LoginPage() {
           <Input
             {...register("password")}
             id="password"
-            label="Password"
+            label=""
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder="Password"
             error={errors.password?.message}
             fullWidth
             rightIcon={
@@ -172,6 +168,13 @@ export default function LoginPage() {
         >
           Sign in
         </Button>
+
+        <div className="flex flex-row items-center justify-center gap-1">
+          <Lock className="h-4 w-4 text-slate-500" />
+          <p className="text-xs text-muted-foreground">
+            Dana Group Internal Messaging System (DIMS)
+          </p>
+        </div>
       </form>
     </div>
   );

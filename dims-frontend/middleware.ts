@@ -46,6 +46,9 @@ function generateNonce(): string {
 function buildCSPHeader(nonce: string, isDev: boolean): string {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "";
   const wsConnectExtra = wsUrl ? ` ${wsUrl}` : "";
+  const devConnectExtra = isDev
+    ? " ws://localhost:3000 ws://localhost:3001 ws://127.0.0.1:3000 ws://127.0.0.1:3001 http://localhost:3000 http://localhost:3001 http://127.0.0.1:3000 http://127.0.0.1:3001"
+    : "";
 
   const directives = [
     "default-src 'self'",
@@ -54,8 +57,8 @@ function buildCSPHeader(nonce: string, isDev: boolean): string {
     `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: http://minio:9000 http://localhost:9000 http://localhost https://dims.danagroup.internal https://pravatar.cc https://i.pravatar.cc",
-    `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra}`,
+    "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
+    `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra}${devConnectExtra}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",

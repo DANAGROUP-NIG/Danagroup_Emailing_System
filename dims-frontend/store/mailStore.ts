@@ -18,6 +18,7 @@ export interface ComposeDefaults {
   bcc?: string;
   subject?: string;
   body?: string;
+  bodyHtml?: string;
 }
 
 interface MailStore {
