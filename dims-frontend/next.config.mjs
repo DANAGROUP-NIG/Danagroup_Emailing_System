@@ -65,6 +65,16 @@ const nextConfig = {
         hostname: "dims.danagroup.internal",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "danagroup.net",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.danagroup.net",
+        pathname: "/**",
+      },
     ],
   },
   async headers() {
