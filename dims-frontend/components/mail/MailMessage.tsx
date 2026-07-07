@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
-import { Forward, Reply, Star, Trash2 } from "lucide-react";
+import { Download, Forward, Reply, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";

@@ -42,13 +42,23 @@ export function useUpdateProfile() {
  */
 export function useUpdateAvatar() {
   const queryClient = useQueryClient();
+  const setUser = useAuthStore((s) => s.setUser);
+  const currentUser = useAuthStore((s) => s.user);
   return useMutation<{ avatarUrl: string }, Error, File>({
     mutationFn: async (file: File) => {
       const response = await usersApi.changeAvatar(file);
       return response.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (currentUser) {
+        const updated = { ...currentUser, avatarUrl: data.avatarUrl };
+        setUser(updated);
+        queryClient.setQueryData<User>(['auth', 'me'], (old) =>
+          old ? { ...old, avatarUrl: data.avatarUrl } : old,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
 }

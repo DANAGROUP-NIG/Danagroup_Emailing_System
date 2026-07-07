@@ -83,8 +83,8 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
             name={fullName}
             initials={initials}
             avatarUrl={user.avatarUrl}
-            size="xl"
-            className="flex-shrink-0 ring-4 ring-white"
+            size="2xl"
+            className="flex-shrink-0 rounded-full ring-4 ring-white/90 shadow-xl shadow-black/15"
           />
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
@@ -107,6 +107,7 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
             <Button
               onClick={handleSendMail}
               variant="outline"
+              className="border-white/40 bg-white/95 text-primary hover:border-white hover:bg-white shadow-sm"
             >
               <Mail size={16} className="mr-2" />
               Send Mail
@@ -115,6 +116,7 @@ export function EmployeeProfile({ userId: userIdProp }: EmployeeProfileProps) {
               <Button
                 onClick={() => router.push(`/chat?with=${user.id}`)}
                 variant="outline"
+                className="border-white/40 bg-white/95 text-primary hover:border-white hover:bg-white shadow-sm"
               >
                 <MessageSquare size={16} className="mr-2" />
                 Message

@@ -49,6 +49,12 @@ const nextConfig = {
         pathname: "/minio/**",
       },
       {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3000",
+        pathname: "/minio/**",
+      },
+      {
         protocol: "https",
         hostname: "pravatar.cc",
         port: "",

@@ -35,6 +35,7 @@ import { cn, htmlToText } from "@/lib/utils";
 import { useMailStore } from "@/store/mailStore";
 import type { ComposeData, Message } from "@/types/mail.types";
 import { useToast } from "@/components/ui/Toast";
+import { useSignature } from "@/hooks/useSignature";
 
 const parseEmailList = (value?: string) =>
   (value ?? "")

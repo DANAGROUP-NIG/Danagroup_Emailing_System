@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Paperclip } from 'lucide-react';
 import { filesApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -198,13 +198,14 @@ export default function AttachmentUploader({
           void addFiles(e.dataTransfer.files);
         }}
         className={cn(
-          'relative rounded-xl border border-dashed p-5 transition-colors',
+          'relative cursor-pointer rounded-xl border border-dashed p-5 transition-colors',
           isDragging
             ? 'border-dana-blue-500 bg-dana-blue-50'
             : 'border-slate-300 bg-white hover:border-dana-blue-300',
         )}
       >
         <input
+          id="attachment-file-input"
           ref={fileInputRef}
           type="file"
           multiple
@@ -217,26 +218,25 @@ export default function AttachmentUploader({
           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp"
         />
 
-        <div className="flex items-center gap-4">
+        <label
+          htmlFor="attachment-file-input"
+          className="flex cursor-pointer items-center gap-4"
+        >
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-dana-blue-50 text-dana-blue-700">
             <Paperclip className="h-6 w-6" aria-hidden="true" />
           </span>
           <div className="min-w-0 text-left">
             <p className="text-base font-medium text-slate-900">
               Drag & drop files here or{" "}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="font-semibold text-dana-blue-700 hover:text-dana-blue-900 hover:underline"
-              >
+              <span className="font-semibold text-dana-blue-700 hover:text-dana-blue-900 hover:underline">
                 browse
-              </button>
+              </span>
             </p>
             <p className="mt-1 text-sm text-slate-500">
               PDF, DOC, DOCX, XLS, XLSX, PNG, JPG up to 20MB each (50MB total)
             </p>
           </div>
-        </div>
+        </label>
       </div>
 
       {errorMessage ? (

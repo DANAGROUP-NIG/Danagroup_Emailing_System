@@ -140,59 +140,75 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
 
   return (
     <>
-      {/* Avatar Display */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative">
+      <div className="flex flex-col items-center gap-5">
+        {/* Large avatar preview with hover upload overlay */}
+        <div className="relative group">
           <Avatar
             name={fullName}
             initials={initials}
             avatarUrl={user.avatarUrl}
-            size="xl"
-            className="ring-4 ring-primary-light"
+            size="3xl"
+            className="rounded-full ring-4 ring-border shadow-xl"
           />
           <button
+            type="button"
             onClick={handleUploadClick}
             disabled={updateAvatar.isPending}
             className={cn(
-              'absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-dana',
-              updateAvatar.isPending && 'opacity-50 cursor-not-allowed'
+              'absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              updateAvatar.isPending && 'cursor-not-allowed opacity-60'
             )}
             title="Upload new picture"
+            aria-label="Upload new picture"
           >
-            <Upload className="h-5 w-5" />
+            <Upload className="h-8 w-8" />
           </button>
         </div>
 
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">Profile Picture</p>
+          <p className="text-sm font-medium text-foreground">{fullName}</p>
           <p className="text-xs text-muted-foreground">JPG or PNG, max 5MB</p>
         </div>
-      </div>
 
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFileSelect(file);
-        }}
-      />
+        <div className="flex w-full max-w-xs flex-col items-center gap-3">
+          {/* Hidden File Input */}
+          <input
+            id="profile-photo-input"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
 
-      {/* Drag-Drop Zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        className="border-2 border-dashed border-border rounded-lg p-6 text-center transition-colors hover:border-primary hover:bg-primary-light/10 cursor-pointer"
-        onClick={handleUploadClick}
-      >
-        <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm font-medium text-foreground">
-          Drag and drop your photo here
-        </p>
-        <p className="text-xs text-muted-foreground">or click to browse</p>
+          <Button
+            type="button"
+            onClick={handleUploadClick}
+            disabled={updateAvatar.isPending}
+            variant="primary"
+            size="sm"
+            className="w-full"
+          >
+            <Upload className="h-4 w-4" />
+            {updateAvatar.isPending ? 'Uploading...' : 'Upload new photo'}
+          </Button>
+
+          {/* Drag-Drop Zone */}
+          <label
+            htmlFor="profile-photo-input"
+            className={cn(
+              'w-full cursor-pointer rounded-lg border border-dashed border-border p-4 text-center transition-colors hover:border-primary hover:bg-primary-light/10',
+              updateAvatar.isPending && 'pointer-events-none opacity-50'
+            )}
+          >
+            <p className="text-xs text-muted-foreground">
+              or drag and drop a photo here
+            </p>
+          </label>
+        </div>
       </div>
 
       {/* Crop Modal */}

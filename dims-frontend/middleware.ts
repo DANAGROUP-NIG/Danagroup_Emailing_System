@@ -57,7 +57,7 @@ function buildCSPHeader(nonce: string, isDev: boolean): string {
     `script-src 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://res.cloudinary.com http://minio:9000 https://dims.danagroup.internal",
+    "img-src 'self' data: blob: http://minio:9000 http://localhost:9000 http://localhost:3000 https://dims.danagroup.internal",
     `connect-src 'self' ws://dims.danagroup.internal wss://dims.danagroup.internal http://localhost:8000 ws://localhost:8000${wsConnectExtra}${devConnectExtra}`,
     "frame-ancestors 'none'",
     "form-action 'self'",

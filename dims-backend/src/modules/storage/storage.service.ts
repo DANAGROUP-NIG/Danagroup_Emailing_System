@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleInit,
 } from "@nestjs/common";
 import * as Minio from "minio";
 import { Readable } from "stream";
@@ -50,13 +51,24 @@ const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20 MB
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
 
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(
     @Inject(MINIO_CLIENT) private readonly minioClient: Minio.Client,
     @Inject(MINIO_BUCKET) private readonly bucket: string,
   ) {}
+
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
+
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.ensurePublicReadPolicy();
+      this.logger.log(`Bucket policy applied for bucket: ${this.bucket}`);
+    } catch (err) {
+      this.logger.warn(`Could not apply bucket policy on init: ${(err as Error).message}`);
+    }
+  }
 
   // ─── Bucket lifecycle ──────────────────────────────────────────────────────
 
@@ -79,7 +91,11 @@ export class StorageService {
           Effect: "Allow",
           Principal: { AWS: ["*"] },
           Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${target}/avatars/*`],
+          Resource: [
+            `arn:aws:s3:::${target}/avatars/*`,
+            `arn:aws:s3:::${target}/attachments/*`,
+            `arn:aws:s3:::${target}/uploads/*`,
+          ],
         },
       ],
     };
