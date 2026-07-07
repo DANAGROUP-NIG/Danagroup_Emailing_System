@@ -6,30 +6,30 @@ export class AddExternalMailColumns1781000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "messages"
-        ADD COLUMN IF NOT EXISTS "isInbound"            BOOLEAN      NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS "externalSenderEmail"  VARCHAR(320)
+        ADD COLUMN IF NOT EXISTS "is_inbound"            BOOLEAN      NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "external_sender_email"  VARCHAR(320)
     `);
 
     await queryRunner.query(`
       ALTER TABLE "message_recipients"
-        ADD COLUMN IF NOT EXISTS "externalEmail" VARCHAR(320)
+        ADD COLUMN IF NOT EXISTS "external_email" VARCHAR(320)
     `);
 
     await queryRunner.query(`
       ALTER TABLE "message_recipients"
-        ALTER COLUMN "recipientId" DROP NOT NULL
+        ALTER COLUMN "recipient_id" DROP NOT NULL
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "messages"
-        DROP COLUMN IF EXISTS "isInbound",
-        DROP COLUMN IF EXISTS "externalSenderEmail"
+        DROP COLUMN IF EXISTS "is_inbound",
+        DROP COLUMN IF EXISTS "external_sender_email"
     `);
     await queryRunner.query(`
       ALTER TABLE "message_recipients"
-        DROP COLUMN IF EXISTS "externalEmail"
+        DROP COLUMN IF EXISTS "external_email"
     `);
   }
 }

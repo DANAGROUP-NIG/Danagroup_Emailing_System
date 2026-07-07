@@ -39,10 +39,10 @@ export class ChatMessage {
   @ManyToOne(() => ChatConversation, (conv) => conv.messages, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "conversationId" })
+  @JoinColumn({ name: "conversation_id" })
   conversation: ChatConversation;
 
   @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: "senderId" })
+  @JoinColumn({ name: "sender_id" })
   sender: User;
 }

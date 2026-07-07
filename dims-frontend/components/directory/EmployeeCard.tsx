@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { User } from '@/types/user.types';
 import { Avatar, getInitials } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Mail, ArrowRight } from 'lucide-react';
+import { Mail, ArrowRight, MessageSquare } from 'lucide-react';
 import { useMailStore } from '@/store/mailStore';
+import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 
 interface EmployeeCardProps {
@@ -16,6 +17,7 @@ interface EmployeeCardProps {
 export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
   const router = useRouter();
   const openCompose = useMailStore((state) => state.openCompose);
+  const currentUser = useAuthStore((s) => s.user);
 
   const handleSendMail = () => {
     if (onSendMail) {
@@ -31,6 +33,10 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
         ],
       });
     }
+  };
+
+  const handleMessage = () => {
+    router.push(`/chat?with=${user.id}`);
   };
 
   const handleClick = () => {
@@ -101,17 +107,29 @@ export default function EmployeeCard({ user, onSendMail }: EmployeeCardProps) {
           className="flex-1"
         >
           <Mail size={16} className="mr-1" aria-hidden="true" />
-          <span className="hidden sm:inline">Send Mail</span>
+          <span className="hidden sm:inline">Mail</span>
           <span className="sm:hidden">Mail</span>
         </Button>
-        <Button
+        {currentUser?.id !== user.id && (
+          <Button
+            onClick={handleMessage}
+            size="sm"
+            variant="outline"
+            className="flex-1"
+          >
+            <MessageSquare size={16} className="mr-1" aria-hidden="true" />
+            <span className="hidden sm:inline">Message</span>
+            <span className="sm:hidden">Msg</span>
+          </Button>
+        )}
+        {/* <Button
           onClick={handleClick}
           size="sm"
           variant="outline"
           className="flex-1"
         >
           Profile
-        </Button>
+        </Button> */}
       </div>
     </article>
   );

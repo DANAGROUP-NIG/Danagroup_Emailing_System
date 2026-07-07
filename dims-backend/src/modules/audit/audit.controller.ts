@@ -1,9 +1,10 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { ApiTags, ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsDateString,
   IsIn,
-  IsNumberString,
+  IsInt,
   IsOptional,
   IsUUID,
 } from "class-validator";
@@ -41,11 +42,13 @@ class AuditQueryDto {
   to?: string;
 
   @IsOptional()
-  @IsNumberString()
+  @Type(() => Number)
+  @IsInt()
   page?: number;
 
   @IsOptional()
-  @IsNumberString()
+  @Type(() => Number)
+  @IsInt()
   limit?: number;
 }
 

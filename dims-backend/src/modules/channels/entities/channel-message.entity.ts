@@ -31,10 +31,10 @@ export class ChannelMessage {
 
   // ---- RELATIONSHIPS ----
   @ManyToOne(() => Channel, (c) => c.messages, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "channelId" })
+  @JoinColumn({ name: "channel_id" })
   channel: Channel;
 
   @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: "senderId" })
+  @JoinColumn({ name: "sender_id" })
   sender: User;
 }

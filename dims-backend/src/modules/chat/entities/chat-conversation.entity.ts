@@ -38,11 +38,11 @@ export class ChatConversation {
 
   // ---- RELATIONSHIPS ----
   @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: "participantAId" })
+  @JoinColumn({ name: "participant_a_id" })
   participantA: User;
 
   @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: "participantBId" })
+  @JoinColumn({ name: "participant_b_id" })
   participantB: User;
 
   @OneToMany(() => ChatMessage, (message) => message.conversation)

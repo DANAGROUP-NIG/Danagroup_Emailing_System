@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { MessageSquare, ArrowLeft } from "lucide-react";
+import { MessageSquare, ArrowLeft, Plus } from "lucide-react";
 import {
   useConversations,
   useMessages,
@@ -16,6 +16,7 @@ import ConversationList from "@/components/chat/ConversationList";
 import MessageThread from "@/components/chat/MessageThread";
 import MessageInput from "@/components/chat/MessageInput";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
 import type { ChatConversation } from "@/types/chat.types";
 
 export default function ChatPage() {
@@ -108,9 +109,20 @@ export default function ChatPage() {
         `}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-4">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold text-foreground">Messages</h1>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
+          <div className="flex items-center gap-3">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold text-foreground">Messages</h1>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push("/directory")}
+            aria-label="Start a new message"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New
+          </Button>
         </div>
 
         {/* List */}

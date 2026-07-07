@@ -50,7 +50,7 @@ export class Channel {
 
   // ---- RELATIONSHIPS ----
   @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: "createdById" })
+  @JoinColumn({ name: "created_by_id" })
   createdBy: User;
 
   @OneToMany(() => ChannelMember, (m) => m.channel, { cascade: true })

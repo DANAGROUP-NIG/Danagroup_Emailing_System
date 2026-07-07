@@ -7,33 +7,33 @@ export class CreateAuditLogs1781300000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE "audit_logs" (
         "id"          UUID         NOT NULL DEFAULT gen_random_uuid(),
-        "actorId"     UUID,
-        "actorEmail"  VARCHAR(320),
+        "actor_id"     UUID,
+        "actor_email"  VARCHAR(320),
         "action"      VARCHAR(80)  NOT NULL,
         "resource"    VARCHAR(80)  NOT NULL,
-        "resourceId"  UUID,
+        "resource_id"  UUID,
         "meta"        JSONB,
-        "ipAddress"   VARCHAR(45),
-        "userAgent"   VARCHAR(512),
-        "statusCode"  SMALLINT     NOT NULL DEFAULT 200,
-        "createdAt"   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+        "ip_address"   VARCHAR(45),
+        "user_agent"   VARCHAR(512),
+        "status_code"  SMALLINT     NOT NULL DEFAULT 200,
+        "created_at"   TIMESTAMPTZ  NOT NULL DEFAULT now(),
         CONSTRAINT "PK_audit_logs" PRIMARY KEY ("id"),
         CONSTRAINT "FK_audit_logs_actor"
-          FOREIGN KEY ("actorId") REFERENCES "users"("id") ON DELETE SET NULL
+          FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE SET NULL
       )
     `);
 
     await queryRunner.query(
-      `CREATE INDEX "IDX_audit_logs_actorId"   ON "audit_logs" ("actorId")`,
+      `CREATE INDEX "IDX_audit_logs_actorId"   ON "audit_logs" ("actor_id")`,
     );
     await queryRunner.query(
       `CREATE INDEX "IDX_audit_logs_action"    ON "audit_logs" ("action")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_audit_logs_resource"  ON "audit_logs" ("resource", "resourceId")`,
+      `CREATE INDEX "IDX_audit_logs_resource"  ON "audit_logs" ("resource", "resource_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_audit_logs_createdAt" ON "audit_logs" ("createdAt")`,
+      `CREATE INDEX "IDX_audit_logs_createdAt" ON "audit_logs" ("created_at")`,
     );
   }
 
