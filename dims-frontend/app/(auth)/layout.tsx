@@ -95,7 +95,6 @@ export default function AuthLayout({
               {/* <Suspense fallback={null}>
                 <AuthModeSwitch />
               </Suspense> */}
-              
               {children}
             </div>
           </div>

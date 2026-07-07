@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/components/ui/Toast";
+import Image from "next/image";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -89,9 +91,8 @@ export default function LoginPage() {
   return (
     <div className="dims-card space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-self-center bg-dana-blue-100/60 p-4 rounded-full w-16 h-16">
-        <Mail className="mx-auto h-10 w-10 text-primary" />
-      </div>
+      <Image src={logo} alt="Dana Group logo" width={144} height={28} className="object-contain mb-6 flex justify-self-center" />
+
 
       {/* Form */}
       <form
@@ -167,6 +168,13 @@ export default function LoginPage() {
         >
           Sign in
         </Button>
+
+        <div className="flex flex-row items-center justify-center gap-1">
+          <Lock className="h-4 w-4 text-slate-500" />
+          <p className="text-xs text-muted-foreground">
+            Dana Group Internal Messaging System (DIMS)
+          </p>
+        </div>
       </form>
     </div>
   );
