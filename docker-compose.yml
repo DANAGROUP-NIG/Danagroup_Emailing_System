@@ -171,6 +171,7 @@ services:
       - POSTFIX_myhostname=${MAIL_HOSTNAME:-mail.danagroup.net}
       - POSTFIX_mydestination=${MAIL_DOMAIN:-danagroup.net} localhost
       - POSTFIX_transport_maps=hash:/etc/postfix/transport
+      - POSTFIX_export_environment=TZ MAIL_CONFIG LANG INBOUND_WEBHOOK_SECRET
       - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
       - DKIM_SELECTOR=mail
       - DKIM_AUTOGENERATE=true
