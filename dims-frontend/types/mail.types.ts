@@ -42,12 +42,13 @@ export interface ParticipantSummary {
 export interface MessageRecipient {
   id: string;
   type: RecipientType;
-  recipientId: string;
+  recipientId: string | null;
   email?: string | null;
   name?: string;
   avatarUrl?: string | null;
   isRead: boolean;
   isStarred: boolean;
+  externalEmail?: string | null;
   isDeleted: boolean;
   isArchived?: boolean;
   readAt?: string | null;
@@ -82,6 +83,8 @@ export interface ThreadMessage {
   isRead: boolean;
   isStarred: boolean;
   preview: string;
+  isInbound?: boolean;
+  externalSenderEmail?: string | null;
 }
 
 export interface MailThreadSummary {

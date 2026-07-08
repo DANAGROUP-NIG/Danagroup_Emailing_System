@@ -84,12 +84,12 @@ function formatRecipientList(
 ) {
   return recipients
     .filter((recipient) => recipient.type === type)
-    .map((recipient) => recipient.email || recipient.recipient?.email)
+    .map((recipient) => recipient.email || recipient.externalEmail || recipient.recipient?.email)
     .filter((email): email is string => Boolean(email))
     .join(", ");
 }
 
 function extractDomain(email: string): string {
   const parts = email.split("@");
-  return parts.length > 1 ? parts[parts.length - 1] : email;
+  return parts.length > 1 ? (parts[parts.length - 1] ?? email) : email;
 }
