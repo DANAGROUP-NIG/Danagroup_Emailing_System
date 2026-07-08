@@ -7,6 +7,7 @@ import { Download, Forward, Reply, Star, Trash2 } from "lucide-react";
 import { useDeleteMail, useMarkRead, useStarMail } from "@/hooks/useMail";
 import { filesApi } from "@/lib/api";
 import { Message } from "@/types/mail.types";
+import MessageDetailsDropdown from "./MessageDetailsDropdown";
 
 import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
@@ -133,9 +134,10 @@ export default function MailMessage({
                 <span className="shrink-0 h-2 w-2 rounded-full bg-blue-500" aria-label="Unread" />
               )}
             </div>
-            <span className="block text-xs text-slate-400 mt-0.5">
-              To: {toLine || "me"}
-            </span>
+            <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+              <span>To: {toLine || "me"}</span>
+              <MessageDetailsDropdown message={message} />
+            </div>
           </div>
         </div>
 
