@@ -168,6 +168,8 @@ jobs:
             MAIL_HOSTNAME=${{ secrets.PROD_MAIL_HOSTNAME }}
             INBOUND_WEBHOOK_SECRET=${{ secrets.PROD_INBOUND_WEBHOOK_SECRET }}
             SMTP_RELAY=${{ secrets.PROD_SMTP_RELAY }}
+            SMTP_RELAY_USER=${{ secrets.PROD_SMTP_RELAY_USER }}
+            SMTP_RELAY_PASS=${{ secrets.PROD_SMTP_RELAY_PASS }}
             NEXT_PUBLIC_API_URL=/api
             NEXT_PUBLIC_WS_URL=${{ secrets.PROD_WS_URL }}
             NEXT_PUBLIC_APP_NAME=${{ secrets.PROD_APP_NAME }}
