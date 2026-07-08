@@ -171,6 +171,7 @@ services:
       - POSTFIX_transport_maps=hash:/etc/postfix/transport
       - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
       - DKIM_SELECTOR=mail
+      - DKIM_AUTOGENERATE=true
     volumes:
       - postfix_data:/var/spool/postfix
       - postfix_dkim_keys:/etc/opendkim/keys
