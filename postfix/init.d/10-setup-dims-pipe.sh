@@ -13,6 +13,8 @@ EOF
 fi
 
 if [ -f /etc/postfix/transport ]; then
-  echo "Building transport map database..."
-  postmap /etc/postfix/transport
+  echo "Building transport map database in writable volume..."
+  cp /etc/postfix/transport /var/spool/postfix/transport
+  postmap /var/spool/postfix/transport
+  postconf -e "transport_maps=lmdb:/var/spool/postfix/transport"
 fi
