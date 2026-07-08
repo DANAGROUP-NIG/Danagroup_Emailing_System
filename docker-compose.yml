@@ -58,7 +58,8 @@ services:
     container_name: dims_api
     env_file:
       - .env
-      - ./dims-backend/.env
+      - path: ./dims-backend/.env
+        required: false
     environment:
       - PORT=8000
       - REDIS_HOST=redis
