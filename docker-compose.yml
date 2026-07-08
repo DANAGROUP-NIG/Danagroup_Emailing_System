@@ -168,12 +168,15 @@ services:
       - RELAYHOST=${SMTP_RELAY:-}
       - POSTFIX_myhostname=${MAIL_HOSTNAME:-mail.danagroup.net}
       - POSTFIX_mydestination=${MAIL_DOMAIN:-danagroup.net} localhost
-      # Pipe inbound mail to DIMS webhook
       - POSTFIX_transport_maps=hash:/etc/postfix/transport
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
+      - DKIM_SELECTOR=mail
     volumes:
       - postfix_data:/var/spool/postfix
+      - postfix_dkim_keys:/etc/opendkim/keys
       - ./postfix/transport:/etc/postfix/transport:ro
       - ./postfix/pipe-to-dims.sh:/usr/local/bin/pipe-to-dims.sh:ro
+      - ./postfix/init.d:/docker-init.d:ro
     ports:
       - "25:25"    # Inbound SMTP from internet
       - "587:587"  # Submission (DIMS → Postfix → internet)
@@ -215,6 +218,7 @@ volumes:
   es_data:
   nginx_logs:
   postfix_data:
+  postfix_dkim_keys:
 
 # ─── Networks ─────────────────────────────────────────────────────────────────
 networks:
