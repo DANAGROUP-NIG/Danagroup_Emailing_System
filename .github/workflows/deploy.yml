@@ -192,7 +192,7 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
             echo "Running database migrations..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api npm run migration:run
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api node ./node_modules/typeorm/cli.js -d dist/typeorm.config.js migration:run
 
             echo "Waiting for health check..."
             sleep 20
