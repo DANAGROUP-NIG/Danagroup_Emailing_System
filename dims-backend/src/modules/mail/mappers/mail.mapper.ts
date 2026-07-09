@@ -57,6 +57,27 @@ export class MailMapper {
     };
   }
 
+  /**
+   * For inbound messages from external senders, return the external
+   * sender info instead of the internal user placeholder.
+   */
+  private static resolveMessageSender(message: Message) {
+    if (message.isInbound && message.externalSenderEmail) {
+      const email = message.externalSenderEmail;
+      // Derive a display name from the email local part (e.g. "chukwuj40" from "chukwuj40@gmail.com")
+      const localPart = email.split("@")[0] ?? email;
+      return {
+        id: "external",
+        email,
+        name: localPart,
+        firstName: localPart,
+        lastName: "",
+        avatarUrl: null,
+      };
+    }
+    return null;
+  }
+
   static getLatestMessage(thread: Thread): Message | null {
     if (!thread.messages?.length) {
       return null;
@@ -111,6 +132,7 @@ export class MailMapper {
   }
 
   static toListMessage(message: Message, currentUserId?: string) {
+    const externalSender = this.resolveMessageSender(message);
     return {
       id: message.id,
       threadId: message.threadId,
@@ -118,7 +140,7 @@ export class MailMapper {
       bodyHtml: message.bodyHtml,
       createdAt: message.createdAt,
       sentAt: message.sentAt,
-      sender: this.toSenderSummary(message.sender),
+      sender: externalSender ?? this.toSenderSummary(message.sender),
       recipients: this.getVisibleRecipients(message, currentUserId).map(
         (recipient) => this.toRecipient(recipient),
       ),
@@ -152,6 +174,8 @@ export class MailMapper {
         ) ?? null)
       : null;
 
+    const externalSender = this.resolveMessageSender(message);
+
     return {
       id: message.id,
       threadId: message.threadId,
@@ -162,7 +186,7 @@ export class MailMapper {
       sentAt: message.sentAt,
       createdAt: message.createdAt,
       senderDeletedAt: message.senderDeletedAt,
-      sender: this.toParticipant(message.sender),
+      sender: externalSender ?? this.toParticipant(message.sender),
       recipients: this.getVisibleRecipients(message, currentUserId).map(
         (recipient) => this.toRecipient(recipient),
       ),
