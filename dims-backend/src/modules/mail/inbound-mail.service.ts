@@ -30,6 +30,7 @@ export class InboundMailService {
     const parsed = await simpleParser(rawEmail);
 
     const fromAddress = this.extractFirstAddress(parsed.from);
+    const fromName = this.extractFirstName(parsed.from);
     const subject = parsed.subject ?? "(no subject)";
     const bodyText = parsed.text ?? "";
     const bodyHtml = parsed.html || undefined;
@@ -100,6 +101,7 @@ export class InboundMailService {
         sentAt: parsed.date ?? new Date(),
         isInbound: true,
         externalSenderEmail: fromAddress,
+        externalSenderName: fromName,
       });
 
       const savedMessage = await manager.save(message);
@@ -149,6 +151,14 @@ export class InboundMailService {
     if (!addr) return null;
     const obj = Array.isArray(addr) ? addr[0] : addr;
     return obj?.value?.[0]?.address?.toLowerCase() ?? null;
+  }
+
+  private extractFirstName(
+    addr: AddressObject | AddressObject[] | undefined,
+  ): string | null {
+    if (!addr) return null;
+    const obj = Array.isArray(addr) ? addr[0] : addr;
+    return obj?.value?.[0]?.name || null;
   }
 
   private extractAddresses(
