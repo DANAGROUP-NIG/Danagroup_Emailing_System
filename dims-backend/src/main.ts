@@ -29,7 +29,7 @@ async function bootstrap() {
     // by NestJS's default body parser).
     app.use(
       "/api/mail/inbound",
-      bodyParser.raw({ type: "message/rfc822" }),
+      bodyParser.raw({ type: "message/rfc822", limit: "25mb" }),
       (req: Request, _res: Response, next: NextFunction) => {
         (req as RawBodyRequest<Request>).rawBody = req.body as Buffer;
         next();

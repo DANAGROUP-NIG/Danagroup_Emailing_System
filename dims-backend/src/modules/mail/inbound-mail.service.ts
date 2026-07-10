@@ -9,6 +9,8 @@ import { Attachment } from "@modules/files/entities/attachment.entity";
 import { User } from "@modules/users/entities/user.entity";
 import { NotificationsService } from "@modules/notifications/notifications.service";
 import { StorageService } from "@modules/storage/storage.service";
+import { MailCoreService } from "./mail-core.service";
+import { JobsService } from "@jobs/jobs.service";
 import type { RecipientType } from "./entities/message-recipient.entity";
 
 @Injectable()
@@ -27,6 +29,8 @@ export class InboundMailService {
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
+    private readonly mailCoreService: MailCoreService,
+    private readonly jobsService: JobsService,
   ) {}
 
   async processRaw(rawEmail: Buffer | string): Promise<void> {
@@ -73,6 +77,11 @@ export class InboundMailService {
     }
 
     const emailToUser = new Map(internalUsers.map((u) => [u.email, u]));
+
+    // Store results from the transaction for post-transaction side-effects
+    let savedMessageId: string;
+    let savedThreadId: string;
+    let savedSentAt: Date;
 
     await this.dataSource.transaction(async (manager) => {
       // Find or create thread (match by subject for simplicity; In-Reply-To header would be better)
@@ -187,10 +196,76 @@ export class InboundMailService {
       thread.snippet = bodyText.slice(0, 140);
       await manager.save(thread);
 
+      // Refresh UserThreadState for each internal recipient (updates unread counts)
+      for (const user of internalUsers) {
+        await this.mailCoreService.refreshUserThreadState(
+          manager,
+          thread.id,
+          user.id,
+        );
+      }
+
+      // Store for post-transaction side-effects
+      savedMessageId = savedMessage.id;
+      savedThreadId = thread.id;
+      savedSentAt = savedMessage.sentAt;
+
       this.logger.log(
         `Inbound email from ${fromAddress} → ${internalUsers.length} internal recipient(s), messageId=${savedMessage.id}, attachments=${parsed.attachments?.length ?? 0}`,
       );
     });
+
+    // ─── Post-transaction: WebSocket events + notifications ──────────────
+    // These run after the transaction commits so the data is visible to clients
+
+    const senderDisplayName =
+      fromName || fromAddress.split("@")[0] || fromAddress;
+
+    for (const user of internalUsers) {
+      // Emit real-time mailbox_changed so the inbox updates instantly
+      this.mailCoreService.emitMailboxChanged(user.id, {
+        action: "message_received",
+        messageId: savedMessageId,
+        threadId: savedThreadId,
+        folders: ["inbox"],
+      });
+
+      // Enqueue notification job (creates DB notification + emits WebSocket notification event)
+      try {
+        await this.jobsService.enqueueNotification({
+          userId: user.id,
+          type: "new_mail",
+          title: `New mail from ${senderDisplayName}`,
+          body: subject,
+          referenceId: savedThreadId,
+          eventPayload: {
+            event: "new_mail",
+            data: {
+              action: "message_received",
+              messageId: savedMessageId,
+              threadId: savedThreadId,
+              folders: ["inbox"],
+              subject,
+              sender: {
+                id: "external",
+                email: fromAddress,
+                firstName: senderDisplayName,
+                lastName: "",
+              },
+              recipient: {
+                id: user.id,
+                email: user.email,
+              },
+              sentAt: savedSentAt,
+            },
+          },
+        });
+      } catch (err) {
+        this.logger.error(
+          `Failed to enqueue notification for user ${user.id}: ${(err as Error).message}`,
+        );
+      }
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -222,3 +297,4 @@ export class InboundMailService {
       .filter((e): e is string => !!e);
   }
 }
+
