@@ -5,8 +5,10 @@ import { simpleParser, type AddressObject } from "mailparser";
 import { Message } from "./entities/message.entity";
 import { Thread } from "./entities/thread.entity";
 import { MessageRecipient } from "./entities/message-recipient.entity";
+import { Attachment } from "@modules/files/entities/attachment.entity";
 import { User } from "@modules/users/entities/user.entity";
 import { NotificationsService } from "@modules/notifications/notifications.service";
+import { StorageService } from "@modules/storage/storage.service";
 import type { RecipientType } from "./entities/message-recipient.entity";
 
 @Injectable()
@@ -24,6 +26,7 @@ export class InboundMailService {
     private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly storageService: StorageService,
   ) {}
 
   async processRaw(rawEmail: Buffer | string): Promise<void> {
@@ -106,6 +109,53 @@ export class InboundMailService {
 
       const savedMessage = await manager.save(message);
 
+      // ─── Save inbound attachments ──────────────────────────────────────
+      if (parsed.attachments?.length) {
+        this.logger.log(
+          `Processing ${parsed.attachments.length} attachment(s) from inbound email`,
+        );
+
+        for (const att of parsed.attachments) {
+          try {
+            const filename = att.filename || "unnamed-attachment";
+            const mimeType = att.contentType || "application/octet-stream";
+            const buffer = att.content;
+
+            // Upload to MinIO
+            const uploadResult = await this.storageService.uploadBuffer(
+              buffer,
+              buffer.length,
+              mimeType,
+              {
+                folder: "attachments",
+                filename,
+              },
+            );
+
+            // Create Attachment entity linked to the saved message
+            const attachment = manager.create(Attachment, {
+              uploaderId: primaryRecipient.id,
+              filename,
+              mime_type: mimeType,
+              sizeBytes: buffer.length,
+              storageKey: uploadResult.storageKey,
+              messageId: savedMessage.id,
+            });
+
+            await manager.save(attachment);
+
+            this.logger.log(
+              `Saved inbound attachment: ${filename} (${buffer.length} bytes) → ${uploadResult.storageKey}`,
+            );
+          } catch (err) {
+            this.logger.error(
+              `Failed to save inbound attachment "${att.filename}": ${(err as Error).message}`,
+            );
+            // Continue processing other attachments — don't fail the whole email
+          }
+        }
+      }
+
       // Create recipient rows for all internal users who received this
       const recipientEntities: MessageRecipient[] = [];
 
@@ -138,7 +188,7 @@ export class InboundMailService {
       await manager.save(thread);
 
       this.logger.log(
-        `Inbound email from ${fromAddress} → ${internalUsers.length} internal recipient(s), messageId=${savedMessage.id}`,
+        `Inbound email from ${fromAddress} → ${internalUsers.length} internal recipient(s), messageId=${savedMessage.id}, attachments=${parsed.attachments?.length ?? 0}`,
       );
     });
   }

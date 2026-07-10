@@ -4,6 +4,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../modules/users/entities/user.entity";
 import { MessageRecipient } from "../modules/mail/entities/message-recipient.entity";
 import { Message } from "../modules/mail/entities/message.entity";
+import { Attachment } from "../modules/files/entities/attachment.entity";
 import { MailModule } from "../modules/mail/mail.module";
 import { NotificationsModule } from "../modules/notifications/notifications.module";
 import { MailRulesModule } from "../modules/mail-rules/mail-rules.module";
@@ -19,7 +20,7 @@ import { SearchIndexerProcessor } from "./search-indexer.processor";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message, MessageRecipient, User]),
+    TypeOrmModule.forFeature([Message, MessageRecipient, User, Attachment]),
     BullModule.registerQueue(
       { name: QUEUES.MAIL_DELIVERY },
       { name: QUEUES.SEARCH_INDEXER },
