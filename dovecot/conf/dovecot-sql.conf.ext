@@ -14,3 +14,12 @@ password_query = \
   WHERE email = '%u' \
     AND is_active = true \
   LIMIT 1
+
+# User lookup is handled by the static userdb (vmail uid/gid + home template).
+# Override the default SQL user_query with a no-op to prevent errors.
+user_query = \
+  SELECT NULL AS home, 5000 AS uid, 5000 AS gid \
+  FROM users \
+  WHERE email = '%u' \
+    AND is_active = true \
+  LIMIT 1
