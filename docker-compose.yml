@@ -208,7 +208,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=${DB_NAME:-dims_db}
       - DB_USER=${DB_USER:-dims_user}
-      - DB_PASS=${DB_PASS:-}
+      - DB_PASS=${DB_PASSWORD:-}
       - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
     volumes:
       - dovecot_mail:/var/mail
