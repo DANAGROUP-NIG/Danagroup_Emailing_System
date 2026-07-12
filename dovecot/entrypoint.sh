@@ -27,15 +27,13 @@ if [ -f "${CERT_DIR}/fullchain.pem" ] && [ -f "${CERT_DIR}/privkey.pem" ]; then
   KEY_FILE="${CERT_DIR}/privkey.pem"
 else
   echo "No TLS certs found at ${CERT_DIR} — generating self-signed cert (dev only)."
-  mkdir -p /etc/dovecot/certs
-  CERT_FILE="/etc/dovecot/certs/dovecot-self.pem"
-  KEY_FILE="/etc/dovecot/certs/dovecot-self-key.pem"
-  if [ ! -f "${CERT_FILE}" ]; then
-    openssl req -x509 -newkey rsa:2048 -keyout "${KEY_FILE}" \
-      -out "${CERT_FILE}" -days 3650 -nodes \
-      -subj "/CN=mail.${MAIL_DOMAIN}" 2>/dev/null
-    echo "Self-signed cert generated."
-  fi
+  # Write to /run (tmpfs, not a volume mount) so it persists within this container instance
+  CERT_FILE="/run/dovecot-self.pem"
+  KEY_FILE="/run/dovecot-self-key.pem"
+  openssl req -x509 -newkey rsa:2048 -keyout "${KEY_FILE}" \
+    -out "${CERT_FILE}" -days 3650 -nodes \
+    -subj "/CN=mail.${MAIL_DOMAIN}" 2>/dev/null
+  echo "Self-signed cert generated."
 fi
 
 # Write ssl config directly (avoids sed escaping issues with < character)

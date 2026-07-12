@@ -16,6 +16,3 @@ services:
     volumes:
       - dovecot_mail:/var/mail
       - /etc/letsencrypt/live/${MAIL_HOSTNAME:-mail.danagroup.net}:/etc/dovecot/certs:ro
-
-volumes:
-  dovecot_mail:
