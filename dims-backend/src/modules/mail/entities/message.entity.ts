@@ -52,6 +52,9 @@ export class Message {
   @Column({ type: "varchar", length: 320, nullable: true })
   externalSenderName: string | null;
 
+  @Column({ type: "text", nullable: true })
+  rawEmail: string | null;
+
   @CreateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   createdAt: Date;
 

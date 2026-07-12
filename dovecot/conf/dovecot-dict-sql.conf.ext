@@ -1,0 +1,134 @@
+## Dovecot dict-sql backend — maps IMAP folders/messages to DIMS PostgreSQL schema
+## Placeholders replaced by entrypoint.sh at container startup
+
+connect = host=__DB_HOST__ port=__DB_PORT__ dbname=__DB_NAME__ user=__DB_USER__ password=__DB_PASS__
+
+# ── MAILBOX LIST ─────────────────────────────────────────────────────────────
+# Returns the list of virtual mailboxes (folders) for a user
+map {
+  pattern = shared/mailboxes/$user/$box
+  table = (
+    SELECT DISTINCT
+      CASE
+        WHEN mr.is_deleted THEN 'Trash'
+        WHEN mr.is_starred THEN 'Starred'
+        WHEN m.is_draft   THEN 'Drafts'
+        WHEN m.sender_id::text = (SELECT id::text FROM users WHERE email = '$user') THEN 'Sent'
+        ELSE 'INBOX'
+      END AS name
+    FROM message_recipients mr
+    JOIN messages m ON m.id = mr.message_id
+    JOIN users u ON u.email = '$user'
+    WHERE mr.recipient_id = u.id
+      OR m.sender_id = u.id
+  ) folders
+  username_field = name
+  value_field = name
+}
+
+# ── MESSAGE UID MAP ──────────────────────────────────────────────────────────
+# Maps sequential IMAP UIDs to DIMS UUIDs per mailbox/user
+# We use a row_number() window over sent_at to create stable UIDs
+map {
+  pattern = priv/mails/$user/INBOX/$uid
+  table = (
+    SELECT m.raw_email AS value
+    FROM (
+      SELECT m2.id, m2.raw_email,
+             ROW_NUMBER() OVER (ORDER BY COALESCE(m2.sent_at, m2.created_at) ASC) AS uid
+      FROM message_recipients mr2
+      JOIN messages m2 ON m2.id = mr2.message_id
+      JOIN users u2 ON u2.email = '$user'
+      WHERE mr2.recipient_id = u2.id
+        AND mr2.is_deleted = false
+        AND mr2.is_permanently_deleted = false
+        AND m2.is_draft = false
+    ) m
+    WHERE m.uid = '$uid'::bigint
+  ) q
+  username_field = value
+  value_field = value
+}
+
+map {
+  pattern = priv/mails/$user/Sent/$uid
+  table = (
+    SELECT m.raw_email AS value
+    FROM (
+      SELECT m2.id, m2.raw_email,
+             ROW_NUMBER() OVER (ORDER BY COALESCE(m2.sent_at, m2.created_at) ASC) AS uid
+      FROM messages m2
+      JOIN users u2 ON u2.email = '$user'
+      WHERE m2.sender_id = u2.id
+        AND m2.is_draft = false
+        AND m2.sender_deleted_at IS NULL
+    ) m
+    WHERE m.uid = '$uid'::bigint
+  ) q
+  username_field = value
+  value_field = value
+}
+
+map {
+  pattern = priv/mails/$user/Drafts/$uid
+  table = (
+    SELECT m.raw_email AS value
+    FROM (
+      SELECT m2.id, m2.raw_email,
+             ROW_NUMBER() OVER (ORDER BY COALESCE(m2.sent_at, m2.created_at) ASC) AS uid
+      FROM messages m2
+      JOIN users u2 ON u2.email = '$user'
+      WHERE m2.sender_id = u2.id
+        AND m2.is_draft = true
+    ) m
+    WHERE m.uid = '$uid'::bigint
+  ) q
+  username_field = value
+  value_field = value
+}
+
+map {
+  pattern = priv/mails/$user/Trash/$uid
+  table = (
+    SELECT m.raw_email AS value
+    FROM (
+      SELECT m2.id, m2.raw_email,
+             ROW_NUMBER() OVER (ORDER BY COALESCE(m2.sent_at, m2.created_at) ASC) AS uid
+      FROM message_recipients mr2
+      JOIN messages m2 ON m2.id = mr2.message_id
+      JOIN users u2 ON u2.email = '$user'
+      WHERE mr2.recipient_id = u2.id
+        AND mr2.is_deleted = true
+        AND mr2.is_permanently_deleted = false
+    ) m
+    WHERE m.uid = '$uid'::bigint
+  ) q
+  username_field = value
+  value_field = value
+}
+
+# ── FLAGS (read/starred) ─────────────────────────────────────────────────────
+map {
+  pattern = priv/flags/$user/INBOX/$uid
+  table = (
+    SELECT
+      CONCAT(
+        CASE WHEN mr2.is_read    THEN '\Seen '    ELSE '' END,
+        CASE WHEN mr2.is_starred THEN '\Flagged ' ELSE '' END
+      ) AS flags
+    FROM (
+      SELECT mr3.is_read, mr3.is_starred,
+             ROW_NUMBER() OVER (ORDER BY COALESCE(m3.sent_at, m3.created_at) ASC) AS uid
+      FROM message_recipients mr3
+      JOIN messages m3 ON m3.id = mr3.message_id
+      JOIN users u3 ON u3.email = '$user'
+      WHERE mr3.recipient_id = u3.id
+        AND mr3.is_deleted = false
+        AND mr3.is_permanently_deleted = false
+        AND m3.is_draft = false
+    ) mr2
+    WHERE mr2.uid = '$uid'::bigint
+  ) q
+  username_field = flags
+  value_field = flags
+}

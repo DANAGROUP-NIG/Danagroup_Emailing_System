@@ -11,3 +11,11 @@ services:
   frontend:
     environment:
       - JWT_SECRET=${JWT_SECRET}
+
+  dovecot:
+    volumes:
+      - dovecot_mail:/var/mail
+      - /etc/letsencrypt/live/${MAIL_HOSTNAME:-mail.danagroup.net}:/etc/dovecot/certs:ro
+
+volumes:
+  dovecot_mail:

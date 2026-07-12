@@ -13,6 +13,7 @@ import { MailRulesService } from "../modules/mail-rules/mail-rules.service";
 import { SmtpService } from "../modules/smtp/smtp.service";
 import { StorageService } from "../modules/storage/storage.service";
 import { Message } from "../modules/mail/entities/message.entity";
+import { buildRawEmail } from "../modules/mail/utils/build-raw-email";
 import { Attachment } from "../modules/files/entities/attachment.entity";
 import {
   MailDeliveryJobData,
@@ -155,6 +156,25 @@ export class MailDeliveryProcessor extends WorkerHost {
       this.logger.warn(
         `External delivery to ${toEmail} skipped (SMTP not configured or failed)`,
       );
+    }
+
+    // Build and persist raw RFC 2822 for IMAP serving (if not already stored)
+    if (!message.rawEmail) {
+      try {
+        const raw = await buildRawEmail({
+          from: fromAddress,
+          to: [toEmail],
+          subject: message.subject ?? "(no subject)",
+          text: message.body ?? "",
+          html: message.bodyHtml ?? undefined,
+          date: message.sentAt ?? message.createdAt,
+        });
+        await this.messageRepo.update(message.id, { rawEmail: raw });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to build rawEmail for IMAP (message ${message.id}): ${(err as Error).message}`,
+        );
+      }
     }
   }
 

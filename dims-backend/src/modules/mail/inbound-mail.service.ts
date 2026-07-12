@@ -34,6 +34,8 @@ export class InboundMailService {
   ) {}
 
   async processRaw(rawEmail: Buffer | string): Promise<void> {
+    const rawEmailStr =
+      typeof rawEmail === "string" ? rawEmail : rawEmail.toString("utf8");
     const parsed = await simpleParser(rawEmail);
 
     const fromAddress = this.extractFirstAddress(parsed.from);
@@ -114,6 +116,7 @@ export class InboundMailService {
         isInbound: true,
         externalSenderEmail: fromAddress,
         externalSenderName: fromName,
+        rawEmail: rawEmailStr,
       });
 
       const savedMessage = await manager.save(message);

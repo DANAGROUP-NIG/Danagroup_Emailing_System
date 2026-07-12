@@ -1,0 +1,16 @@
+## PostgreSQL authentication queries for DIMS users table
+## Placeholders replaced by entrypoint.sh at container startup
+
+driver = pgsql
+connect = host=__DB_HOST__ port=__DB_PORT__ dbname=__DB_NAME__ user=__DB_USER__ password=__DB_PASS__
+
+# Use bcrypt password scheme — matches DIMS password_hash column
+default_pass_scheme = BLF-CRYPT
+
+# Query to authenticate user — %u = full email, %n = local part, %d = domain
+password_query = \
+  SELECT password_hash AS password \
+  FROM users \
+  WHERE email = '%u' \
+    AND is_active = true \
+  LIMIT 1

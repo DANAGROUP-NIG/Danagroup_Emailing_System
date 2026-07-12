@@ -196,6 +196,33 @@ services:
     networks:
       - dims_net
 
+  # ─── Dovecot IMAP/POP3 ───────────────────────────────────────────────────────
+  dovecot:
+    build:
+      context: ./dovecot
+      dockerfile: Dockerfile
+    container_name: dims_dovecot
+    hostname: ${MAIL_HOSTNAME:-mail.danagroup.net}
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dims_db}
+      - DB_USER=${DB_USER:-dims_user}
+      - DB_PASS=${DB_PASS:-}
+      - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
+    volumes:
+      - dovecot_mail:/var/mail
+      - dovecot_certs:/etc/dovecot/certs
+    ports:
+      - "993:993"   # IMAPS
+      - "995:995"   # POP3S
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dims_net
+
   # ─── Elasticsearch ───────────────────────────────────────────────────────────
   elasticsearch:
     image: elasticsearch:8.11.0
@@ -228,6 +255,8 @@ volumes:
   nginx_logs:
   postfix_data:
   postfix_dkim_keys:
+  dovecot_mail:
+  dovecot_certs:
 
 # ─── Networks ─────────────────────────────────────────────────────────────────
 networks:
