@@ -110,7 +110,9 @@ jobs:
           username: ${{ secrets.PROD_AZURE_USER }}
           key: ${{ secrets.PROD_AZURE_SSH_KEY }}
           port: ${{ secrets.PROD_AZURE_SSH_PORT || 22 }}
-          script_stop: true
+          timeout: 60s
+          command_timeout: 30m
+          script_stop: false
           script: |
             set -e
             cd "${{ secrets.PROD_DEPLOY_PATH }}"
@@ -166,10 +168,18 @@ jobs:
             MAIL_HOSTNAME=${{ secrets.PROD_MAIL_HOSTNAME }}
             INBOUND_WEBHOOK_SECRET=${{ secrets.PROD_INBOUND_WEBHOOK_SECRET }}
             SMTP_RELAY=${{ secrets.PROD_SMTP_RELAY }}
+            SMTP_RELAY_USER=${{ secrets.PROD_SMTP_RELAY_USER }}
+            SMTP_RELAY_PASS=${{ secrets.PROD_SMTP_RELAY_PASS }}
+            DB_NAME=${{ secrets.PROD_DB_NAME }}
+            DB_USER=${{ secrets.PROD_DB_USER }}
+            DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
             NEXT_PUBLIC_API_URL=/api
             NEXT_PUBLIC_WS_URL=${{ secrets.PROD_WS_URL }}
             NEXT_PUBLIC_APP_NAME=${{ secrets.PROD_APP_NAME }}
             ENV_EOF
+
+            echo "Stripping YAML indentation from .env values..."
+            sed -i 's/^[[:space:]]*//' .env
 
             echo "Removing stale backend .env override..."
             rm -f dims-backend/.env
@@ -187,7 +197,7 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
             echo "Running database migrations..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api npm run migration:run
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api node ./node_modules/typeorm/cli.js -d dist/typeorm.config.js migration:run
 
             echo "Waiting for health check..."
             sleep 20

@@ -11,7 +11,7 @@ export const AppDataSource = new DataSource({
   ...options,
 
   entities: [__dirname + "/modules/**/*.entity{.ts,.js}"],
-  migrations: ["src/database/migrations/*.ts"],
+  migrations: [__dirname + "/database/migrations/*{.ts,.js}"],
   namingStrategy: new SnakeNamingStrategy(),
 
   synchronize: false,

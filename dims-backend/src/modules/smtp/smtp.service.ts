@@ -46,14 +46,17 @@ export class SmtpService implements OnModuleInit {
     const pass = this.configService.get<string>("SMTP_PASS");
     const secure = port === 465;
 
+    const isInternalRelay = ["postfix", "localhost", "127.0.0.1"].includes(
+      host.toLowerCase(),
+    );
+
     this.transporter = nodemailer.createTransport({
       host,
       port,
       secure,
       auth: user && pass ? { user, pass } : undefined,
       tls: {
-        rejectUnauthorized:
-          this.configService.get<string>("NODE_ENV") === "production",
+        rejectUnauthorized: !isInternalRelay,
       },
       pool: true,
       maxConnections: 5,

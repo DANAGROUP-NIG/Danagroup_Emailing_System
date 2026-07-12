@@ -3,10 +3,12 @@ import session from "express-session";
 import passport from "passport";
 import { RedisStore } from "connect-redis";
 import { createClient } from "redis";
-import { ValidationPipe } from "@nestjs/common";
+import { RawBodyRequest, ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import * as dotenv from "dotenv";
+import * as bodyParser from "body-parser";
+import type { Request, Response, NextFunction } from "express";
 dotenv.config();
 
 import cookieParser = require("cookie-parser");
@@ -22,6 +24,17 @@ async function bootstrap() {
     // Trust the first proxy (nginx / Cloudflare tunnel) so that
     // req.ip, req.secure, and X-Forwarded-* headers are resolved correctly.
     app.getHttpAdapter().getInstance().set("trust proxy", 1);
+
+    // Capture raw body for Postfix inbound webhook (message/rfc822 is not handled
+    // by NestJS's default body parser).
+    app.use(
+      "/api/mail/inbound",
+      bodyParser.raw({ type: "message/rfc822", limit: "25mb" }),
+      (req: Request, _res: Response, next: NextFunction) => {
+        (req as RawBodyRequest<Request>).rawBody = req.body as Buffer;
+        next();
+      },
+    );
 
     //Initialize ioredis client
     // const redisClient = new Redis({

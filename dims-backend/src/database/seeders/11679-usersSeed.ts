@@ -1,5 +1,8 @@
 import "reflect-metadata";
-import "tsconfig-paths/register";
+
+if (process.env.NODE_ENV !== "production") {
+  require("tsconfig-paths/register");
+}
 import { DeepPartial } from "typeorm";
 import { AppDataSource } from "src/typeorm.config";
 import { User } from "../../modules/users/entities/user.entity";
@@ -18,7 +21,7 @@ async function seed() {
     let hqSubsidiary = await subRepo.findOneBy({ name: "Dana Group HQ" });
     if (!hqSubsidiary) {
       hqSubsidiary = await subRepo.save(
-        subRepo.create({ name: "Dana Group HQ", domain: "danagroup.com" }),
+        subRepo.create({ name: "Dana Group HQ", domain: "danagroup.net" }),
       );
     }
 
@@ -29,7 +32,7 @@ async function seed() {
       logisticsSubsidiary = await subRepo.save(
         subRepo.create({
           name: "Dana Logistics",
-          domain: "logistics.danagroup.com",
+          domain: "logistics.danagroup.net",
         }),
       );
     }
@@ -41,7 +44,7 @@ async function seed() {
       manufacturingSubsidiary = await subRepo.save(
         subRepo.create({
           name: "Dana Manufacturing",
-          domain: "factory.danagroup.com",
+          domain: "factory.danagroup.net",
         }),
       );
     }
@@ -110,9 +113,9 @@ async function seed() {
       );
     }
     // 1. Setup Subsidiaries
-    // const hqSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Group HQ', domain: 'danagroup.com' }));
-    // const logisticsSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Logistics', domain: 'logistics.danagroup.com' }));
-    // const manufacturingSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Manufacturing', domain: 'factory.danagroup.com' }));
+    // const hqSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Group HQ', domain: 'danagroup.net' }));
+    // const logisticsSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Logistics', domain: 'logistics.danagroup.net' }));
+    // const manufacturingSubsidiary = await subRepo.save(subRepo.create({ name: 'Dana Manufacturing', domain: 'factory.danagroup.net' }));
 
     // 2. Setup Departments (Mapped to HQ)
     // const itDept = await deptRepo.save(deptRepo.create({ name: 'IT', subsidiary_id: hqSubsidiary.id }));
@@ -126,7 +129,7 @@ async function seed() {
     // 4. User data using the created IDs
     const users: DeepPartial<User>[] = [
       {
-        email: "joseph@danagroup.com",
+        email: "joseph@danagroup.net",
         firstName: "Joseph",
         lastName: "Okoro",
         role: "group_admin",
@@ -137,7 +140,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "marcus.chen@danagroup.com",
+        email: "marcus.chen@danagroup.net",
         firstName: "Marcus",
         lastName: "Chen",
         role: "employee",
@@ -148,7 +151,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "sarah.ade@danagroup.com",
+        email: "sarah.ade@danagroup.net",
         firstName: "Sarah",
         lastName: "Ade",
         role: "employee",
@@ -159,7 +162,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "elena.rodriguez@danagroup.com",
+        email: "elena.rodriguez@danagroup.net",
         firstName: "Elena",
         lastName: "Rodriguez",
         role: "employee",
@@ -170,7 +173,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "james.wilson@danagroup.com",
+        email: "james.wilson@danagroup.net",
         firstName: "James",
         lastName: "Wilson",
         role: "employee",
@@ -181,7 +184,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "amina.bello@danagroup.com",
+        email: "amina.bello@danagroup.net",
         firstName: "Amina",
         lastName: "Bello",
         role: "employee",
@@ -192,7 +195,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "david.smith@danagroup.com",
+        email: "david.smith@danagroup.net",
         firstName: "David",
         lastName: "Smith",
         role: "employee",
@@ -203,7 +206,7 @@ async function seed() {
         avatarUrl: "https://pravatar.cc",
       },
       {
-        email: "robert.taylor@danagroup.com",
+        email: "robert.taylor@danagroup.net",
         firstName: "Robert",
         lastName: "Taylor",
         role: "employee",

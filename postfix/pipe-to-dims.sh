@@ -1,10 +1,6 @@
 #!/bin/sh
 # Postfix pipe transport: reads raw email from stdin, POSTs it to DIMS inbound webhook.
 # Called by Postfix for every inbound message destined for @danagroup.net.
-#
-# Postfix master.cf entry (add to /etc/postfix/master.cf inside the container):
-#   dims     unix  -       n       n       -       -       pipe
-#     flags=Rq user=nobody argv=/usr/local/bin/pipe-to-dims.sh
 
 set -e
 

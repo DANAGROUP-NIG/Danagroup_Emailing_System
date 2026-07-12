@@ -11,7 +11,11 @@ import { Repository } from "typeorm";
 import { MessageRecipient } from "../modules/mail/entities/message-recipient.entity";
 import { MailRulesService } from "../modules/mail-rules/mail-rules.service";
 import { SmtpService } from "../modules/smtp/smtp.service";
+import { StorageService } from "../modules/storage/storage.service";
 import { Message } from "../modules/mail/entities/message.entity";
+import { buildRawEmail } from "../modules/mail/utils/build-raw-email";
+import { MaildirSyncService } from "../modules/mail/maildir-sync.service";
+import { Attachment } from "../modules/files/entities/attachment.entity";
 import {
   MailDeliveryJobData,
   NotificationDispatchJobData,
@@ -37,6 +41,8 @@ export class MailDeliveryProcessor extends WorkerHost {
     private readonly notificationsQueue: Queue,
     private readonly mailRulesService: MailRulesService,
     private readonly smtpService: SmtpService,
+    private readonly storageService: StorageService,
+    private readonly maildirSyncService: MaildirSyncService,
   ) {
     super();
   }
@@ -98,18 +104,84 @@ export class MailDeliveryProcessor extends WorkerHost {
       ? `"${senderName}" <${fromEmail}>`
       : fromEmail;
 
+    // Build Nodemailer attachments from message attachments stored in MinIO
+    const nodemailerAttachments: Array<{
+      filename: string;
+      content: Buffer;
+      contentType: string;
+    }> = [];
+
+    if (message.attachments?.length) {
+      this.logger.log(
+        `Loading ${message.attachments.length} attachment(s) for external delivery to ${toEmail}`,
+      );
+
+      for (const att of message.attachments) {
+        try {
+          const stream = await this.storageService.getObjectStream(
+            att.storageKey,
+          );
+
+          // Collect stream into buffer for Nodemailer
+          const chunks: Buffer[] = [];
+          for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const buffer = Buffer.concat(chunks);
+
+          nodemailerAttachments.push({
+            filename: att.filename,
+            content: buffer,
+            contentType: att.mime_type,
+          });
+        } catch (err) {
+          this.logger.error(
+            `Failed to load attachment "${att.filename}" (${att.storageKey}) for external delivery: ${(err as Error).message}`,
+          );
+          // Continue with other attachments — don't fail the entire send
+        }
+      }
+    }
+
     const sent = await this.smtpService.sendMail({
       from: fromAddress,
       to: toEmail,
       subject: message.subject ?? "(no subject)",
       text: message.body ?? "",
       html: message.bodyHtml ?? undefined,
+      attachments: nodemailerAttachments.length
+        ? nodemailerAttachments
+        : undefined,
     });
 
     if (!sent) {
       this.logger.warn(
         `External delivery to ${toEmail} skipped (SMTP not configured or failed)`,
       );
+    }
+
+    // Build and persist raw RFC 2822 for IMAP serving (if not already stored)
+    if (!message.rawEmail) {
+      try {
+        const raw = await buildRawEmail({
+          from: fromAddress,
+          to: [toEmail],
+          subject: message.subject ?? "(no subject)",
+          text: message.body ?? "",
+          html: message.bodyHtml ?? undefined,
+          date: message.sentAt ?? message.createdAt,
+        });
+        await this.messageRepo.update(message.id, { rawEmail: raw });
+        // Sync into sender's Maildir .Sent folder for IMAP access
+        const senderEmail = message.sender?.email;
+        if (senderEmail) {
+          await this.maildirSyncService.syncSent(raw, senderEmail, message.id);
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to build rawEmail for IMAP (message ${message.id}): ${(err as Error).message}`,
+        );
+      }
     }
   }
 
@@ -133,6 +205,7 @@ export class MailDeliveryProcessor extends WorkerHost {
       where: { id: messageId },
       relations: {
         sender: true,
+        attachments: true,
       },
     });
 
@@ -204,3 +277,4 @@ export class MailDeliveryProcessor extends WorkerHost {
     }
   }
 }
+

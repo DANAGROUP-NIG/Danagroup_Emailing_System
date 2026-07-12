@@ -58,7 +58,8 @@ services:
     container_name: dims_api
     env_file:
       - .env
-      - ./dims-backend/.env
+      - path: ./dims-backend/.env
+        required: false
     environment:
       - PORT=8000
       - REDIS_HOST=redis
@@ -77,6 +78,9 @@ services:
       - SMTP_FROM=${SMTP_FROM:-noreply@danagroup.net}
       - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
       - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
+      - MAILDIR_ROOT=/var/mail/vhosts
+    volumes:
+      - dovecot_mail:/var/mail
     ports:
       - "8000:8000"  # Direct API access (full stack via nginx on :3000)
     healthcheck:
@@ -91,6 +95,8 @@ services:
       minio:
         condition: service_started
       elasticsearch:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -165,19 +171,57 @@ services:
     environment:
       - ALLOWED_SENDER_DOMAINS=${MAIL_DOMAIN:-danagroup.net}
       - RELAYHOST=${SMTP_RELAY:-}
+      - RELAYHOST_USERNAME=${SMTP_RELAY_USER:-}
+      - RELAYHOST_PASSWORD=${SMTP_RELAY_PASS:-}
       - POSTFIX_myhostname=${MAIL_HOSTNAME:-mail.danagroup.net}
       - POSTFIX_mydestination=${MAIL_DOMAIN:-danagroup.net} localhost
-      # Pipe inbound mail to DIMS webhook
+      - POSTFIX_local_recipient_maps=
       - POSTFIX_transport_maps=hash:/etc/postfix/transport
+      - POSTFIX_smtpd_client_restrictions=permit_mynetworks,permit_sasl_authenticated,permit
+      - POSTFIX_smtpd_sender_restrictions=permit_mynetworks,permit
+      - POSTFIX_smtpd_recipient_restrictions=permit_mynetworks,reject_unauth_destination
+      - POSTFIX_export_environment=TZ MAIL_CONFIG LANG INBOUND_WEBHOOK_SECRET
+      - POSTFIX_import_environment=MAIL_CONFIG MAIL_DEBUG MAIL_LOGTAG TZ XAUTHORITY DISPLAY LANG=C POSTLOG_SERVICE POSTLOG_HOSTNAME INBOUND_WEBHOOK_SECRET
+      - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
+      - DKIM_SELECTOR=mail
+      - DKIM_AUTOGENERATE=true
     volumes:
       - postfix_data:/var/spool/postfix
+      - postfix_dkim_keys:/etc/opendkim/keys
       - ./postfix/transport:/etc/postfix/transport:ro
       - ./postfix/pipe-to-dims.sh:/usr/local/bin/pipe-to-dims.sh:ro
+      - ./postfix/init.d:/docker-init.d:ro
     ports:
       - "25:25"    # Inbound SMTP from internet
       - "587:587"  # Submission (DIMS → Postfix → internet)
     depends_on:
       api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dims_net
+
+  # ─── Dovecot IMAP/POP3 ───────────────────────────────────────────────────────
+  dovecot:
+    build:
+      context: ./dovecot
+      dockerfile: Dockerfile
+    container_name: dims_dovecot
+    hostname: ${MAIL_HOSTNAME:-mail.danagroup.net}
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dims_db}
+      - DB_USER=${DB_USER:-dims_user}
+      - DB_PASS=${DB_PASSWORD:-}
+      - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
+    volumes:
+      - dovecot_mail:/var/mail
+    ports:
+      - "993:993"   # IMAPS
+      - "995:995"   # POP3S
+    depends_on:
+      postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -214,6 +258,8 @@ volumes:
   es_data:
   nginx_logs:
   postfix_data:
+  postfix_dkim_keys:
+  dovecot_mail:
 
 # ─── Networks ─────────────────────────────────────────────────────────────────
 networks:
