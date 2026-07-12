@@ -10,6 +10,7 @@ import { User } from "@modules/users/entities/user.entity";
 import { NotificationsService } from "@modules/notifications/notifications.service";
 import { StorageService } from "@modules/storage/storage.service";
 import { MailCoreService } from "./mail-core.service";
+import { MaildirSyncService } from "./maildir-sync.service";
 import { JobsService } from "@jobs/jobs.service";
 import type { RecipientType } from "./entities/message-recipient.entity";
 
@@ -30,6 +31,7 @@ export class InboundMailService {
     private readonly notificationsService: NotificationsService,
     private readonly storageService: StorageService,
     private readonly mailCoreService: MailCoreService,
+    private readonly maildirSyncService: MaildirSyncService,
     private readonly jobsService: JobsService,
   ) {}
 
@@ -218,8 +220,19 @@ export class InboundMailService {
       );
     });
 
-    // ─── Post-transaction: WebSocket events + notifications ──────────────
-    // These run after the transaction commits so the data is visible to clients
+    // ─── Post-transaction: Maildir sync + WebSocket events + notifications ─
+    // Sync raw email into each recipient's Maildir so Dovecot serves it via IMAP
+    if (rawEmailStr) {
+      for (const user of internalUsers) {
+        await this.maildirSyncService.syncInbound(
+          rawEmailStr,
+          user.email,
+          savedMessageId,
+        );
+      }
+    }
+
+    // WebSocket events + notifications run after transaction commits
 
     const senderDisplayName =
       fromName || fromAddress.split("@")[0] || fromAddress;

@@ -78,6 +78,9 @@ services:
       - SMTP_FROM=${SMTP_FROM:-noreply@danagroup.net}
       - MAIL_DOMAIN=${MAIL_DOMAIN:-danagroup.net}
       - INBOUND_WEBHOOK_SECRET=${INBOUND_WEBHOOK_SECRET:-}
+      - MAILDIR_ROOT=/var/mail/vhosts
+    volumes:
+      - dovecot_mail:/var/mail
     ports:
       - "8000:8000"  # Direct API access (full stack via nginx on :3000)
     healthcheck:
@@ -92,6 +95,8 @@ services:
       minio:
         condition: service_started
       elasticsearch:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:

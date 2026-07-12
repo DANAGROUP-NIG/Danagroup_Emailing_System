@@ -9,6 +9,7 @@ import { ComposeService } from "./compose.service";
 import { MailActionService } from "./mail-action.service";
 import { MailGateway } from "./mail.gateway";
 import { InboundMailService } from "./inbound-mail.service";
+import { MaildirSyncService } from "./maildir-sync.service";
 import { InboundMailController } from "./inbound-mail.controller";
 import { Message } from "./entities/message.entity";
 import { Thread } from "./entities/thread.entity";
@@ -52,8 +53,9 @@ import { QUEUES } from "@jobs/queue.constants";
     MailService,
     MailGateway,
     InboundMailService,
+    MaildirSyncService,
     Logger,
   ],
-  exports: [MailService, MailGateway, TypeOrmModule],
+  exports: [MailService, MailGateway, MaildirSyncService, TypeOrmModule],
 })
 export class MailModule {}

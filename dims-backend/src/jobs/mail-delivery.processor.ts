@@ -14,6 +14,7 @@ import { SmtpService } from "../modules/smtp/smtp.service";
 import { StorageService } from "../modules/storage/storage.service";
 import { Message } from "../modules/mail/entities/message.entity";
 import { buildRawEmail } from "../modules/mail/utils/build-raw-email";
+import { MaildirSyncService } from "../modules/mail/maildir-sync.service";
 import { Attachment } from "../modules/files/entities/attachment.entity";
 import {
   MailDeliveryJobData,
@@ -41,6 +42,7 @@ export class MailDeliveryProcessor extends WorkerHost {
     private readonly mailRulesService: MailRulesService,
     private readonly smtpService: SmtpService,
     private readonly storageService: StorageService,
+    private readonly maildirSyncService: MaildirSyncService,
   ) {
     super();
   }
@@ -170,6 +172,11 @@ export class MailDeliveryProcessor extends WorkerHost {
           date: message.sentAt ?? message.createdAt,
         });
         await this.messageRepo.update(message.id, { rawEmail: raw });
+        // Sync into sender's Maildir .Sent folder for IMAP access
+        const senderEmail = message.sender?.email;
+        if (senderEmail) {
+          await this.maildirSyncService.syncSent(raw, senderEmail, message.id);
+        }
       } catch (err) {
         this.logger.warn(
           `Failed to build rawEmail for IMAP (message ${message.id}): ${(err as Error).message}`,
