@@ -54,5 +54,7 @@ if ! id -u vmail &>/dev/null; then
   useradd -u 5000 -g vmail -s /sbin/nologin -d /var/mail vmail
 fi
 chown -R vmail:vmail /var/mail
+# Allow the API container (different user) to write into vhosts subdirectories
+chmod 777 /var/mail/vhosts
 
 exec dovecot -F
