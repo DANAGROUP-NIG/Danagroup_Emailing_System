@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dovecot-imapd \
     dovecot-pop3d \
     dovecot-pgsql \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY conf/ /etc/dovecot/

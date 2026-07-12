@@ -22,24 +22,30 @@ sed -i \
 # ── TLS cert handling ─────────────────────────────────────────────────────────
 CERT_DIR="/etc/dovecot/certs"
 if [ -f "${CERT_DIR}/fullchain.pem" ] && [ -f "${CERT_DIR}/privkey.pem" ]; then
-  echo "Using provided TLS certificates."
-  sed -i \
-    -e "s|ssl_cert =.*|ssl_cert = <${CERT_DIR}/fullchain.pem|" \
-    -e "s|ssl_key =.*|ssl_key = <${CERT_DIR}/privkey.pem|" \
-    /etc/dovecot/conf.d/10-ssl.conf
+  echo "Using provided TLS certificates from ${CERT_DIR}."
+  CERT_FILE="${CERT_DIR}/fullchain.pem"
+  KEY_FILE="${CERT_DIR}/privkey.pem"
 else
-  echo "No TLS certs found at ${CERT_DIR} — using self-signed cert (dev only)."
-  if [ ! -f "/etc/dovecot/certs/dovecot-self.pem" ]; then
-    mkdir -p /etc/dovecot/certs
-    openssl req -x509 -newkey rsa:2048 -keyout /etc/dovecot/certs/dovecot-self-key.pem \
-      -out /etc/dovecot/certs/dovecot-self.pem -days 3650 -nodes \
+  echo "No TLS certs found at ${CERT_DIR} — generating self-signed cert (dev only)."
+  mkdir -p /etc/dovecot/certs
+  CERT_FILE="/etc/dovecot/certs/dovecot-self.pem"
+  KEY_FILE="/etc/dovecot/certs/dovecot-self-key.pem"
+  if [ ! -f "${CERT_FILE}" ]; then
+    openssl req -x509 -newkey rsa:2048 -keyout "${KEY_FILE}" \
+      -out "${CERT_FILE}" -days 3650 -nodes \
       -subj "/CN=mail.${MAIL_DOMAIN}" 2>/dev/null
+    echo "Self-signed cert generated."
   fi
-  sed -i \
-    -e "s|ssl_cert =.*|ssl_cert = </etc/dovecot/certs/dovecot-self.pem|" \
-    -e "s|ssl_key =.*|ssl_key = </etc/dovecot/certs/dovecot-self-key.pem|" \
-    /etc/dovecot/conf.d/10-ssl.conf
 fi
+
+# Write ssl config directly (avoids sed escaping issues with < character)
+cat > /etc/dovecot/conf.d/10-ssl.conf <<SSLEOF
+ssl = required
+ssl_cert = <${CERT_FILE}
+ssl_key = <${KEY_FILE}
+ssl_min_protocol = TLSv1.2
+ssl_prefer_server_ciphers = yes
+SSLEOF
 
 # ── Ensure mail dir exists ────────────────────────────────────────────────────
 mkdir -p /var/mail/vhosts
