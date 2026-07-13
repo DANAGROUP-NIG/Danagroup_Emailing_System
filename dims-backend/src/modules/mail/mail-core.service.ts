@@ -131,7 +131,6 @@ export class MailCoreService {
   }
 
   isMessageStarredForUser(message: Message, userId: string) {
-    if (message.senderId === userId) return false;
     const recipient = message.recipients?.find(
       (item) => item.recipientId === userId,
     );

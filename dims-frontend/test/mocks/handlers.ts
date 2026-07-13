@@ -177,6 +177,17 @@ export const handlers = [
     return HttpResponse.json(createApiResponse(message));
   }),
 
+  http.patch(`${API_URL}/mail/threads/:threadId/star`, async ({ params, request }) => {
+    const { isStarred } = (await request.json()) as { isStarred: boolean };
+    return HttpResponse.json(
+      createApiResponse({
+        threadId: params.threadId as string,
+        messageId: "msg-1",
+        isStarred,
+      }),
+    );
+  }),
+
   http.delete(`${API_URL}/mail/:messageId`, ({ params }) => {
     const messageId = params.messageId as string;
     const message = mockThreadMessage({ id: messageId });

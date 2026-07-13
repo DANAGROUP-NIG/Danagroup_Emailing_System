@@ -22,7 +22,7 @@ import {
   useTrash,
   useDeleteDraft,
   useMarkRead,
-  useStarMail,
+  useStarThread,
   useDeleteMail,
   useRestoreMail,
   usePermanentDeleteMail,
@@ -104,7 +104,7 @@ export default function MailList({ viewMode }: MailListProps) {
   };
 
   const { mutate: markAsRead } = useMarkRead();
-  const starMail = useStarMail();
+  const starThread = useStarThread();
   const deleteMail = useDeleteMail();
   const restoreMail = useRestoreMail();
   const permanentDeleteMail = usePermanentDeleteMail();
@@ -295,11 +295,7 @@ export default function MailList({ viewMode }: MailListProps) {
                   onChange={() => {
                     toggleMessageSelection(item.selectionId);
                   }}
-                  className={`h-4 w-4 rounded border-slate-300 group-hover:opacity-100
-                    ${selectedMessageIds.includes(item.selectionId)
-                    ? 'opacity-100' 
-                    : 'opacity-0'
-                  } `}
+                  className={`h-4 w-4 rounded border-slate-300 group-hover:opacity-100`}
                 />
 
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dana-red-600 text-sm font-semibold text-white">
@@ -359,48 +355,48 @@ export default function MailList({ viewMode }: MailListProps) {
                   {viewMode === "inbox" || viewMode === "starred" ? (
                     <button
                       type="button"
-                      disabled={!item.messageId}
+                      disabled={!item.threadId || starThread.isPending}
                       onClick={() => {
-                        if (!item.messageId) {
+                        if (!item.threadId) {
                           return;
                         }
 
                         const nextStarred = !(
-                          starOverrides[item.messageId] ?? item.isStarred
+                          starOverrides[item.threadId] ?? item.isStarred
                         );
                         setStarOverrides((current) => ({
                           ...current,
-                          [item.messageId as string]: nextStarred,
+                          [item.threadId as string]: nextStarred,
                         }));
-                        starMail.mutate({
-                          id: item.messageId,
+                        starThread.mutate({
+                          threadId: item.threadId,
                           isStarred: nextStarred,
                         }, {
                           onError: () => {
                             setStarOverrides((current) => ({
                               ...current,
-                              [item.messageId as string]: item.isStarred,
+                              [item.threadId as string]: item.isStarred,
                             }));
                           },
                         });
                       }}
                       title={
-                        (item.messageId
-                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                        (item.threadId
+                          ? (starOverrides[item.threadId] ?? item.isStarred)
                           : item.isStarred)
                           ? "Unstar"
                           : "Star"
                       }
                       aria-label={
-                        (item.messageId
-                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                        (item.threadId
+                          ? (starOverrides[item.threadId] ?? item.isStarred)
                           : item.isStarred)
                           ? "Unstar message"
                           : "Star message"
                       }
                       aria-pressed={
-                        item.messageId
-                          ? (starOverrides[item.messageId] ?? item.isStarred)
+                        item.threadId
+                          ? (starOverrides[item.threadId] ?? item.isStarred)
                           : item.isStarred
                       }
                       className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -408,8 +404,8 @@ export default function MailList({ viewMode }: MailListProps) {
                       <Star
                         aria-hidden="true"
                         className={`h-4 w-4 ${
-                          item.messageId &&
-                          (starOverrides[item.messageId] ?? item.isStarred)
+                          item.threadId &&
+                          (starOverrides[item.threadId] ?? item.isStarred)
                             ? "fill-amber-400 text-amber-400"
                             : ""
                         }`}

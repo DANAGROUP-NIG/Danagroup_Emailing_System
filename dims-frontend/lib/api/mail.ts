@@ -53,6 +53,9 @@ export const mailApi = {
   toggleStar: (id: string, isStarred: boolean) =>
     apiClient.patch(`/mail/${id}/star`, { isStarred }),
 
+  toggleThreadStar: (threadId: string, isStarred: boolean) =>
+    apiClient.patch(`/mail/threads/${threadId}/star`, { isStarred }),
+
   moveToTrash: (id: string) =>
     apiClient.delete(`/mail/${id}`),
 

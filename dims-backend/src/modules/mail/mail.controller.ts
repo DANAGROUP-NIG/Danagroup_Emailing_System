@@ -163,6 +163,20 @@ export class MailController {
     return this.mailService.toggleStar(id, user.userId, dto.isStarred);
   }
 
+  @Patch("threads/:threadId/star")
+  @ApiOperation({ summary: "Star or unstar a thread" })
+  async toggleThreadStar(
+    @CurrentUser() user: { userId: string },
+    @Param("threadId", new ParseUUIDPipe()) threadId: string,
+    @Body() dto: UpdateMessageStatusDto,
+  ) {
+    return this.mailService.toggleThreadStar(
+      threadId,
+      user.userId,
+      dto.isStarred,
+    );
+  }
+
   @Delete("trash/empty")
   @ApiOperation({ summary: "Permanently delete all messages in trash" })
   async emptyAll(@CurrentUser() user: { userId: string }) {
