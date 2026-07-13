@@ -1,8 +1,8 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/Toast';
-import { usersApi } from '@/lib/api/users';
+import { usersApi, type CreateUserPayload } from '@/lib/api/users';
 import { departmentsApi } from '@/lib/api/departments';
 import apiClient from '@/lib/api/client';
 import type { User, Department, Subsidiary } from '@/types/user.types';
@@ -14,8 +14,8 @@ export function useCreateUser() {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Partial<User> & { sendWelcomeEmail?: boolean }) => {
-      const response = await usersApi.create(data as unknown as Parameters<typeof usersApi.create>[0]);
+    mutationFn: async (data: CreateUserPayload) => {
+      const response = await usersApi.create(data);
       return response.data;
     },
     onSuccess: () => {

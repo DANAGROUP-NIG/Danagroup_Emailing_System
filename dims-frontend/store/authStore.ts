@@ -42,9 +42,9 @@ export const useAuthStore = create<AuthState>()(
       signup: async (payload) => {
         try {
           await authApi.signup(payload);
-          const meRes = await authApi.me();
-          const user = meRes.data?.data ?? (meRes.data as unknown as User);
-          set({ user, isAuthenticated: true });
+          // const meRes = await authApi.me();
+          // const user = meRes.data?.data ?? (meRes.data as unknown as User);
+          // set({ user, isAuthenticated: true });
           return true;
         } catch {
           return false;
