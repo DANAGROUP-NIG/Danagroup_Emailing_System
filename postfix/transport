@@ -1,5 +1,10 @@
-# Postfix transport map: route all @danagroup.net mail to the DIMS pipe.
+# Postfix transport map: route all Dana Group subsidiary domains to the DIMS pipe.
 # After editing, rebuild the db: postmap /etc/postfix/transport
 #
 # Format: <pattern>   <transport>:<nexthop>
-danagroup.net   dims:
+danagroup.net           dims:
+logistics.danagroup.net dims:
+factory.danagroup.net   dims:
+kiamotorsnigeria.net    dims:
+danapharmaceuticals.net dims:
+danaplasts.net          dims:
