@@ -12,6 +12,7 @@ import {
   useSaveDraft,
   useMarkRead,
   useStarMail,
+  useStarThread,
   useDeleteMail,
   mailKeys,
 } from "./useMail";
@@ -216,6 +217,24 @@ describe("useMail hooks", () => {
 
       await act(async () => {
         await result.current.mutateAsync({ id: "msg-1", isStarred: true });
+      });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+    });
+  });
+
+  describe("useStarThread", () => {
+    it("should toggle the thread star status", async () => {
+      const wrapper = createWrapper();
+      const { result } = renderHook(() => useStarThread(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          threadId: "thread-1",
+          isStarred: true,
+        });
       });
 
       await waitFor(() => {

@@ -268,6 +268,69 @@ export class MailActionService {
     }
   }
 
+  async toggleThreadStar(
+    threadId: string,
+    userId: string,
+    isStarred?: boolean,
+  ) {
+    try {
+      const recipients = await this.core.recipientRepo
+        .createQueryBuilder("recipient")
+        .innerJoinAndSelect("recipient.message", "message")
+        .where("message.threadId = :threadId", { threadId })
+        .andWhere("message.isDraft = false")
+        .andWhere("recipient.recipientId = :userId", { userId })
+        .andWhere("recipient.isDeleted = false")
+        .orderBy("COALESCE(message.sentAt, message.createdAt)", "DESC")
+        .getMany();
+
+      if (!recipients.length) {
+        throw new NotFoundException("Thread not found in recipient mailbox");
+      }
+
+      const currentlyStarred = recipients.some((recipient) => recipient.isStarred);
+      const nextStarred = isStarred ?? !currentlyStarred;
+
+      if (nextStarred) {
+        const target = recipients[0];
+        target.isStarred = true;
+        await this.core.recipientRepo.save(target);
+      } else {
+        const starredRecipients = recipients.filter(
+          (recipient) => recipient.isStarred,
+        );
+        if (starredRecipients.length) {
+          starredRecipients.forEach((recipient) => {
+            recipient.isStarred = false;
+          });
+          await this.core.recipientRepo.save(starredRecipients);
+        }
+      }
+
+      await this.core.refreshUserThreadState(
+        this.core.dataSource.manager,
+        threadId,
+        userId,
+      );
+      this.core.emitMailboxChanged(userId, {
+        action: "star_state_changed",
+        messageId: recipients[0].messageId,
+        threadId,
+        folders: ["inbox", "starred"],
+      });
+
+      return {
+        data: {
+          threadId,
+          messageId: recipients[0].messageId,
+          isStarred: nextStarred,
+        },
+      };
+    } catch (error) {
+      this.core.handleError("MailActionService.toggleThreadStar", error);
+    }
+  }
+
   // ─── Trash ────────────────────────────────────────────────────────────────
 
   async moveToTrash(messageId: string, userId: string) {
