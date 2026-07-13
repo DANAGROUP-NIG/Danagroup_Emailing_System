@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { format } from "date-fns";
 import { Download, Forward, Reply, Star, Trash2 } from "lucide-react";
@@ -210,50 +210,7 @@ export default function MailMessage({
 
         {/* Attachments Section */}
         {message.attachments && message.attachments.length > 0 && (
-          <div className="mx-16 mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Attachments ({message.attachments.length})
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {message.attachments.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-2 text-xs shadow-sm hover:border-slate-300 transition-colors"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(
-                        filesApi.getStreamUrl(file.id),
-                        "_blank",
-                        "noopener,noreferrer",
-                      );
-                    }}
-                    className="flex items-center gap-2 text-left hover:bg-slate-100 px-1 py-0.5 rounded transition-colors"
-                  >
-                    <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
-                    <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const a = document.createElement("a");
-                      a.href = filesApi.getDownloadStreamUrl(file.id);
-                      a.download = file.filename;
-                      document.body.appendChild(a);
-                      a.click();
-                      a.remove();
-                    }}
-                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
-                    aria-label="Download attachment"
-                    title="Download"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AttachmentsSection attachments={message.attachments} />
         )}
       </div>
 
@@ -284,6 +241,159 @@ export default function MailMessage({
 
   );
 }
+
+// ─── Attachments with inline preview ─────────────────────────────────────────
+
+type AttachmentFile = Message["attachments"][number];
+
+function isImage(mimeType: string) {
+  return mimeType.startsWith("image/");
+}
+
+function isPdf(mimeType: string) {
+  return mimeType === "application/pdf";
+}
+
+function AttachmentsSection({ attachments }: { attachments: AttachmentFile[] }) {
+  const [lightbox, setLightbox] = useState<AttachmentFile | null>(null);
+
+  const imageFiles = attachments.filter((f) => isImage(f.mimeType));
+  const otherFiles = attachments.filter((f) => !isImage(f.mimeType));
+
+  const downloadFile = (file: AttachmentFile) => {
+    const a = document.createElement("a");
+    a.href = filesApi.getDownloadStreamUrl(file.id);
+    a.download = file.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  return (
+    <div className="mx-4 md:mx-16 mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {attachments.length === 1 ? "One attachment" : `${attachments.length} attachments`}
+      </p>
+
+      {/* Image previews grid */}
+      {imageFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {imageFiles.map((file) => (
+            <div key={file.id} className="group relative">
+              <button
+                type="button"
+                onClick={() => setLightbox(file)}
+                className="block overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                title={`Preview ${file.filename}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={filesApi.getStreamUrl(file.id)}
+                  alt={file.filename}
+                  className="h-32 w-auto max-w-[200px] object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <div className="px-2 py-1 border-t border-slate-100">
+                  <p className="truncate text-[10px] font-medium text-slate-600 max-w-[180px]">{file.filename}</p>
+                  <p className="text-[10px] text-slate-400">{(file.sizeBytes / 1024).toFixed(1)} KB</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadFile(file)}
+                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 rounded bg-white/90 p-0.5 shadow text-slate-500 hover:text-blue-600 transition-all"
+                aria-label="Download"
+                title="Download"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Non-image file chips */}
+      {otherFiles.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {otherFiles.map((file) => (
+            <div
+              key={file.id}
+              className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-2 text-xs shadow-sm hover:border-slate-300 transition-colors"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPdf(file.mimeType)) {
+                    window.open(filesApi.getStreamUrl(file.id), "_blank", "noopener,noreferrer");
+                  } else {
+                    downloadFile(file);
+                  }
+                }}
+                className="flex items-center gap-2 text-left hover:bg-slate-100 px-1 py-0.5 rounded transition-colors"
+              >
+                <span className="font-medium text-slate-700 truncate max-w-[150px]">{file.filename}</span>
+                <span className="text-slate-400">({(file.sizeBytes / 1024).toFixed(1)} KB)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadFile(file)}
+                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded transition-colors"
+                aria-label="Download attachment"
+                title="Download"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-[90vw] overflow-auto rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={filesApi.getStreamUrl(lightbox.id)}
+              alt={lightbox.filename}
+              className="block max-h-[80vh] max-w-[85vw] object-contain rounded-xl"
+            />
+            <div className="flex items-center justify-between bg-black/60 px-4 py-2 rounded-b-xl">
+              <span className="text-sm text-white truncate max-w-xs">{lightbox.filename}</span>
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  type="button"
+                  onClick={() => downloadFile(lightbox)}
+                  className="flex items-center gap-1 rounded bg-white/20 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLightbox(null)}
+                  className="rounded bg-white/20 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function withSubjectPrefix(subject: string | undefined, prefix: "Re:" | "Fwd:") {
   const normalizedSubject = subject?.trim() || "(No Subject)";

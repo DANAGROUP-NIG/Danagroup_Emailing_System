@@ -65,10 +65,11 @@ export default function AppShell({ children }: AppShellProps) {
         style={sidebarCollapsed ? { paddingLeft: "var(--sidebar-collapsed-width)" } : undefined}
       >
         <TopBar connectionStatus={connectionStatus} />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
+              className="min-h-full"
               initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
               animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
               exit={shouldReduceMotion ? {} : { opacity: 0, y: -8 }}

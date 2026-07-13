@@ -339,7 +339,7 @@ function AdminUsersPageContent() {
   ];
 
   return (
-    <div data-testid="admin-panel" className="space-y-6 max-w-7xl px-6">
+    <div data-testid="admin-panel" className="space-y-6 max-w-7xl p-4 md:p-6 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -359,7 +359,7 @@ function AdminUsersPageContent() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <Input
           placeholder="Search users..."
           aria-label="Search users"
@@ -386,7 +386,7 @@ function AdminUsersPageContent() {
       </div>
 
       {/* Table */}
-      <div className='max-h-[calc(100vh-260px)] overflow-y-auto rounded-lg'>
+      <div className='rounded-lg overflow-x-auto'>
         <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} pageSize={10} />
       </div>
 

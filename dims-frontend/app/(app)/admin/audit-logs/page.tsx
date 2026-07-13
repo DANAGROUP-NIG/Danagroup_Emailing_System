@@ -76,7 +76,7 @@ export default function AuditLogsPage() {
 
   return (
     <AdminGuard requiredRoles={['group_admin', 'subsidiary_admin']}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 md:p-6 pb-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">

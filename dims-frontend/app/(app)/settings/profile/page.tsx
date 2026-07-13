@@ -131,7 +131,7 @@ export default function SettingsProfilePage() {
       <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-lg font-semibold text-foreground mb-6">Personal Information</h2>
         <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="First Name"
               {...profileForm.register('firstName')}

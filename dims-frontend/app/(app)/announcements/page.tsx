@@ -41,13 +41,13 @@ export default function AnnouncementsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 md:p-6 pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Bell size={28} className="text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Company Announcements</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Company Announcements</h1>
           </div>
           <p className="text-sm text-muted-foreground">
             Stay updated with important company-wide and departmental announcements
