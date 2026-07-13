@@ -20,7 +20,8 @@ sed -i \
   /etc/dovecot/dovecot-dict-sql.conf.ext
 
 # ── TLS cert handling ─────────────────────────────────────────────────────────
-CERT_DIR="/etc/dovecot/certs"
+# CERT_DIR can be overridden via env var (used in production to point at Let's Encrypt)
+CERT_DIR="${CERT_DIR:-/etc/dovecot/certs}"
 if [ -f "${CERT_DIR}/fullchain.pem" ] && [ -f "${CERT_DIR}/privkey.pem" ]; then
   echo "Using provided TLS certificates from ${CERT_DIR}."
   CERT_FILE="${CERT_DIR}/fullchain.pem"

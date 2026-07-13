@@ -326,6 +326,66 @@ export function useStarMail() {
   });
 }
 
+export function useStarThread() {
+  const queryClient = useQueryClient();
+  const invalidateMail = useInvalidateMail();
+
+  return useMutation<
+    { threadId: string; messageId: string; isStarred: boolean },
+    Error,
+    { threadId: string; isStarred: boolean },
+    {
+      previousData: Map<
+        MailFolder,
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined
+      >;
+    }
+  >({
+    mutationFn: async ({ threadId, isStarred }) => {
+      const res = await mailApi.toggleThreadStar(threadId, isStarred);
+      return unwrapResponse(res.data);
+    },
+    onMutate: async ({ threadId, isStarred }) => {
+      await queryClient.cancelQueries({ queryKey: mailKeys.all });
+
+      const previousData = new Map<
+        MailFolder,
+        InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>> | undefined
+      >();
+
+      supportedMailFolders.forEach((folder) => {
+        const queryKey = mailKeys.folder(folder);
+        const data = queryClient.getQueryData<
+          InfiniteData<BackendPageResponse<MailThreadSummary | DraftMessage>>
+        >(queryKey);
+        previousData.set(folder, data);
+
+        if (!data) return;
+
+        const pages = data.pages.map((page) => ({
+          ...page,
+          data: page.data.map((item) =>
+            "latestMessage" in item && item.id === threadId
+              ? { ...item, isStarred }
+              : item,
+          ),
+        }));
+
+        queryClient.setQueryData(queryKey, { ...data, pages });
+      });
+
+      return { previousData };
+    },
+    onError: (_error, _variables, context) => {
+      const previousData = context?.previousData;
+      previousData?.forEach((data, folder) => {
+        if (data) queryClient.setQueryData(mailKeys.folder(folder), data);
+      });
+    },
+    onSettled: invalidateMail,
+  });
+}
+
 export function useDeleteMail() {
   const queryClient = useQueryClient();
   const invalidateMail = useInvalidateMail();
