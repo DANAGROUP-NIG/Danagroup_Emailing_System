@@ -28,6 +28,7 @@ export class TwoFactorService {
         "2FA is already enabled. Disable it first before re-enrolling.",
       );
     }
+    // If a previous un-confirmed secret exists, it will be overwritten below — this is safe.
 
     const totp = new OTPAuth.TOTP({
       issuer: APP_NAME,

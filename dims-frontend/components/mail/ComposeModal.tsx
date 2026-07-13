@@ -458,13 +458,15 @@ export default function ComposeModal() {
       subject: composeDefaults?.subject || "",
       body: composeDefaults?.body || "",
     });
-    setEditorContent(composeDefaults?.bodyHtml || buildBodyHtml(composeDefaults?.body || ""), composeDefaults?.body || "");
+    const baseHtml = composeDefaults?.bodyHtml || buildBodyHtml(composeDefaults?.body || "");
+    const htmlWithSig = buildBodyHtmlWithSignature(baseHtml, signature);
+    setEditorContent(htmlWithSig, composeDefaults?.body || "");
     setShowCc(Boolean(composeDefaults?.cc));
     setShowBcc(Boolean(composeDefaults?.bcc));
     setUploadedAttachments([]);
     lastSavedSignatureRef.current = "";
     isSendingRef.current = false;
-  }, [buildDraftPayload, composeDefaults, composeDraftId, draftData, isComposeOpen, reset, setEditorContent]);
+  }, [buildDraftPayload, composeDefaults, composeDraftId, draftData, isComposeOpen, reset, setEditorContent, signature]);
 
   const onSubmit = (data: ComposeFormValues) => {
     isSendingRef.current = true;

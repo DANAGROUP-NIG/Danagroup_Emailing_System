@@ -360,7 +360,7 @@ function AdminUsersPageContent() {
           variant="primary"
         >
           <Plus size={16} className="mr-2" />
-          Invite User
+          Create User
         </Button>
       </div>
 

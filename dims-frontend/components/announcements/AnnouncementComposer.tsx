@@ -208,19 +208,26 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
                     setValue('departmentId', '');
                   }}
                 >
-                  <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+                  <Select.Trigger className="flex items-center justify-between w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <Select.Value placeholder="Select subsidiary..." />
-                    <Select.Icon>
+                    <Select.Icon className="ml-auto text-muted-foreground">
                       <ChevronDown size={16} />
                     </Select.Icon>
                   </Select.Trigger>
-                  <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-                    {subsidiaries.map((sub) => (
-                      <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 hover:bg-primary/10 cursor-pointer">
-                        {sub.name}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
+                  <Select.Portal>
+                    <Select.Content position="popper" sideOffset={4} className="bg-background border border-border rounded-lg shadow-lg z-[200] w-[var(--radix-select-trigger-width)]">
+                      <Select.Viewport>
+                        <Select.Item value="select-placeholder" className="px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                          <Select.ItemText>Select subsidiary...</Select.ItemText>
+                        </Select.Item>
+                        {subsidiaries.map((sub) => (
+                          <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                            <Select.ItemText>{sub.name}</Select.ItemText>
+                          </Select.Item>
+                        ))}
+                      </Select.Viewport>
+                    </Select.Content>
+                  </Select.Portal>
                 </Select.Root>
               </div>
             )}
@@ -233,19 +240,26 @@ export function AnnouncementComposer({ isOpen, onClose, announcement }: Announce
                   value={watch('departmentId') || 'select-placeholder'}
                   onValueChange={(value) => setValue('departmentId', value === 'select-placeholder' ? '' : value)}
                 >
-                  <Select.Trigger className="flex items-center justify-between w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+                  <Select.Trigger className="flex items-center justify-between w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <Select.Value placeholder="Select department..." />
-                    <Select.Icon>
+                    <Select.Icon className="ml-auto text-muted-foreground">
                       <ChevronDown size={16} />
                     </Select.Icon>
                   </Select.Trigger>
-                  <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-                    {departments.map((dept) => (
-                      <Select.Item key={dept.id} value={dept.id} className="px-3 py-2 hover:bg-primary/10 cursor-pointer">
-                        {dept.name}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
+                  <Select.Portal>
+                    <Select.Content position="popper" sideOffset={4} className="bg-background border border-border rounded-lg shadow-lg z-[200] w-[var(--radix-select-trigger-width)]">
+                      <Select.Viewport>
+                        <Select.Item value="select-placeholder" className="px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                          <Select.ItemText>Select department...</Select.ItemText>
+                        </Select.Item>
+                        {departments.map((dept) => (
+                          <Select.Item key={dept.id} value={dept.id} className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                            <Select.ItemText>{dept.name}</Select.ItemText>
+                          </Select.Item>
+                        ))}
+                      </Select.Viewport>
+                    </Select.Content>
+                  </Select.Portal>
                 </Select.Root>
               </div>
             )}

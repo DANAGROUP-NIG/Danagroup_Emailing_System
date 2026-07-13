@@ -40,8 +40,9 @@ export default function SettingsSecurityPage() {
     queryKey: ['2fa-setup'],
     queryFn: fetchSetup,
     enabled: mode === 'setup',
-    retry: 2,
-    staleTime: 5 * 60 * 1000,
+    retry: 1,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const confirmMutation = useMutation({
@@ -112,7 +113,13 @@ export default function SettingsSecurityPage() {
         </div>
         {mode === 'idle' && (
           <button
-            onClick={() => { setMode(status?.totpEnabled ? 'disable' : 'setup'); setError(''); setSuccess(''); }}
+            onClick={() => {
+              const next = status?.totpEnabled ? 'disable' : 'setup';
+              if (next === 'setup') qc.removeQueries({ queryKey: ['2fa-setup'] });
+              setMode(next);
+              setError('');
+              setSuccess('');
+            }}
             className={cn(
               'flex-shrink-0 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
               status?.totpEnabled

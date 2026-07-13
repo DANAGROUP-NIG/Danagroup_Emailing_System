@@ -66,19 +66,27 @@ function DepartmentFormModal({
             Subsidiary
           </label>
           <Select.Root
-            value={formData.subsidiaryId}
-            onValueChange={(value) => setFormData({ ...formData, subsidiaryId: value })}
+            value={formData.subsidiaryId || 'placeholder'}
+            onValueChange={(value) => setFormData({ ...formData, subsidiaryId: value === 'placeholder' ? '' : value })}
           >
-            <Select.Trigger className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm">
+            <Select.Trigger className="w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-sm text-foreground flex items-center justify-between shadow-sm focus:outline-none focus:ring-2 focus:ring-ring">
               <Select.Value placeholder="Select subsidiary..." />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
             </Select.Trigger>
-            <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-              {subsidiariesData?.map((sub) => (
-                <Select.Item key={sub.id} value={sub.id}>
-                  {sub.name}
-                </Select.Item>
-              ))}
-            </Select.Content>
+            <Select.Portal>
+              <Select.Content position="popper" sideOffset={4} className="bg-background border border-border rounded-lg shadow-lg z-[200] w-[var(--radix-select-trigger-width)]">
+                <Select.Viewport>
+                  <Select.Item value="placeholder" className="px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                    <Select.ItemText>Select subsidiary...</Select.ItemText>
+                  </Select.Item>
+                  {subsidiariesData?.map((sub) => (
+                    <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                      <Select.ItemText>{sub.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
           </Select.Root>
         </div>
         <div className="flex gap-2 pt-4">

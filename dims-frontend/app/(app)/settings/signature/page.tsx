@@ -54,7 +54,15 @@ export default function SignatureSettingsPage() {
     const name = user ? `${user.firstName} ${user.lastName}` : "Your Name";
     const title = user?.jobTitle ?? "Your Title";
     const email = user?.email ?? "you@danagroup.net";
-    const html = `<p><strong>${name}</strong></p><p>${title}</p><p><a href="mailto:${email}">${email}</a></p><p>Dana Group</p>`;
+    const html = [
+      `<p><strong>${name}</strong></p>`,
+      `<p>${title}</p>`,
+      `<p>116 Dana House | Isolo | Lagos | Nigeria</p>`,
+      `<p>Mob: +234 000 000 0000</p>`,
+      `<p>Tel: +234 000 000 0000</p>`,
+      `<p>Email: <a href="mailto:${email}">${email}</a></p>`,
+      `<p><img src="/dana-logo.png" alt="Dana Group" height="50" style="height:50px;width:auto;display:block;margin-top:8px" /></p>`,
+    ].join("");
     setValue(html);
     setIsDirty(html !== (signature ?? ""));
   };
