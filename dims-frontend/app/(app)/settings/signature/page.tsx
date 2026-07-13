@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PenLine, Eye, Trash2 } from "lucide-react";
+import { PenLine, Trash2, Wand2 } from "lucide-react";
 import { useSignature } from "@/hooks/useSignature";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
+import { RichTextEditor } from "@/components/mail/RichTextEditor";
 
 export default function SignatureSettingsPage() {
   const { signature, isLoading, saveSignature, isSaving } = useSignature();
   const { showToast } = useToast();
+  const user = useAuthStore((s) => s.user);
 
   const [value, setValue] = useState("");
-  const [preview, setPreview] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
@@ -21,9 +22,11 @@ export default function SignatureSettingsPage() {
     }
   }, [signature, isLoading]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
-    setIsDirty(e.target.value !== (signature ?? ""));
+  const handleChange = (html: string, _text: string) => {
+    const empty = html === "<p></p>" || html === "";
+    const next = empty ? "" : html;
+    setValue(next);
+    setIsDirty(next !== (signature ?? ""));
   };
 
   const handleSave = async () => {
@@ -47,6 +50,15 @@ export default function SignatureSettingsPage() {
     }
   };
 
+  const applyTemplate = () => {
+    const name = user ? `${user.firstName} ${user.lastName}` : "Your Name";
+    const title = user?.jobTitle ?? "Your Title";
+    const email = user?.email ?? "you@danagroup.net";
+    const html = `<p><strong>${name}</strong></p><p>${title}</p><p><a href="mailto:${email}">${email}</a></p><p>Dana Group</p>`;
+    setValue(html);
+    setIsDirty(html !== (signature ?? ""));
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -62,60 +74,42 @@ export default function SignatureSettingsPage() {
     <div className="space-y-6">
       <div className="bg-card border border-border rounded-lg p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <PenLine className="h-5 w-5 text-primary" />
+            <PenLine className="h-5 w-5 text-primary flex-shrink-0" />
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
-                Email Signature
-              </h2>
+              <h2 className="text-lg font-semibold text-foreground">Email Signature</h2>
               <p className="text-sm text-muted-foreground">
                 Automatically appended to every message you send.
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setPreview((p) => !p)}
-            className={cn(
-              "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors",
-              preview
-                ? "border-primary text-primary bg-primary/5"
-                : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30",
-            )}
-          >
-            <Eye size={13} aria-hidden="true" />
-            {preview ? "Edit" : "Preview"}
-          </button>
+          {!value && (
+            <button
+              type="button"
+              onClick={applyTemplate}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
+            >
+              <Wand2 size={13} aria-hidden="true" />
+              Use default template
+            </button>
+          )}
         </div>
 
-        {/* Editor / Preview */}
-        {preview ? (
-          <div
-            className="min-h-[160px] rounded-lg border border-border bg-background p-4 prose prose-sm max-w-none text-sm text-foreground"
-            dangerouslySetInnerHTML={{ __html: value || "<em class='text-muted-foreground'>No signature set.</em>" }}
-          />
-        ) : (
-          <textarea
-            value={value}
-            onChange={handleChange}
-            placeholder="Enter your signature here. You can use simple HTML like <b>, <i>, <a href=...>..."
-            rows={7}
-            className="w-full resize-none rounded-lg border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
-          />
-        )}
+        {/* Rich Text Editor */}
+        <RichTextEditor
+          value={value}
+          onChange={handleChange}
+          placeholder="Type your signature here — use the toolbar to format text, add links, and more..."
+          minHeight="140px"
+        />
 
         <p className="text-xs text-muted-foreground">
-          Supports basic HTML:{" "}
-          <code className="bg-muted px-1 rounded text-xs">&lt;b&gt;</code>{" "}
-          <code className="bg-muted px-1 rounded text-xs">&lt;i&gt;</code>{" "}
-          <code className="bg-muted px-1 rounded text-xs">&lt;a href=&quot;...&quot;&gt;</code>{" "}
-          <code className="bg-muted px-1 rounded text-xs">&lt;br&gt;</code>
+          Use the toolbar above to format your signature. No HTML knowledge required.
         </p>
 
         {/* Actions */}
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-3 pt-1 border-t border-border">
           <button
             type="button"
             onClick={handleSave}
@@ -125,16 +119,27 @@ export default function SignatureSettingsPage() {
             {isSaving ? "Saving…" : "Save signature"}
           </button>
 
-          {(signature || value) && (
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-danger hover:border-danger transition-colors disabled:opacity-50"
-            >
-              <Trash2 size={14} aria-hidden="true" />
-              Clear
-            </button>
+          {(value || signature) && (
+            <>
+              {isDirty && value !== (signature ?? "") && signature && (
+                <button
+                  type="button"
+                  onClick={() => { setValue(signature ?? ""); setIsDirty(false); }}
+                  className="px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Discard
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-danger hover:border-danger transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                Clear
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -143,7 +148,7 @@ export default function SignatureSettingsPage() {
       {value.trim() && (
         <div className="bg-card border border-border rounded-lg p-6 space-y-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            How it will appear in messages
+            Preview — how it appears in messages
           </p>
           <div className="border-t border-border pt-4">
             <div

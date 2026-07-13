@@ -20,177 +20,182 @@ import { MoreVertical, Plus, Mail } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Select from '@radix-ui/react-select';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
-import type { User } from '@/types/user.types';
+import type { User, UserRole } from '@/types/user.types';
 import { ColumnDef } from '@tanstack/react-table';
 import { apiClient } from '@/lib/api';
-import SignupPage from '@/app/(auth)/signup/page';
 
 const DataTable = dynamic(
   () => import('@/components/admin/DataTable').then((m) => m.DataTable),
   { loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" /> },
 ) as typeof import('@/components/admin/DataTable').DataTable;
 
-// function UserFormModal({
-//   isOpen,
-//   onClose,
-//   initialUser,
-// }: {
-//   isOpen: boolean;
-//   onClose: () => void;
-//   initialUser?: User | undefined;
-// }) {
-//   const [formData, setFormData] = useState<{
-//     firstName: string;
-//     lastName: string;
-//     email: string;
-//     role: UserRole;
-//     jobTitle: string;
-//     subsidiaryId: string;
-//     departmentId: string;
-//   }>(
-//     initialUser
-//       ? {
-//           firstName: initialUser.firstName,
-//           lastName: initialUser.lastName,
-//           email: initialUser.email,
-//           role: initialUser.role,
-//           jobTitle: initialUser.jobTitle ?? '',
-//           subsidiaryId: initialUser.subsidiaryId ?? '',
-//           departmentId: initialUser.departmentId ?? '',
-//         }
-//       : {
-//           firstName: '',
-//           lastName: '',
-//           email: '',
-//           role: 'employee',
-//           jobTitle: '',
-//           subsidiaryId: '',
-//           departmentId: '',
-//         }
-//   );
-//   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(!initialUser);
+function UserFormModal({
+  isOpen,
+  onClose,
+  initialUser,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  initialUser?: User | undefined;
+}) {
+  const [formData, setFormData] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: UserRole;
+    jobTitle: string;
+    subsidiaryId: string;
+    departmentId: string;
+  }>(
+    initialUser
+      ? {
+          firstName: initialUser.firstName,
+          lastName: initialUser.lastName,
+          email: initialUser.email,
+          role: initialUser.role,
+          jobTitle: initialUser.jobTitle ?? '',
+          subsidiaryId: initialUser.subsidiaryId ?? '',
+          departmentId: initialUser.departmentId ?? '',
+        }
+      : {
+          firstName: '',
+          lastName: '',
+          email: '',
+          role: 'employee',
+          jobTitle: '',
+          subsidiaryId: '',
+          departmentId: '',
+        }
+  );
+  const createUser = useCreateUser();
+  const updateUser = useUpdateUser();
+  const { data: subsidiariesData } = useSubsidiaries();
+  useDepartments(formData.subsidiaryId);
 
-//   const createUser = useCreateUser();
-//   const updateUser = useUpdateUser();
-//   const { data: subsidiariesData } = useSubsidiaries();
-//   useDepartments(formData.subsidiaryId);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (initialUser) {
+      await updateUser.mutateAsync({
+        id: initialUser.id,
+        data: formData,
+      });
+    } else {
+      await createUser.mutateAsync({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        role: formData.role,
+        jobTitle: formData.jobTitle || undefined,
+        subsidiary: formData.subsidiaryId || undefined,
+        department: formData.departmentId || undefined,
+      });
+    }
+    onClose();
+  };
 
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (initialUser) {
-//       await updateUser.mutateAsync({
-//         id: initialUser.id,
-//         data: formData,
-//       });
-//     } else {
-//       await createUser.mutateAsync({
-//         ...formData,
-//         sendWelcomeEmail,
-//       });
-//     }
-//     onClose();
-//   };
+  const selectTriggerClass = 'w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-sm text-foreground shadow-dana-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-between';
+  const selectContentClass = 'bg-background border border-border rounded-lg shadow-dana-md z-[200] overflow-hidden';
+  const selectItemClass = 'px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none';
 
-//   return (
-//     <Modal
-//       open={isOpen}
-//       onClose={onClose}
-//       title={initialUser ? 'Edit User' : 'Invite User'}
-//       size="lg"
-//     >
-//       <form onSubmit={handleSubmit} className="space-y-4">
-//         <div className="grid grid-cols-2 gap-4">
-//           <Input
-//             label="First Name"
-//             value={formData.firstName}
-//             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-//             required
-//           />
-//           <Input
-//             label="Last Name"
-//             value={formData.lastName}
-//             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-//             required
-//           />
-//         </div>
-//         <Input
-//           label="Email"
-//           type="email"
-//           value={formData.email}
-//           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-//           required
-//         />
-//         <Input
-//           label="Job Title"
-//           value={formData.jobTitle || ''}
-//           onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-//         />
+  return (
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title={initialUser ? 'Edit User' : 'Invite User'}
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="First Name"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            required
+          />
+          <Input
+            label="Last Name"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            required
+          />
+        </div>
+        <Input
+          label="Email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          required
+          disabled={!!initialUser}
+        />
+        <Input
+          label="Job Title"
+          value={formData.jobTitle || ''}
+          onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+        />
 
-//         <div>
-//           <label htmlFor="user-subsidiary" className="block text-sm font-medium text-foreground mb-2">
-//             Subsidiary
-//           </label>
-//           <Select.Root
-//             value={formData.subsidiaryId || 'placeholder'}
-//             onValueChange={(value) =>
-//               setFormData({ ...formData, subsidiaryId: value === 'placeholder' ? '' : value, departmentId: '' })
-//             }
-//           >
-//             <Select.Trigger id="user-subsidiary" aria-label="Select subsidiary" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-//               <Select.Value placeholder="Select subsidiary..." />
-//             </Select.Trigger>
-//             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-//               {subsidiariesData?.map((sub) => (
-//                 <Select.Item key={sub.id} value={sub.id}>
-//                   {sub.name}
-//                 </Select.Item>
-//               ))}
-//             </Select.Content>
-//           </Select.Root>
-//         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Subsidiary</label>
+          <Select.Root
+            value={formData.subsidiaryId || 'placeholder'}
+            onValueChange={(value) =>
+              setFormData({ ...formData, subsidiaryId: value === 'placeholder' ? '' : value, departmentId: '' })
+            }
+          >
+            <Select.Trigger aria-label="Select subsidiary" className={selectTriggerClass}>
+              <Select.Value placeholder="Select subsidiary..." />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="placeholder" className={selectItemClass}>
+                    <Select.ItemText>Select subsidiary...</Select.ItemText>
+                  </Select.Item>
+                  {subsidiariesData?.map((sub) => (
+                    <Select.Item key={sub.id} value={sub.id} className={selectItemClass}>
+                      <Select.ItemText>{sub.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
 
-//         <div>
-//           <label htmlFor="user-role" className="block text-sm font-medium text-foreground mb-2">Role</label>
-//           <Select.Root
-//             value={formData.role}
-//             onValueChange={(value: string) => setFormData({ ...formData, role: value as UserRole })}
-//           >
-//             <Select.Trigger id="user-role" aria-label="Select role" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-//               <Select.Value />
-//             </Select.Trigger>
-//             <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-//               <Select.Item value="employee">Employee</Select.Item>
-//               <Select.Item value="manager">Manager</Select.Item>
-//               <Select.Item value="subsidiary_admin">Subsidiary Admin</Select.Item>
-//             </Select.Content>
-//           </Select.Root>
-//         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Role</label>
+          <Select.Root
+            value={formData.role}
+            onValueChange={(value: string) => setFormData({ ...formData, role: value as UserRole })}
+          >
+            <Select.Trigger aria-label="Select role" className={selectTriggerClass}>
+              <Select.Value />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="employee" className={selectItemClass}><Select.ItemText>Employee</Select.ItemText></Select.Item>
+                  <Select.Item value="manager" className={selectItemClass}><Select.ItemText>Manager</Select.ItemText></Select.Item>
+                  <Select.Item value="subsidiary_admin" className={selectItemClass}><Select.ItemText>Subsidiary Admin</Select.ItemText></Select.Item>
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
 
-//         <div className="flex items-center gap-2">
-//           <input
-//             type="checkbox"
-//             id="sendEmail"
-//             checked={sendWelcomeEmail}
-//             onChange={(e) => setSendWelcomeEmail(e.target.checked)}
-//             className="rounded"
-//           />
-//           <label htmlFor="sendEmail" className="text-sm text-foreground">
-//             Send welcome email
-//           </label>
-//         </div>
-
-//         <div className="flex gap-2 pt-4">
-//           <Button type="submit" variant="primary" className="flex-1">
-//             {initialUser ? 'Update User' : 'Invite User'}
-//           </Button>
-//           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-//             Cancel
-//           </Button>
-//         </div>
-//       </form>
-//     </Modal>
-//   );
-// }
+        <div className="flex gap-3 pt-4 border-t border-border">
+          <Button type="submit" variant="primary" className="flex-1" disabled={createUser.isPending || updateUser.isPending}>
+            {createUser.isPending || updateUser.isPending ? 'Saving…' : (initialUser ? 'Update User' : 'Invite User')}
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
 
 function AdminUsersPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -354,8 +359,8 @@ function AdminUsersPageContent() {
           }}
           variant="primary"
         >
-          <Plus size={16} />
-          Create User
+          <Plus size={16} className="mr-2" />
+          Invite User
         </Button>
       </div>
 
@@ -372,33 +377,38 @@ function AdminUsersPageContent() {
           value={selectedSubsidiary || 'all'}
           onValueChange={(value) => setSelectedSubsidiary(value === 'all' ? '' : value)}
         >
-          <Select.Trigger aria-label="Filter by subsidiary" className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+          <Select.Trigger aria-label="Filter by subsidiary" className="h-10 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm min-w-[180px] shadow-dana-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-2">
             <Select.Value />
+            <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
           </Select.Trigger>
-          <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-            <Select.Item value="all">All subsidiaries</Select.Item>
-            {subsidiariesData?.map((sub) => (
-              <Select.Item key={sub.id} value={sub.id}>
-                {sub.name}
-              </Select.Item>
-            ))}
-          </Select.Content>
+          <Select.Portal>
+            <Select.Content position="popper" className="bg-background border border-border rounded-lg shadow-dana-md z-[100] overflow-hidden" sideOffset={4}>
+              <Select.Viewport>
+                <Select.Item value="all" className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none"><Select.ItemText>All subsidiaries</Select.ItemText></Select.Item>
+                {subsidiariesData?.map((sub) => (
+                  <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                    <Select.ItemText>{sub.name}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Viewport>
+            </Select.Content>
+          </Select.Portal>
         </Select.Root>
       </div>
 
       {/* Table */}
-      <div className='max-h-[calc(100vh-230px)] overflow-y-auto rounded-lg'>
+      <div className='overflow-x-auto rounded-lg'>
         <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} pageSize={10} />
       </div>
 
       {/* Form Modal */}
-      <SignupPage
+      <UserFormModal
         isOpen={isFormOpen}
         onClose={() => {
           setIsFormOpen(false);
           setEditingUser(undefined);
         }}
-        {...(editingUser ? { initialUser: editingUser } : {})}
+        initialUser={editingUser}
       />
     </div>
   );

@@ -4,14 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useUpdateNotificationPreferences } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import api from '@/lib/api';
 import type { User } from '@/types/user.types';
 import { useState, useEffect } from 'react';
 
 export default function SettingsNotificationsPage() {
   const [emailDigest, setEmailDigest] = useState<'daily' | 'weekly' | 'never'>('daily');
-  const [inAppSounds, setInAppSounds] = useState(true);
+  const [inAppSounds, setInAppSounds] = useState(() => {
+    try { return localStorage.getItem('dims:inAppSounds') !== 'false'; } catch { return true; }
+  });
   const [isDirty, setIsDirty] = useState(false);
+  const { showToast } = useToast();
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
@@ -26,7 +30,6 @@ export default function SettingsNotificationsPage() {
   useEffect(() => {
     if (user) {
       setEmailDigest('daily');
-      setInAppSounds(true);
     }
   }, [user]);
 
@@ -36,10 +39,12 @@ export default function SettingsNotificationsPage() {
         emailDigest,
         inAppSounds,
       });
+      // Persist sound preference locally so the sound hook can read it without a backend round-trip
+      try { localStorage.setItem('dims:inAppSounds', String(inAppSounds)); } catch { /* noop */ }
       setIsDirty(false);
-      alert('Notification preferences updated');
+      showToast({ title: 'Notification preferences saved', variant: 'success' });
     } catch {
-      alert('Failed to update preferences');
+      showToast({ title: 'Failed to save preferences', variant: 'error' });
     }
   };
 
