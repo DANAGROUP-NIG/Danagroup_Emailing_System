@@ -315,3 +315,9 @@
     box-shadow: none;
   }
 }
+
+
+
+.scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}

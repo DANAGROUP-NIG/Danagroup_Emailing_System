@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import * as z from "zod";
 import { Eye, EyeOff } from "lucide-react";
+import type { User } from '@/types/user.types';
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { authApi } from "@/lib/api/auth";
-import { useAuthStore } from "@/store/authStore";
+import { useCreateUser } from "@/hooks/useAdmin";
+import Modal from "@/components/ui/Modal";
 
 const signupSchema = z
   .object({
@@ -70,11 +71,20 @@ const signupSchema = z
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function SignupPage() {
+export default function SignupPage(
+  {
+    isOpen,
+    onClose,
+    initialUser,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    initialUser?: User | undefined;
+  }
+) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signup } = useAuthStore();
-  const router = useRouter();
+  const createUser = useCreateUser();
   const { showToast } = useToast();
   const { data: signupOptions, isLoading: isLoadingOptions } = useQuery({
     queryKey: ["auth", "signup-options"],
@@ -114,243 +124,248 @@ export default function SignupPage() {
 
   const onSubmit = async (data: SignupFormValues) => {
     const email = `${data.emailLocalPart}@${data.emailDomain}`.toLowerCase();
+    const selectedDepartment = departments.find(
+      (department) => department.id === data.departmentId,
+    );
+
+    if (!selectedSubsidiary || !selectedDepartment) {
+      showToast({
+        title: "Unable to create user",
+        description: "Select a valid subsidiary and department.",
+        variant: "error",
+      });
+      return;
+    }
+
     const payload = {
       firstName: data.firstName,
       lastName: data.lastName,
       email,
       password: data.password,
-      departmentId: data.departmentId,
+      department: selectedDepartment.name,
+      subsidiary: selectedSubsidiary.name,
+      role: "employee",
       ...(data.jobTitle ? { jobTitle: data.jobTitle } : {}),
     };
 
     try {
-      const success = await signup(payload);
-
-      if (success) {
-        showToast({
-          title: "Account created",
-          description: "Your employee account is ready.",
-          variant: "success",
-        });
-        router.replace("/mail/inbox");
-        return;
-      }
-
-      showToast({
-        title: "Signup failed",
-        description:
-          "Check your company email domain and selected department.",
-        variant: "error",
-      });
+      await createUser.mutateAsync(payload);
+      onClose();
     } catch {
-      showToast({
-        title: "Something went wrong",
-        description: "Unable to create your account. Try again later.",
-        variant: "error",
-      });
+      // useCreateUser owns the error toast and leaves the modal open for retry.
     }
   };
 
   return (
-    <div className="dims-card space-y-8">
-      <div className="space-y-1">
+    <div className="space-y-8 ">
+      {/* <div className="space-y-1">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">
           Create your account
         </h1>
         <p className="text-sm text-muted-foreground">
           Use your company email so DIMS can match your subsidiary.
         </p>
-      </div>
+      </div> */}
 
-      <form
-        aria-label="Create a DIMS account"
-        autoComplete="on"
-        noValidate
-        onSubmit={handleSubmit(onSubmit)}
-        className="space-y-5"
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        title={initialUser ? 'Edit User' : 'Create User'}
+        size="lg"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            {...register("firstName")}
-            id="firstName"
-            label="First name"
-            autoComplete="given-name"
-            placeholder="John"
-            error={errors.firstName?.message}
-            fullWidth
-          />
+        <div className="rounded-lg">
+          <form
+            aria-label="Create a DIMS account"
+            autoComplete="on"
+            noValidate
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                {...register("firstName")}
+                id="firstName"
+                label="First name"
+                autoComplete="given-name"
+                placeholder="John"
+                error={errors.firstName?.message}
+                fullWidth
+              />
 
-          <Input
-            {...register("lastName")}
-            id="lastName"
-            label="Last name"
-            autoComplete="family-name"
-            placeholder="Doe"
-            error={errors.lastName?.message}
-            fullWidth
-          />
-        </div>
+              <Input
+                {...register("lastName")}
+                id="lastName"
+                label="Last name"
+                autoComplete="family-name"
+                placeholder="Doe"
+                error={errors.lastName?.message}
+                fullWidth
+              />
+            </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
-            Company email
-          </label>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.9fr)]">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Company email
+              </label>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,0.9fr)]">
+                <Input
+                  {...register("emailLocalPart")}
+                  id="signup-email-local"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
+                  placeholder="john.doe"
+                  error={errors.emailLocalPart?.message}
+                  fullWidth
+                />
+
+                <Select
+                  value={emailDomain}
+                  disabled={isLoadingOptions || subsidiaries.length === 0}
+                  onValueChange={(value) => {
+                    setValue("emailDomain", value, { shouldValidate: true });
+                    setValue("departmentId", "", { shouldValidate: true });
+                  }}
+                >
+                  <SelectTrigger
+                    id="signup-email-domain"
+                    aria-label="Select email domain"
+                  >
+                    <SelectValue
+                      placeholder={
+                        isLoadingOptions ? "Loading domains..." : "Select domain"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subsidiaries.map((subsidiary) => (
+                      <SelectItem key={subsidiary.id} value={subsidiary.domain}>
+                        @{subsidiary.domain}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {errors.emailDomain?.message ? (
+                <p className="text-sm text-destructive">
+                  {errors.emailDomain.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Subsidiary
+              </label>
+              <div className="flex h-10 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-foreground">
+                {selectedSubsidiary?.name ?? "Select an email domain first"}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-foreground">
+                Department
+              </label>
+              <Select
+                value={departmentId}
+                disabled={!selectedSubsidiary || departments.length === 0}
+                onValueChange={(value) =>
+                  setValue("departmentId", value, { shouldValidate: true })
+                }
+              >
+                <SelectTrigger id="departmentId" aria-label="Select department">
+                  <SelectValue
+                    placeholder={
+                      selectedSubsidiary
+                        ? "Select department"
+                        : "Select a domain first"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((department) => (
+                    <SelectItem key={department.id} value={department.id}>
+                      {department.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.departmentId?.message ? (
+                <p className="text-sm text-destructive">
+                  {errors.departmentId.message}
+                </p>
+              ) : null}
+            </div>
+
             <Input
-              {...register("emailLocalPart")}
-              id="signup-email-local"
-              type="text"
-              inputMode="email"
-              autoComplete="username"
-              placeholder="john.doe"
-              error={errors.emailLocalPart?.message}
+              {...register("jobTitle")}
+              id="jobTitle"
+              label="Job title"
+              autoComplete="organization-title"
+              placeholder="Software Engineer"
+              error={errors.jobTitle?.message}
               fullWidth
             />
 
-            <Select
-              value={emailDomain}
-              disabled={isLoadingOptions || subsidiaries.length === 0}
-              onValueChange={(value) => {
-                setValue("emailDomain", value, { shouldValidate: true });
-                setValue("departmentId", "", { shouldValidate: true });
-              }}
-            >
-              <SelectTrigger
-                id="signup-email-domain"
-                aria-label="Select email domain"
-              >
-                <SelectValue
-                  placeholder={
-                    isLoadingOptions ? "Loading domains..." : "Select domain"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {subsidiaries.map((subsidiary) => (
-                  <SelectItem key={subsidiary.id} value={subsidiary.domain}>
-                    @{subsidiary.domain}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {errors.emailDomain?.message ? (
-            <p className="text-sm text-destructive">
-              {errors.emailDomain.message}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
-            Subsidiary
-          </label>
-          <div className="flex h-10 items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-foreground">
-            {selectedSubsidiary?.name ?? "Select an email domain first"}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground">
-            Department
-          </label>
-          <Select
-            value={departmentId}
-            disabled={!selectedSubsidiary || departments.length === 0}
-            onValueChange={(value) =>
-              setValue("departmentId", value, { shouldValidate: true })
-            }
-          >
-            <SelectTrigger id="departmentId" aria-label="Select department">
-              <SelectValue
-                placeholder={
-                  selectedSubsidiary
-                    ? "Select department"
-                    : "Select a domain first"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((department) => (
-                <SelectItem key={department.id} value={department.id}>
-                  {department.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.departmentId?.message ? (
-            <p className="text-sm text-destructive">
-              {errors.departmentId.message}
-            </p>
-          ) : null}
-        </div>
-
-        <Input
-          {...register("jobTitle")}
-          id="jobTitle"
-          label="Job title"
-          autoComplete="organization-title"
-          placeholder="Software Engineer"
-          error={errors.jobTitle?.message}
-          fullWidth
-        />
-
-        <Input
-          {...register("password")}
-          id="signup-password"
-          label="Password"
-          type={showPassword ? "text" : "password"}
-          autoComplete="new-password"
-          placeholder="Create a password"
-          error={errors.password?.message}
-          fullWidth
-          rightIcon={
-            <button
-              type="button"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="pointer-events-auto text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
-              onClick={() => setShowPassword((value) => !value)}
-              tabIndex={0}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          }
-        />
-
-        <Input
-          {...register("confirmPassword")}
-          id="confirmPassword"
-          label="Confirm password"
-          type={showConfirmPassword ? "text" : "password"}
-          autoComplete="new-password"
-          placeholder="Confirm your password"
-          error={errors.confirmPassword?.message}
-          fullWidth
-          rightIcon={
-            <button
-              type="button"
-              aria-label={
-                showConfirmPassword ? "Hide password" : "Show password"
+            <Input
+              {...register("password")}
+              id="signup-password"
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Create a password"
+              error={errors.password?.message}
+              fullWidth
+              rightIcon={
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="pointer-events-auto text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+                  onClick={() => setShowPassword((value) => !value)}
+                  tabIndex={0}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               }
-              className="pointer-events-auto text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
-              onClick={() => setShowConfirmPassword((value) => !value)}
-              tabIndex={0}
-            >
-              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          }
-        />
+            />
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          fullWidth
-          isLoading={isSubmitting}
-        >
-          Create account
-        </Button>
-      </form>
+            <Input
+              {...register("confirmPassword")}
+              id="confirmPassword"
+              label="Confirm password"
+              type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              placeholder="Confirm your password"
+              error={errors.confirmPassword?.message}
+              fullWidth
+              rightIcon={
+                <button
+                  type="button"
+                  aria-label={
+                    showConfirmPassword ? "Hide password" : "Show password"
+                  }
+                  className="pointer-events-auto text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  tabIndex={0}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              }
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              isLoading={isSubmitting}
+            >
+              Create account
+            </Button>
+          </form>
+        </div>
+      </Modal>
+
     </div>
   );
 }
