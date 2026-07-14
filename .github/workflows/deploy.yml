@@ -111,7 +111,7 @@ jobs:
           key: ${{ secrets.PROD_AZURE_SSH_KEY }}
           port: ${{ secrets.PROD_AZURE_SSH_PORT || 22 }}
           timeout: 60s
-          command_timeout: 45m
+          command_timeout: 90m
           script_stop: false
           script: |
             set -e
