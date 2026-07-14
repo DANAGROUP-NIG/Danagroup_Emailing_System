@@ -42,6 +42,7 @@ import { UserShape } from "./auth.service";
 import { StorageService } from "@modules/storage/storage.service";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 type AuthenticatedRequest = Request & {
   user: UserShape;
@@ -320,6 +321,25 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto.token, dto.password);
     return new ApiResponseDto(true, "Password updated successfully");
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Post("change-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Change the current user's password" })
+  @ApiOkResponse({ description: "Password changed successfully" })
+  @ApiResponse({ status: 400, description: "Current password is incorrect" })
+  async changePassword(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(
+      user.userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return new ApiResponseDto(true, "Password changed successfully");
   }
 
   @Roles("group_admin")

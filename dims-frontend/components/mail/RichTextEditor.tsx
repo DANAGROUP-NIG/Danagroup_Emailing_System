@@ -1,22 +1,32 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
+import { Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
-import Image from '@tiptap/extension-image';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Quote, Code, Link2,
   Undo2, Redo2, RemoveFormatting, Heading2, Heading3,
-  Image as ImageIcon, Paperclip,
+  Image as ImageIcon, Paperclip, X,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { filesApi } from '@/lib/api/files';
 import { useToast } from '@/components/ui/Toast';
+import type { NodeViewProps } from '@tiptap/react';
+
+export interface EditorAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+  url: string;
+}
 
 interface RichTextEditorProps {
   value: string;
@@ -25,6 +35,7 @@ interface RichTextEditorProps {
   className?: string;
   readOnly?: boolean;
   minHeight?: string;
+  onAttachmentsChange?: (attachments: EditorAttachment[]) => void;
 }
 
 const CustomLink = Link.extend({
@@ -43,6 +54,117 @@ const CustomLink = Link.extend({
   },
 });
 
+function ResizableImageView({ node, updateAttributes, selected }: NodeViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isResizing = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  const width = (node.attrs as { width?: number | null }).width ?? 300;
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    startX.current = e.clientX;
+    startWidth.current = containerRef.current?.offsetWidth ?? width;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = ev.clientX - startX.current;
+      const newWidth = Math.max(60, Math.min(800, startWidth.current + delta));
+      updateAttributes({ width: Math.round(newWidth) });
+    };
+
+    const onMouseUp = () => {
+      isResizing.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [updateAttributes, width]);
+
+  return (
+    <NodeViewWrapper
+      as="span"
+      style={{ display: 'inline-block', position: 'relative', maxWidth: '100%' }}
+    >
+      <span
+        ref={containerRef}
+        style={{
+          display: 'inline-block',
+          position: 'relative',
+          width,
+          maxWidth: '100%',
+          outline: selected ? '2px solid #6366f1' : 'none',
+          borderRadius: 4,
+        }}
+      >
+        <img
+          src={(node.attrs as { src: string }).src}
+          alt={(node.attrs as { alt?: string }).alt ?? ''}
+          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 4 }}
+          draggable={false}
+        />
+        {selected && (
+          <span
+            onMouseDown={onMouseDown}
+            style={{
+              position: 'absolute',
+              right: -6,
+              bottom: -6,
+              width: 14,
+              height: 14,
+              background: '#6366f1',
+              borderRadius: '50%',
+              cursor: 'se-resize',
+              zIndex: 10,
+              border: '2px solid white',
+            }}
+          />
+        )}
+      </span>
+    </NodeViewWrapper>
+  );
+}
+
+const ResizableImage = Node.create({
+  name: 'resizableImage',
+  group: 'inline',
+  inline: true,
+  atom: true,
+
+  addAttributes() {
+    return {
+      src: { default: null },
+      alt: { default: null },
+      width: { default: 300 },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: 'img[src]' }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    const { width, ...rest } = HTMLAttributes as { width?: number; src?: string; alt?: string };
+    return ['img', mergeAttributes(rest, {
+      style: `width:${width ?? 300}px;max-width:100%;height:auto`,
+    })];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageView);
+  },
+});
+
+interface LinkDialogState {
+  open: boolean;
+  text: string;
+  url: string;
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -50,17 +172,22 @@ export function RichTextEditor({
   className,
   readOnly = false,
   minHeight = '120px',
+  onAttachmentsChange,
 }: RichTextEditorProps) {
   const { showToast } = useToast();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<EditorAttachment[]>([]);
+  const [linkDialog, setLinkDialog] = useState<LinkDialogState>({ open: false, text: '', url: '' });
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       CustomLink.configure({ openOnClick: false, autolink: true }),
-      Image.configure({ allowBase64: false }),
+      ResizableImage,
       Placeholder.configure({ placeholder }),
     ],
     content: value,
@@ -78,32 +205,85 @@ export function RichTextEditor({
     }
   }, [editor, value]);
 
+  const notifyAttachments = useCallback((next: EditorAttachment[]) => {
+    setAttachments(next);
+    onAttachmentsChange?.(next);
+  }, [onAttachmentsChange]);
+
   if (!editor) return null;
 
   const handleImageUpload = async (file: File) => {
+    setIsUploadingImage(true);
     try {
       const res = await filesApi.upload(file);
       const attachment = res.data.data;
-      editor.chain().focus().setImage({ src: attachment.url, alt: file.name }).run();
+      editor.chain().focus().insertContent({
+        type: 'resizableImage',
+        attrs: { src: attachment.url, alt: file.name, width: 300 },
+      }).run();
     } catch {
       showToast({ title: 'Image upload failed', variant: 'error' });
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileAttach = async (file: File) => {
+    setIsUploadingFile(true);
     try {
       const res = await filesApi.upload(file);
-      const attachment = res.data.data;
-      editor
-        .chain()
-        .focus()
-        .insertContent(
-          `<a href="${attachment.url}" data-attachment-id="${attachment.id}" title="${attachment.filename}" target="_blank" rel="noopener noreferrer">${attachment.filename}</a>`,
-        )
-        .run();
+      const data = res.data.data;
+      const attachment: EditorAttachment = {
+        id: data.id,
+        filename: data.filename,
+        mimeType: data.mimeType,
+        sizeBytes: data.sizeBytes,
+        storageKey: data.storageKey,
+        url: data.url,
+      };
+      notifyAttachments([...attachments, attachment]);
     } catch {
       showToast({ title: 'File upload failed', variant: 'error' });
+    } finally {
+      setIsUploadingFile(false);
     }
+  };
+
+  const removeAttachment = (id: string) => {
+    notifyAttachments(attachments.filter((a) => a.id !== id));
+  };
+
+  const openLinkDialog = () => {
+    if (editor.isActive('link')) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+    const selectedText = editor.state.doc.textBetween(
+      editor.state.selection.from,
+      editor.state.selection.to,
+    );
+    setLinkDialog({ open: true, text: selectedText, url: '' });
+  };
+
+  const confirmLink = () => {
+    const url = linkDialog.url.trim();
+    if (!url) {
+      setLinkDialog({ open: false, text: '', url: '' });
+      return;
+    }
+    const href = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')
+      ? url : `https://${url}`;
+    editor.chain().focus().setLink({ href }).run();
+    if (linkDialog.text && !editor.state.selection.empty) {
+      // text already selected — link is applied
+    }
+    setLinkDialog({ open: false, text: '', url: '' });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const Divider = () => (
@@ -213,25 +393,22 @@ export function RichTextEditor({
           <Btn
             icon={Link2}
             isActive={editor.isActive('link')}
-            onClick={() => {
-              if (editor.isActive('link')) {
-                editor.chain().focus().unsetLink().run();
-              } else {
-                const url = window.prompt('Enter URL');
-                if (url) editor.chain().focus().setLink({ href: url }).run();
-              }
-            }}
-            title={editor.isActive('link') ? 'Remove link' : 'Add link'}
+            onClick={openLinkDialog}
+            title={editor.isActive('link') ? 'Remove link' : 'Insert link'}
           />
+          {/* Image */}
           <Btn
             icon={ImageIcon}
             onClick={() => imageInputRef.current?.click()}
             title="Upload image"
+            disabled={isUploadingImage}
           />
+          {/* Attach file */}
           <Btn
             icon={Paperclip}
             onClick={() => fileInputRef.current?.click()}
             title="Attach file"
+            disabled={isUploadingFile}
           />
           <input
             ref={imageInputRef}
@@ -240,7 +417,7 @@ export function RichTextEditor({
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleImageUpload(file);
+              if (file) void handleImageUpload(file);
               e.target.value = '';
             }}
           />
@@ -250,7 +427,7 @@ export function RichTextEditor({
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleFileUpload(file);
+              if (file) void handleFileAttach(file);
               e.target.value = '';
             }}
           />
@@ -275,11 +452,81 @@ export function RichTextEditor({
           />
         </div>
       )}
+
+      {/* Link dialog */}
+      {linkDialog.open && (
+        <div className="border-b border-input bg-muted/30 px-3 py-2.5 flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+            <label className="text-xs font-medium text-muted-foreground">Display text</label>
+            <input
+              autoFocus
+              type="text"
+              value={linkDialog.text}
+              onChange={(e) => setLinkDialog((p) => ({ ...p, text: e.target.value }))}
+              placeholder="Link text (optional)"
+              className="h-8 rounded border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+              onKeyDown={(e) => { if (e.key === 'Enter') confirmLink(); if (e.key === 'Escape') setLinkDialog({ open: false, text: '', url: '' }); }}
+            />
+          </div>
+          <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+            <label className="text-xs font-medium text-muted-foreground">Web address</label>
+            <input
+              type="url"
+              value={linkDialog.url}
+              onChange={(e) => setLinkDialog((p) => ({ ...p, url: e.target.value }))}
+              placeholder="https://example.com"
+              className="h-8 rounded border border-input bg-background px-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+              onKeyDown={(e) => { if (e.key === 'Enter') confirmLink(); if (e.key === 'Escape') setLinkDialog({ open: false, text: '', url: '' }); }}
+            />
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={confirmLink}
+              className="h-8 px-3 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Insert
+            </button>
+            <button
+              type="button"
+              onClick={() => setLinkDialog({ open: false, text: '', url: '' })}
+              className="h-8 px-3 rounded border border-input text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <EditorContent
         editor={editor}
         style={{ minHeight }}
         className="prose prose-sm dark:prose-invert max-w-none flex-1 px-3 py-2 text-sm outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[inherit]"
       />
+
+      {/* Attachment chips */}
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-input bg-muted/20 px-3 py-2">
+          {attachments.map((att) => (
+            <div
+              key={att.id}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+            >
+              <Paperclip size={12} className="shrink-0 text-muted-foreground" />
+              <span className="max-w-[160px] truncate font-medium">{att.filename}</span>
+              <span className="text-muted-foreground">· {formatFileSize(att.sizeBytes)}</span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(att.id)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title={`Remove ${att.filename}`}
+              >
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import { RichTextEditor } from "@/components/mail/RichTextEditor";
+import { RichTextEditor, type EditorAttachment } from "@/components/mail/RichTextEditor";
 import { useMail } from "@/hooks/useMail";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/store/mailStore";
@@ -132,6 +132,7 @@ export default function ComposeModal() {
   const [showBcc, setShowBcc] = useState(false);
   const [bodyHtml, setBodyHtml] = useState("");
   const [editorValue, setEditorValue] = useState("");
+  const [editorAttachments, setEditorAttachments] = useState<EditorAttachment[]>([]);
   const isSendingRef = useRef(false);
   const isClosingRef = useRef(false);
   const lastSavedSignatureRef = useRef("");
@@ -144,8 +145,11 @@ export default function ComposeModal() {
     for (const match of matches) {
       if (match[1]) ids.add(match[1]);
     }
+    for (const att of editorAttachments) {
+      ids.add(att.id);
+    }
     return Array.from(ids);
-  }, [bodyHtml]);
+  }, [bodyHtml, editorAttachments]);
 
   const { data } = useGetMessage(composeDraftId || "");
   const { mutate: sendEmail, isPending } = useSendMail();
@@ -572,6 +576,7 @@ export default function ComposeModal() {
                     placeholder="Write your message..."
                     minHeight="260px"
                     className="md:min-h-[300px]"
+                    onAttachmentsChange={setEditorAttachments}
                   />
                   {errors.body && (
                     <span id={`${bodyId}-err`} role="alert" className="block px-6 pb-4 text-xs text-danger">

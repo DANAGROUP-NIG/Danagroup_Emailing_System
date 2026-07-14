@@ -268,7 +268,7 @@ export default function LoginPage() {
           <div className="flex flex-row items-center justify-center gap-1">
             <Lock className="h-4 w-4 text-slate-500" />
             <p className="text-xs text-muted-foreground">
-              Dana Group Internal Messaging System (DIMS)
+              Dana Group Internal Email System
             </p>
           </div>
         </form>

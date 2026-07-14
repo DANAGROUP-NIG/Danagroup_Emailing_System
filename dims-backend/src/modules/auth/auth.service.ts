@@ -365,6 +365,27 @@ export class AuthService {
     );
   }
 
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.usersService.findByIdWithPassword(userId);
+    if (!user) {
+      throw new BadRequestException("User not found");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.updatePasswordHash(userId, passwordHash);
+
+    this.logger.log(`Password changed for user ${userId}`);
+  }
+
   async resetPassword(token: string, newPassword: string): Promise<void> {
     const redisKey = `${this.RESET_TOKEN_PREFIX}${token}`;
     const userId = await this.redis.get(redisKey);

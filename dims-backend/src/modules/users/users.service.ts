@@ -455,6 +455,14 @@ export class UsersService {
     return user?.signature ?? null;
   }
 
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return this.userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.passwordHash")
+      .where("user.id = :id", { id })
+      .getOne();
+  }
+
   async updatePasswordHash(
     userId: string,
     passwordHash: string,
