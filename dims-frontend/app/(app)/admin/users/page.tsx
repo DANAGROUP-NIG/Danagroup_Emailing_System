@@ -101,7 +101,7 @@ function UserFormModal({
     <Modal
       open={isOpen}
       onClose={onClose}
-      title={initialUser ? 'Edit User' : 'Invite User'}
+      title={initialUser ? 'Edit User' : 'Create User'}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -186,7 +186,7 @@ function UserFormModal({
 
         <div className="flex gap-3 pt-4 border-t border-border">
           <Button type="submit" variant="primary" className="flex-1" disabled={createUser.isPending || updateUser.isPending}>
-            {createUser.isPending || updateUser.isPending ? 'Saving…' : (initialUser ? 'Update User' : 'Invite User')}
+            {createUser.isPending || updateUser.isPending ? 'Saving…' : (initialUser ? 'Update User' : 'Create User')}
           </Button>
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
             Cancel

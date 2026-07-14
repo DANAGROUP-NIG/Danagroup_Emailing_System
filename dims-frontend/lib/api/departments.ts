@@ -23,6 +23,12 @@ export interface UpdateSubsidiaryPayload {
   description?: string;
 }
 
+export interface BrandingResponse {
+  name: string;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+}
+
 export const departmentsApi = {
   list: (subsidiaryId?: string) =>
     apiClient.get<Department[]>("/departments", {
@@ -52,4 +58,22 @@ export const departmentsApi = {
 
   updateSubsidiary: (id: string, payload: UpdateSubsidiaryPayload) =>
     apiClient.patch<Subsidiary>(`/departments/subsidiaries/${id}`, payload),
+
+  uploadSubsidiaryLogo: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post<Subsidiary>(`/departments/subsidiaries/${id}/logo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  uploadSubsidiaryFavicon: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post<Subsidiary>(`/departments/subsidiaries/${id}/favicon`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  getBranding: () => apiClient.get<BrandingResponse>("/branding"),
 };

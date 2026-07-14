@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PenLine, Trash2, Wand2 } from "lucide-react";
+import { PenLine, Trash2, Wand2, Pencil } from "lucide-react";
 import { useSignature } from "@/hooks/useSignature";
 import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
@@ -54,6 +54,9 @@ export default function SignatureSettingsPage() {
     const name = user ? `${user.firstName} ${user.lastName}` : "Your Name";
     const title = user?.jobTitle ?? "Your Title";
     const email = user?.email ?? "you@danagroup.net";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+      (typeof window !== "undefined" ? window.location.origin : "https://danagroup.net");
     const html = [
       `<p><strong>${name}</strong></p>`,
       `<p>${title}</p>`,
@@ -61,7 +64,7 @@ export default function SignatureSettingsPage() {
       `<p>Mob: +234 000 000 0000</p>`,
       `<p>Tel: +234 000 000 0000</p>`,
       `<p>Email: <a href="mailto:${email}">${email}</a></p>`,
-      `<p><img src="/dana-logo.png" alt="Dana Group" height="50" style="height:50px;width:auto;display:block;margin-top:8px" /></p>`,
+      `<p><img src="${baseUrl}/dana-logo.png" alt="Dana Group" height="50" style="height:50px;width:auto;display:block;margin-top:8px" /></p>`,
     ].join("");
     setValue(html);
     setIsDirty(html !== (signature ?? ""));
@@ -98,8 +101,8 @@ export default function SignatureSettingsPage() {
               onClick={applyTemplate}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 transition-colors"
             >
-              <Wand2 size={13} aria-hidden="true" />
-              Use default template
+              <Pencil size={13} aria-hidden="true" />
+              Edit default template
             </button>
           )}
         </div>

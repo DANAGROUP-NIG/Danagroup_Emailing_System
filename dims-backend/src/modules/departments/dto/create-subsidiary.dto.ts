@@ -12,4 +12,12 @@ export class CreateSubsidiaryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  faviconUrl?: string;
 }

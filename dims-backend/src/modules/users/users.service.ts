@@ -165,6 +165,7 @@ export class UsersService {
   async findById(id: string): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id },
+      relations: ["subsidiary"],
     });
 
     if (!user) {

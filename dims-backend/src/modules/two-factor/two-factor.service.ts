@@ -93,6 +93,14 @@ export class TwoFactorService {
     });
   }
 
+  async getStatus(userId: string): Promise<{ totpEnabled: boolean }> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ["totpEnabled"],
+    });
+    return { totpEnabled: user?.totpEnabled ?? false };
+  }
+
   async validateToken(userId: string, token: string): Promise<boolean> {
     const user = await this.userRepo
       .createQueryBuilder("user")

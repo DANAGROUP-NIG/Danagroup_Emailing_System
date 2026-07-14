@@ -44,14 +44,20 @@ export class AuthUserDto {
 }
 
 export class LoginResponseDataDto {
-  @ApiProperty({ type: () => AuthUserDto })
-  user: AuthUserDto;
+  @ApiProperty({ type: () => AuthUserDto, required: false })
+  user?: AuthUserDto;
 
-  @ApiProperty()
-  accessToken: string;
+  @ApiProperty({ required: false })
+  accessToken?: string;
 
-  @ApiProperty()
-  refreshToken: string;
+  @ApiProperty({ required: false })
+  refreshToken?: string;
+
+  @ApiProperty({ required: false })
+  requires2FA?: boolean;
+
+  @ApiProperty({ required: false })
+  email?: string;
 }
 
 export class LoginResponseDto {

@@ -9,7 +9,10 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UploadedFile,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiTags,
   ApiOperation,
@@ -67,6 +70,30 @@ export class DepartmentsController {
     @Body() body: UpdateSubsidiaryDto,
   ) {
     return this.departmentsService.updateSubsidiary(id, body);
+  }
+
+  @Post("subsidiaries/:id/logo")
+  @Roles("group_admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload subsidiary logo (group_admin only)" })
+  @ApiResponse({ status: 200, description: "Logo uploaded" })
+  async uploadSubsidiaryLogo(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.departmentsService.uploadSubsidiaryBranding(id, "logo", file);
+  }
+
+  @Post("subsidiaries/:id/favicon")
+  @Roles("group_admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload subsidiary favicon (group_admin only)" })
+  @ApiResponse({ status: 200, description: "Favicon uploaded" })
+  async uploadSubsidiaryFavicon(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.departmentsService.uploadSubsidiaryBranding(id, "favicon", file);
   }
 
   // ── Department routes ──

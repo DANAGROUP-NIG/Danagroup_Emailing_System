@@ -12,6 +12,7 @@ import { CreateDepartmentDto } from "./dto/create-department.dto";
 import { UpdateDepartmentDto } from "./dto/update-department.dto";
 import { CreateSubsidiaryDto } from "./dto/create-subsidiary.dto";
 import { UpdateSubsidiaryDto } from "./dto/update-subsidiary.dto";
+import { StorageService } from "@modules/storage/storage.service";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import type { Cache } from "cache-manager";
 
@@ -25,6 +26,7 @@ export class DepartmentsService {
     private readonly deptRepo: Repository<Department>,
     @InjectRepository(Subsidiary)
     private readonly subsidiaryRepo: Repository<Subsidiary>,
+    private readonly storageService: StorageService,
     @Inject(CACHE_MANAGER)
     private readonly cache: Cache,
   ) {}
@@ -168,6 +170,32 @@ export class DepartmentsService {
   async updateSubsidiary(id: string, dto: UpdateSubsidiaryDto) {
     const subsidiary = await this.findSubsidiaryById(id);
     Object.assign(subsidiary, dto);
+    const saved = await this.subsidiaryRepo.save(subsidiary);
+    await this.invalidateSubsidiaryCaches(id);
+    return saved;
+  }
+
+  async uploadSubsidiaryBranding(
+    id: string,
+    type: "logo" | "favicon",
+    file: Express.Multer.File,
+  ): Promise<Subsidiary> {
+    const subsidiary = await this.findSubsidiaryById(id);
+    const result = await this.storageService.uploadBranding(file, id, type);
+    const publicUrl = this.storageService.getPublicUrl(result.storageKey);
+
+    if (type === "logo") {
+      if (subsidiary.logoUrl && this.storageService.isStorageKey(subsidiary.logoUrl)) {
+        await this.storageService.delete(subsidiary.logoUrl);
+      }
+      subsidiary.logoUrl = publicUrl;
+    } else {
+      if (subsidiary.faviconUrl && this.storageService.isStorageKey(subsidiary.faviconUrl)) {
+        await this.storageService.delete(subsidiary.faviconUrl);
+      }
+      subsidiary.faviconUrl = publicUrl;
+    }
+
     const saved = await this.subsidiaryRepo.save(subsidiary);
     await this.invalidateSubsidiaryCaches(id);
     return saved;

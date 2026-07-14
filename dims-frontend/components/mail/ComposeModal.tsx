@@ -108,10 +108,22 @@ const getEditorPlainText = (element: HTMLElement | null) =>
 const getRecipientAddress = (recipient: Message["recipients"][number]) =>
   recipient.email || recipient.recipient?.email || "";
 
+const resolveSignatureAssets = (signature: string) => {
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  if (!origin) return signature;
+  return signature.replace(
+    /src=["']?\/dana-logo\.png["']?/gi,
+    `src="${origin}/dana-logo.png"`,
+  );
+};
+
 const buildBodyHtmlWithSignature = (body: string, signature: string | null) => {
   const bodyHtml = buildBodyHtml(body);
   if (!signature) return bodyHtml;
-  return `${bodyHtml}<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${signature}`;
+  return `${bodyHtml}<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${resolveSignatureAssets(signature)}`;
 };
 
 const mapComposeValuesToPayload = (

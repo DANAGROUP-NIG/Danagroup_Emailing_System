@@ -176,6 +176,7 @@ export function useUpdateSubsidiary() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subsidiaries'] });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       showToast({ title: 'Subsidiary updated', variant: 'success' });
     },
     onError: () => {
