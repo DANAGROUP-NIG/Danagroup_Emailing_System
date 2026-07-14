@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { AdminGuard } from '@/components/admin/AdminGuard';
@@ -16,7 +16,7 @@ import {
   useDeactivateUser,
   useResetUserPassword,
 } from '@/hooks/useAdmin';
-import { MoreVertical, Plus, Mail } from 'lucide-react';
+import { MoreVertical, Plus, Mail, RefreshCw } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Select from '@radix-ui/react-select';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
@@ -28,6 +28,15 @@ const DataTable = dynamic(
   () => import('@/components/admin/DataTable').then((m) => m.DataTable),
   { loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" /> },
 ) as typeof import('@/components/admin/DataTable').DataTable;
+
+function generateRandomPassword(length = 14) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
 
 function UserFormModal({
   isOpen,
@@ -69,6 +78,14 @@ function UserFormModal({
   );
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const [password, setPassword] = useState(() => generateRandomPassword());
+
+  useEffect(() => {
+    if (isOpen && !initialUser) {
+      setPassword(generateRandomPassword());
+    }
+  }, [isOpen, initialUser]);
+
   const { data: subsidiariesData } = useSubsidiaries();
   const { data: departmentsData } = useDepartments(formData.subsidiaryId);
 
@@ -84,6 +101,7 @@ function UserFormModal({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        password: password.trim() || generateRandomPassword(),
         role: formData.role,
         jobTitle: formData.jobTitle || undefined,
         subsidiaryId: formData.subsidiaryId || undefined,
@@ -127,6 +145,30 @@ function UserFormModal({
           required
           disabled={!!initialUser}
         />
+        {!initialUser && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Initial password</label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="flex-1"
+                aria-label="Initial password"
+              />
+              <button
+                type="button"
+                onClick={() => setPassword(generateRandomPassword())}
+                title="Generate new password"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">Copy this password before creating the user; it won’t be shown again.</p>
+          </div>
+        )}
         <Input
           label="Job Title"
           value={formData.jobTitle || ''}
