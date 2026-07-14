@@ -151,6 +151,7 @@ export class FilesService {
         mimeType: attachment.mime_type,
         sizeBytes: Number(attachment.sizeBytes),
         storageKey: attachment.storageKey,
+        url: this.storageService.getPublicUrl(attachment.storageKey),
         messageId: attachment.messageId,
         createdAt: attachment.createdAt,
       },

@@ -36,8 +36,9 @@ const ALLOWED_SEND_TAGS = [
   "hr",
   "span",
   "div",
+  "img",
 ] as const;
-const ALLOWED_SEND_ATTR = ["href", "target", "style"] as const;
+const ALLOWED_SEND_ATTR = ["href", "target", "style", "src", "alt", "title", "width", "height", "data-attachment-id"] as const;
 
 @Injectable()
 export class ComposeService {
@@ -183,19 +184,8 @@ export class ComposeService {
           draft.subject = dto.subject ?? draft.subject;
           draft.body = dto.body ?? draft.body ?? "";
           draft.bodyHtml = DOMPurify.sanitize(dto.bodyHtml, {
-            ALLOWED_TAGS: [
-              "p",
-              "br",
-              "b",
-              "i",
-              "strong",
-              "em",
-              "a",
-              "ul",
-              "ol",
-              "li",
-            ],
-            ALLOWED_ATTR: ["href", "target"],
+            ALLOWED_TAGS: [...ALLOWED_SEND_TAGS],
+            ALLOWED_ATTR: [...ALLOWED_SEND_ATTR],
           });
           draft.isDraft = true;
           draft.sentAt = null;
@@ -212,21 +202,8 @@ export class ComposeService {
             body: dto.body ?? "",
             bodyHtml: dto.bodyHtml
               ? DOMPurify.sanitize(dto.bodyHtml, {
-                  ALLOWED_TAGS: [
-                    "p",
-                    "br",
-                    "b",
-                    "i",
-                    "strong",
-                    "em",
-                    "u",
-                    "a",
-                    "ul",
-                    "ol",
-                    "li",
-                    "blockquote",
-                  ],
-                  ALLOWED_ATTR: ["href", "target"],
+                  ALLOWED_TAGS: [...ALLOWED_SEND_TAGS],
+                  ALLOWED_ATTR: [...ALLOWED_SEND_ATTR],
                 })
               : generatedHtml,
             isDraft: true,

@@ -72,6 +72,18 @@ export class DepartmentsController {
     return this.departmentsService.updateSubsidiary(id, body);
   }
 
+  @Delete("subsidiaries/:id")
+  @Roles("group_admin")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Delete subsidiary (group_admin only)" })
+  @ApiResponse({ status: 204, description: "Subsidiary deleted" })
+  @ApiResponse({ status: 403, description: "Forbidden" })
+  @ApiResponse({ status: 404, description: "Subsidiary not found" })
+  @ApiResponse({ status: 409, description: "Subsidiary has departments or users" })
+  async deleteSubsidiary(@Param("id") id: string) {
+    return this.departmentsService.deleteSubsidiary(id);
+  }
+
   @Post("subsidiaries/:id/logo")
   @Roles("group_admin")
   @UseInterceptors(FileInterceptor("file"))

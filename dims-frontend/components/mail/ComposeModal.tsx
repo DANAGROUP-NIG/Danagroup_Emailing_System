@@ -2,26 +2,14 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  AlignLeft,
-  Bold,
   ChevronDown,
   Clock3,
-  ImageIcon,
-  Italic,
-  Link2,
-  List,
   Loader2,
   Minus,
-  MoreHorizontal,
-  Paperclip,
-  Pilcrow,
   Save,
   Send,
-  Smile,
   Tag,
   Trash2,
-  Type,
-  Underline,
   Users,
   X,
 } from "lucide-react";
@@ -29,9 +17,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import AttachmentUploader, { type UploadedAttachment } from "./AttachmentUploader";
+import { RichTextEditor } from "@/components/mail/RichTextEditor";
 import { useMail } from "@/hooks/useMail";
-import { cn, htmlToText } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useMailStore } from "@/store/mailStore";
 import type { ComposeData, Message } from "@/types/mail.types";
 import { useToast } from "@/components/ui/Toast";
@@ -89,21 +77,10 @@ const sendSchema = z.object({
 type ComposeFormInput = z.input<typeof sendSchema>;
 type ComposeFormValues = ComposeFormInput;
 
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+const buildBodyHtml = (body: string) =>
+  `<p>${body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "<br>")}</p>`;
 
-const buildBodyHtml = (body: string) => `<p>${escapeHtml(body).replace(/\n/g, "<br>")}</p>`;
-
-const normalizeEditorHtml = (html: string) =>
-  html.trim() || "<p><br></p>";
-
-const getEditorPlainText = (element: HTMLElement | null) =>
-  (element?.innerText ?? "").replace(/\u00a0/g, " ").trim();
+const normalizeEditorHtml = (html: string) => html.trim() || "<p><br></p>";
 
 const getRecipientAddress = (recipient: Message["recipients"][number]) =>
   recipient.email || recipient.recipient?.email || "";
@@ -120,10 +97,9 @@ const resolveSignatureAssets = (signature: string) => {
   );
 };
 
-const buildBodyHtmlWithSignature = (body: string, signature: string | null) => {
-  const bodyHtml = buildBodyHtml(body);
-  if (!signature) return bodyHtml;
-  return `${bodyHtml}<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${resolveSignatureAssets(signature)}`;
+const buildSignatureBlock = (signature: string | null) => {
+  if (!signature) return "";
+  return `<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${resolveSignatureAssets(signature)}`;
 };
 
 const mapComposeValuesToPayload = (
@@ -150,18 +126,26 @@ export default function ComposeModal() {
   const { isComposeOpen, closeCompose, composeDraftId, composeDefaults, setComposeDraftId } =
     useMailStore();
   const { useSaveDraft, useSendMail, useGetMessage } = useMail();
-  const [uploadedAttachments, setUploadedAttachments] = useState<UploadedAttachment[]>([]);
   const [isClosing, setIsClosing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [bodyHtml, setBodyHtml] = useState("");
-  const editorRef = useRef<HTMLDivElement>(null);
+  const [editorValue, setEditorValue] = useState("");
   const isSendingRef = useRef(false);
   const isClosingRef = useRef(false);
   const lastSavedSignatureRef = useRef("");
   const currentDraftIdRef = useRef<string | null>(null);
   const initializedComposeKeyRef = useRef<string | null>(null);
+
+  const attachmentIds = useMemo(() => {
+    const ids = new Set<string>();
+    const matches = bodyHtml.matchAll(/data-attachment-id=["']([^"']+)["']/g);
+    for (const match of matches) {
+      if (match[1]) ids.add(match[1]);
+    }
+    return Array.from(ids);
+  }, [bodyHtml]);
 
   const { data } = useGetMessage(composeDraftId || "");
   const { mutate: sendEmail, isPending } = useSendMail();
@@ -182,10 +166,6 @@ export default function ComposeModal() {
 
   const draftData = data as Message | undefined;
   const watchedValues = watch();
-  const attachmentIds = useMemo(
-    () => uploadedAttachments.map((attachment) => attachment.id),
-    [uploadedAttachments],
-  );
   const recipientPreview = parseEmailList(watchedValues.to).join(", ");
 
   const buildDraftPayload = useCallback(
@@ -214,16 +194,6 @@ export default function ComposeModal() {
           attachmentIds.length,
       ),
     [attachmentIds.length],
-  );
-
-  const handleAttachmentChange = useCallback(
-    (files: UploadedAttachment[]) => setUploadedAttachments(files),
-    [],
-  );
-
-  const handleAttachmentError = useCallback(
-    (message: string) => showToast({ title: message, variant: "error" }),
-    [showToast],
   );
 
   const saveDraftIfNeeded = useCallback(
@@ -260,76 +230,28 @@ export default function ComposeModal() {
 
   const resetComposeState = useCallback(() => {
     reset();
-    setUploadedAttachments([]);
     setShowCc(false);
     setShowBcc(false);
     setIsMinimized(false);
     setBodyHtml("");
-    if (editorRef.current) {
-      editorRef.current.innerHTML = "";
-    }
+    setEditorValue("");
     lastSavedSignatureRef.current = "";
     currentDraftIdRef.current = null;
     isSendingRef.current = false;
   }, [reset]);
 
-  const syncEditorBody = useCallback(() => {
-    const plainText = getEditorPlainText(editorRef.current);
-    const html = plainText ? normalizeEditorHtml(editorRef.current?.innerHTML ?? "") : "";
-
-    setBodyHtml(html);
-    setValue("body", plainText, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
-  }, [setValue]);
-
-  const setEditorContent = useCallback(
-    (html: string, plainTextFallback = "") => {
-      const normalizedHtml = html || (plainTextFallback ? buildBodyHtml(plainTextFallback) : "");
-      const plainText = htmlToText(normalizedHtml) || plainTextFallback;
-
-      setBodyHtml(normalizedHtml);
-      setValue("body", plainText.trim(), {
-        shouldDirty: false,
-        shouldTouch: false,
-        shouldValidate: false,
+  const handleEditorChange = useCallback(
+    (html: string, text: string) => {
+      const normalized = normalizeEditorHtml(html);
+      setBodyHtml(normalized);
+      setValue("body", text.trim(), {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
       });
-
-      if (editorRef.current) {
-        editorRef.current.innerHTML = normalizedHtml;
-      }
     },
     [setValue],
   );
-
-  const focusEditor = useCallback(() => {
-    editorRef.current?.focus();
-  }, []);
-
-  const runEditorCommand = useCallback(
-    (command: string, value?: string) => {
-      focusEditor();
-      document.execCommand(command, false, value);
-      syncEditorBody();
-    },
-    [focusEditor, syncEditorBody],
-  );
-
-  const insertLink = useCallback(() => {
-    const url = window.prompt("Enter a link URL");
-    if (!url) return;
-
-    runEditorCommand("createLink", url);
-  }, [runEditorCommand]);
-
-  const insertImage = useCallback(() => {
-    const url = window.prompt("Enter an image URL");
-    if (!url) return;
-
-    runEditorCommand("insertImage", url);
-  }, [runEditorCommand]);
 
   const handleCloseAndSaveDraft = useCallback(async () => {
     if (isClosingRef.current) {
@@ -442,7 +364,11 @@ export default function ComposeModal() {
         subject: draftData.subject || "",
         body: draftData.body || "",
       });
-      setEditorContent(draftData.bodyHtml || buildBodyHtml(draftData.body || ""), draftData.body || "");
+      const draftHtml = draftData.bodyHtml || buildBodyHtml(draftData.body || "");
+      const draftText = draftData.body || "";
+      setEditorValue(draftHtml);
+      setBodyHtml(normalizeEditorHtml(draftHtml));
+      setValue("body", draftText, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
       setShowCc(Boolean(ccField));
       setShowBcc(Boolean(bccField));
       lastSavedSignatureRef.current = JSON.stringify(
@@ -471,14 +397,16 @@ export default function ComposeModal() {
       body: composeDefaults?.body || "",
     });
     const baseHtml = composeDefaults?.bodyHtml || buildBodyHtml(composeDefaults?.body || "");
-    const htmlWithSig = buildBodyHtmlWithSignature(baseHtml, signature);
-    setEditorContent(htmlWithSig, composeDefaults?.body || "");
+    const htmlWithSig = `${baseHtml}${buildSignatureBlock(signature)}`;
+    const defaultText = composeDefaults?.body || "";
+    setEditorValue(htmlWithSig);
+    setBodyHtml(normalizeEditorHtml(htmlWithSig));
+    setValue("body", defaultText, { shouldDirty: false, shouldTouch: false, shouldValidate: false });
     setShowCc(Boolean(composeDefaults?.cc));
     setShowBcc(Boolean(composeDefaults?.bcc));
-    setUploadedAttachments([]);
     lastSavedSignatureRef.current = "";
     isSendingRef.current = false;
-  }, [buildDraftPayload, composeDefaults, composeDraftId, draftData, isComposeOpen, reset, setEditorContent, signature]);
+  }, [buildDraftPayload, composeDefaults, composeDraftId, draftData, isComposeOpen, reset, setValue, signature]);
 
   const onSubmit = (data: ComposeFormValues) => {
     isSendingRef.current = true;
@@ -489,7 +417,7 @@ export default function ComposeModal() {
         currentDraftIdRef.current || composeDraftId,
         bodyHtml,
       ),
-      attachmentIds: uploadedAttachments.map((attachment) => attachment.id),
+      attachmentIds,
     };
 
     sendEmail(payload, {
@@ -638,38 +566,12 @@ export default function ComposeModal() {
                 </FieldShell>
 
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                  <EditorToolbar
-                    onBold={() => runEditorCommand("bold")}
-                    onItalic={() => runEditorCommand("italic")}
-                    onUnderline={() => runEditorCommand("underline")}
-                    onAlignLeft={() => runEditorCommand("justifyLeft")}
-                    onBulletedList={() => runEditorCommand("insertUnorderedList")}
-                    onNumberedList={() => runEditorCommand("insertOrderedList")}
-                    onParagraph={() => runEditorCommand("formatBlock", "p")}
-                    onHeading={() => runEditorCommand("formatBlock", "h3")}
-                    onLink={insertLink}
-                    onImage={insertImage}
-                  />
-                  <input type="hidden" {...register("body")} />
-                  <div
-                    ref={editorRef}
-                    id={bodyId}
-                    role="textbox"
-                    aria-multiline="true"
-                    aria-describedby={errors.body ? `${bodyId}-err` : undefined}
-                    aria-invalid={errors.body ? true : undefined}
-                    contentEditable
-                    suppressContentEditableWarning
-                    data-placeholder="Write your message..."
-                    onInput={syncEditorBody}
-                    onBlur={syncEditorBody}
-                    onPaste={(event) => {
-                      event.preventDefault();
-                      const text = event.clipboardData.getData("text/plain");
-                      document.execCommand("insertText", false, text);
-                      syncEditorBody();
-                    }}
-                    className="dims-compose-editor min-h-[260px] w-full overflow-y-auto bg-white px-6 py-7 text-base leading-7 text-slate-800 outline-none md:min-h-[300px]"
+                  <RichTextEditor
+                    value={editorValue}
+                    onChange={handleEditorChange}
+                    placeholder="Write your message..."
+                    minHeight="260px"
+                    className="md:min-h-[300px]"
                   />
                   {errors.body && (
                     <span id={`${bodyId}-err`} role="alert" className="block px-6 pb-4 text-xs text-danger">
@@ -677,11 +579,6 @@ export default function ComposeModal() {
                     </span>
                   )}
                 </div>
-
-                <AttachmentUploader
-                  onChange={setUploadedAttachments}
-                  onError={(message) => showToast({ title: message, variant: "error" })}
-                />
               </div>
             </div>
 
@@ -770,105 +667,3 @@ function FieldShell({
   );
 }
 
-function ToolbarButton({
-  children,
-  label,
-  onClick,
-}: {
-  children: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {children}
-    </button>
-  );
-}
-
-function EditorToolbar({
-  onAlignLeft,
-  onBold,
-  onBulletedList,
-  onHeading,
-  onImage,
-  onItalic,
-  onLink,
-  onNumberedList,
-  onParagraph,
-  onUnderline,
-}: {
-  onAlignLeft: () => void;
-  onBold: () => void;
-  onBulletedList: () => void;
-  onHeading: () => void;
-  onImage: () => void;
-  onItalic: () => void;
-  onLink: () => void;
-  onNumberedList: () => void;
-  onParagraph: () => void;
-  onUnderline: () => void;
-}) {
-  return (
-    <div className="flex min-h-[60px] items-center gap-2 overflow-x-auto border-b border-slate-200 px-4 text-slate-600 scrollbar-thin">
-      <button
-        type="button"
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={onParagraph}
-        className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-medium transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Sans Serif
-        <ChevronDown className="h-4 w-4" aria-hidden="true" />
-      </button>
-      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-      <ToolbarButton label="Heading" onClick={onHeading}>
-        <Type className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Paragraph" onClick={onParagraph}>
-        <Pilcrow className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Bold" onClick={onBold}>
-        <Bold className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Italic" onClick={onItalic}>
-        <Italic className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Underline" onClick={onUnderline}>
-        <Underline className="h-5 w-5" />
-      </ToolbarButton>
-      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-      <ToolbarButton label="Align left" onClick={onAlignLeft}>
-        <AlignLeft className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Bulleted list" onClick={onBulletedList}>
-        <List className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Numbered list" onClick={onNumberedList}>
-        <span className="text-sm font-semibold">1.</span>
-      </ToolbarButton>
-      <span className="mx-1 h-7 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-      <ToolbarButton label="Attach file">
-        <Paperclip className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Insert link" onClick={onLink}>
-        <Link2 className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Insert image" onClick={onImage}>
-        <ImageIcon className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="Emoji">
-        <Smile className="h-5 w-5" />
-      </ToolbarButton>
-      <ToolbarButton label="More options">
-        <MoreHorizontal className="h-5 w-5" />
-      </ToolbarButton>
-    </div>
-  );
-}

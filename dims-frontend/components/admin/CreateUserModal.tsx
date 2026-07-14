@@ -115,8 +115,8 @@ export function CreateUserModal({
         lastName: data.lastName,
         email,
         password: data.password,
-        department: selectedDepartment.name,
-        subsidiary: selectedSubsidiary.name,
+        departmentId: selectedDepartment.id,
+        subsidiaryId: selectedSubsidiary.id,
         role: "employee",
         ...(data.jobTitle ? { jobTitle: data.jobTitle } : {}),
       });

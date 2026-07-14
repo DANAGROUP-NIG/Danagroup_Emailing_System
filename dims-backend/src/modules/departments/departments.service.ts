@@ -201,6 +201,29 @@ export class DepartmentsService {
     return saved;
   }
 
+  async deleteSubsidiary(id: string) {
+    const subsidiary = await this.subsidiaryRepo.findOne({
+      where: { id },
+      relations: ["departments", "users"],
+    });
+    if (!subsidiary) {
+      throw new NotFoundException("Subsidiary not found");
+    }
+    if (subsidiary.departments?.length) {
+      throw new ConflictException(
+        "Cannot delete subsidiary that has departments",
+      );
+    }
+    if (subsidiary.users?.length) {
+      throw new ConflictException(
+        "Cannot delete subsidiary that has users",
+      );
+    }
+
+    await this.subsidiaryRepo.remove(subsidiary);
+    await this.invalidateSubsidiaryCaches(id);
+  }
+
   private async invalidateSubsidiaryCaches(subsidiaryId?: string) {
     const keys: Promise<unknown>[] = [this.cache.del(`subsidiaries:all`)];
     if (subsidiaryId) {

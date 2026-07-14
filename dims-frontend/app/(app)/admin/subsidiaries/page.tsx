@@ -6,8 +6,13 @@ import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
-import { useCreateSubsidiary, useUpdateSubsidiary } from '@/hooks/useAdmin';
-import { Plus, Building2, ImageIcon } from 'lucide-react';
+import {
+  useCreateSubsidiary,
+  useUpdateSubsidiary,
+  useDeleteSubsidiary,
+} from '@/hooks/useAdmin';
+import { Plus, Building2, ImageIcon, MoreVertical } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Card } from '@/components/ui/Card';
 import type { Subsidiary } from '@/types/user.types';
 import { departmentsApi } from '@/lib/api/departments';
@@ -158,6 +163,7 @@ function AdminSubsidiariesPageContent() {
       return result as Subsidiary[];
     },
   });
+  const deleteSub = useDeleteSubsidiary();
 
   const filteredSubs = useMemo(() => {
     const subs = subsData || [];
@@ -227,15 +233,38 @@ function AdminSubsidiariesPageContent() {
                     <p className="text-sm text-muted-foreground mt-0.5">{sub.domain}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setEditingSub(sub);
-                    setIsFormOpen(true);
-                  }}
-                  className="text-primary hover:text-primary-hover transition-colors"
-                >
-                  Edit
-                </button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button className="text-primary hover:text-primary-hover transition-colors p-1">
+                      <MoreVertical size={18} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content align="end" className="w-40 bg-card border border-border rounded-md shadow-dana-md p-1 z-50">
+                    <DropdownMenu.Item asChild>
+                      <button
+                        onClick={() => {
+                          setEditingSub(sub);
+                          setIsFormOpen(true);
+                        }}
+                        className="w-full px-3 py-2 text-sm text-foreground hover:bg-primary/10 rounded transition-colors text-left"
+                      >
+                        Edit
+                      </button>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item asChild>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Delete this subsidiary?')) {
+                            deleteSub.mutate(sub.id);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm text-danger hover:bg-danger-light rounded transition-colors text-left"
+                      >
+                        Delete
+                      </button>
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
               </div>
               {sub.description && (
                 <p className="text-sm text-foreground mb-4">{sub.description}</p>

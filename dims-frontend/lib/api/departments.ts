@@ -59,6 +59,9 @@ export const departmentsApi = {
   updateSubsidiary: (id: string, payload: UpdateSubsidiaryPayload) =>
     apiClient.patch<Subsidiary>(`/departments/subsidiaries/${id}`, payload),
 
+  deleteSubsidiary: (id: string) =>
+    apiClient.delete(`/departments/subsidiaries/${id}`),
+
   uploadSubsidiaryLogo: (id: string, file: File) => {
     const formData = new FormData();
     formData.append("file", file);

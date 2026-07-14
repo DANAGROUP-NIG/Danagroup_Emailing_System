@@ -70,7 +70,7 @@ function UserFormModal({
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const { data: subsidiariesData } = useSubsidiaries();
-  useDepartments(formData.subsidiaryId);
+  const { data: departmentsData } = useDepartments(formData.subsidiaryId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,8 +86,8 @@ function UserFormModal({
         email: formData.email,
         role: formData.role,
         jobTitle: formData.jobTitle || undefined,
-        subsidiary: formData.subsidiaryId || undefined,
-        department: formData.departmentId || undefined,
+        subsidiaryId: formData.subsidiaryId || undefined,
+        departmentId: formData.departmentId || undefined,
       });
     }
     onClose();
@@ -163,6 +163,34 @@ function UserFormModal({
         </div>
 
         <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Department</label>
+          <Select.Root
+            value={formData.departmentId || 'placeholder'}
+            onValueChange={(value) => setFormData({ ...formData, departmentId: value === 'placeholder' ? '' : value })}
+            disabled={!formData.subsidiaryId}
+          >
+            <Select.Trigger aria-label="Select department" className={selectTriggerClass}>
+              <Select.Value placeholder="Select department..." />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="placeholder" className={selectItemClass}>
+                    <Select.ItemText>Select department...</Select.ItemText>
+                  </Select.Item>
+                  {departmentsData?.map((dept) => (
+                    <Select.Item key={dept.id} value={dept.id} className={selectItemClass}>
+                      <Select.ItemText>{dept.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+
+        <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">Role</label>
           <Select.Root
             value={formData.role}
@@ -178,6 +206,7 @@ function UserFormModal({
                   <Select.Item value="employee" className={selectItemClass}><Select.ItemText>Employee</Select.ItemText></Select.Item>
                   <Select.Item value="manager" className={selectItemClass}><Select.ItemText>Manager</Select.ItemText></Select.Item>
                   <Select.Item value="subsidiary_admin" className={selectItemClass}><Select.ItemText>Subsidiary Admin</Select.ItemText></Select.Item>
+                  <Select.Item value="group_admin" className={selectItemClass}><Select.ItemText>Group Admin</Select.ItemText></Select.Item>
                 </Select.Viewport>
               </Select.Content>
             </Select.Portal>

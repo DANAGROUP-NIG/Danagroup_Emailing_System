@@ -1,17 +1,22 @@
 'use client';
 
+import { useRef, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Quote, Code, Link2,
   Undo2, Redo2, RemoveFormatting, Heading2, Heading3,
+  Image as ImageIcon, Paperclip,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { filesApi } from '@/lib/api/files';
+import { useToast } from '@/components/ui/Toast';
 
 interface RichTextEditorProps {
   value: string;
@@ -22,6 +27,22 @@ interface RichTextEditorProps {
   minHeight?: string;
 }
 
+const CustomLink = Link.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      'data-attachment-id': {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-attachment-id'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-attachment-id']) return {};
+          return { 'data-attachment-id': attributes['data-attachment-id'] };
+        },
+      },
+    };
+  },
+});
+
 export function RichTextEditor({
   value,
   onChange,
@@ -30,11 +51,16 @@ export function RichTextEditor({
   readOnly = false,
   minHeight = '120px',
 }: RichTextEditorProps) {
+  const { showToast } = useToast();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
-      Link.configure({ openOnClick: false, autolink: true }),
+      CustomLink.configure({ openOnClick: false, autolink: true }),
+      Image.configure({ allowBase64: false }),
       Placeholder.configure({ placeholder }),
     ],
     content: value,
@@ -44,7 +70,41 @@ export function RichTextEditor({
     },
   });
 
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (current !== value) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [editor, value]);
+
   if (!editor) return null;
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      const res = await filesApi.upload(file);
+      const attachment = res.data.data;
+      editor.chain().focus().setImage({ src: attachment.url, alt: file.name }).run();
+    } catch {
+      showToast({ title: 'Image upload failed', variant: 'error' });
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      const res = await filesApi.upload(file);
+      const attachment = res.data.data;
+      editor
+        .chain()
+        .focus()
+        .insertContent(
+          `<a href="${attachment.url}" data-attachment-id="${attachment.id}" title="${attachment.filename}" target="_blank" rel="noopener noreferrer">${attachment.filename}</a>`,
+        )
+        .run();
+    } catch {
+      showToast({ title: 'File upload failed', variant: 'error' });
+    }
+  };
 
   const Divider = () => (
     <div className="w-px self-stretch bg-border mx-0.5" />
@@ -162,6 +222,37 @@ export function RichTextEditor({
               }
             }}
             title={editor.isActive('link') ? 'Remove link' : 'Add link'}
+          />
+          <Btn
+            icon={ImageIcon}
+            onClick={() => imageInputRef.current?.click()}
+            title="Upload image"
+          />
+          <Btn
+            icon={Paperclip}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach file"
+          />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageUpload(file);
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+              e.target.value = '';
+            }}
           />
           <Btn
             icon={RemoveFormatting}

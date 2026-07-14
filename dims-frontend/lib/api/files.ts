@@ -7,6 +7,7 @@ export interface UploadedAttachment {
   mimeType: string;
   sizeBytes: number;
   storageKey: string;
+  url: string;
   messageId: string | null;
   createdAt: string;
 }
