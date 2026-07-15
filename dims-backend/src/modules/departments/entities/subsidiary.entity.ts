@@ -23,6 +23,12 @@ export class Subsidiary {
   @Column({ nullable: true, type: "text" })
   description: string;
 
+  @Column({ nullable: true, type: "text", name: "logo_url" })
+  logoUrl: string | null;
+
+  @Column({ nullable: true, type: "text", name: "favicon_url" })
+  faviconUrl: string | null;
+
   @CreateDateColumn({
     name: "created_at",
     type: "timestamptz",

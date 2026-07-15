@@ -95,6 +95,7 @@ export class StorageService implements OnModuleInit {
             `arn:aws:s3:::${target}/avatars/*`,
             `arn:aws:s3:::${target}/attachments/*`,
             `arn:aws:s3:::${target}/uploads/*`,
+            `arn:aws:s3:::${target}/logos/*`,
           ],
         },
       ],
@@ -246,6 +247,24 @@ export class StorageService implements OnModuleInit {
     return this.uploadBuffer(file.buffer, file.size, file.mimetype, {
       folder: "imports",
       filename: file.originalname,
+    });
+  }
+
+  async uploadBranding(
+    file: Express.Multer.File,
+    subsidiaryId: string,
+    type: "logo" | "favicon",
+  ): Promise<UploadResult> {
+    this.validateAvatar(file);
+    const ext =
+      file.originalname
+        .split(".")
+        .pop()
+        ?.replace(/[^a-z0-9]/gi, "") ?? "png";
+    return this.uploadBuffer(file.buffer, file.size, file.mimetype, {
+      folder: `logos/${subsidiaryId}`,
+      filename: `${type}-${uuid()}.${ext}`,
+      metadata: { "x-amz-acl": "public-read" },
     });
   }
 

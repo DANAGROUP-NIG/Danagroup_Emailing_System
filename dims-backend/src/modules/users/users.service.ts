@@ -165,6 +165,7 @@ export class UsersService {
   async findById(id: string): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id },
+      relations: ["subsidiary"],
     });
 
     if (!user) {
@@ -297,31 +298,40 @@ export class UsersService {
 
   async create(dto: CreateUserDto) {
     const [department, subsidiary] = await Promise.all([
-      this.departRepo.findOneBy({ name: dto.department }),
-      this.subsidiaryRepo.findOneBy({ name: dto.subsidiary }),
+      dto.departmentId ? this.departRepo.findOneBy({ id: dto.departmentId }) : undefined,
+      dto.subsidiaryId ? this.subsidiaryRepo.findOneBy({ id: dto.subsidiaryId }) : undefined,
     ]);
 
-    if (!department || !subsidiary) {
-      throw new NotFoundException("Department or Subsidiary not found");
+    if (dto.departmentId && !department) {
+      throw new NotFoundException("Department not found");
+    }
+    if (dto.subsidiaryId && !subsidiary) {
+      throw new NotFoundException("Subsidiary not found");
     }
 
     const emailDomain = dto.email.split("@")[1];
-    if (subsidiary.domain && emailDomain !== subsidiary.domain) {
+    if (subsidiary?.domain && emailDomain !== subsidiary.domain) {
       throw new BadRequestException(
         `Email must use domain: ${subsidiary.domain}`,
       );
     }
 
+    const rawPassword = dto.password?.trim() || this.generateRandomPassword();
+
     try {
       const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(dto.password, salt);
+      const passwordHash = await bcrypt.hash(rawPassword, salt);
 
       const newUser = this.userRepo.create({
-        ...dto,
-        passwordHash: passwordHash,
-        role: dto.role as UserRole,
-        subsidiary: subsidiary,
-        department: department,
+        firstName: dto.firstName.trim(),
+        lastName: dto.lastName.trim(),
+        email: dto.email.toLowerCase().trim(),
+        jobTitle: dto.jobTitle?.trim(),
+        role: (dto.role as UserRole) ?? "employee",
+        avatarUrl: dto.avatarUrl,
+        passwordHash,
+        subsidiary: subsidiary ?? undefined,
+        department: department ?? undefined,
       });
       const saved = await this.userRepo.save(newUser);
 
@@ -340,6 +350,15 @@ export class UsersService {
     } catch (error: any) {
       this.handleError("create", error);
     }
+  }
+
+  private generateRandomPassword(length = 16): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   }
   async update(
     id: string,
@@ -360,8 +379,8 @@ export class UsersService {
         ...existingUser,
         ...dto,
         role: dto.role as UserRole,
-        subsidiary: dto.subsidiary ? { id: dto.subsidiary } : undefined,
-        department: dto.department ? { id: dto.department } : undefined,
+        subsidiary: dto.subsidiaryId ? { id: dto.subsidiaryId } : undefined,
+        department: dto.departmentId ? { id: dto.departmentId } : undefined,
       });
       await this.jobsService.enqueueUserIndex({ userId: updatedUser.id });
       return updatedUser;
@@ -418,8 +437,9 @@ export class UsersService {
             "span",
             "div",
             "hr",
+            "img",
           ],
-          ALLOWED_ATTR: ["href", "target", "style", "class"],
+          ALLOWED_ATTR: ["href", "target", "style", "class", "src", "alt", "title", "width", "height"],
         })
       : null;
 
@@ -433,6 +453,14 @@ export class UsersService {
       select: ["id", "signature"],
     });
     return user?.signature ?? null;
+  }
+
+  async findByIdWithPassword(id: string): Promise<User | null> {
+    return this.userRepo
+      .createQueryBuilder("user")
+      .addSelect("user.passwordHash")
+      .where("user.id = :id", { id })
+      .getOne();
   }
 
   async updatePasswordHash(

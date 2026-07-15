@@ -31,6 +31,6 @@ postalias lmdb:/etc/aliases
 # default (proxy:unix:passwd.byname $alias_maps) after processing POSTFIX_* env vars.
 # We need it empty so Postfix accepts ALL @danagroup.net recipients and pipes them
 # to DIMS via the transport map, rather than checking against /etc/passwd.
-echo "Clearing local_recipient_maps (accept all @danagroup.net recipients)..."
+echo "Clearing local_recipient_maps (accept all recipients across all Dana Group domains)..."
 postconf -e "local_recipient_maps="
 

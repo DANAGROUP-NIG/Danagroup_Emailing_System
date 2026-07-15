@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { getSocketBaseUrl } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useMailNotifications } from "@/hooks/useBrowserNotifications";
+import { useNotificationSound } from "@/hooks/useNotificationSound";
 import type { MailFolder } from "@/types/mail.types";
 import type { User } from "@/types/user.types";
 
@@ -55,6 +56,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { notifyNewMail, notifyAnnouncement } = useMailNotifications();
+  const { playNotification, playPing } = useNotificationSound();
 
   const userId = user?.id;
   const subsidiaryId = user?.subsidiaryId;
@@ -178,6 +180,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       if (payload.title) {
         toast(payload.title, { icon: "🔔" });
       }
+      playPing();
     });
 
     socket.on("new_mail", (payload?: MailboxChangedPayload) => {
@@ -198,6 +201,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       } else {
         notifyNewMail({});
       }
+      playNotification();
 
       if (process.env.NODE_ENV !== "production") {
         // eslint-disable-next-line no-console
@@ -228,6 +232,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] });
       void queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
       toast("New announcement available");
+      playPing();
 
       // Show desktop notification if tab is hidden
       const announcementProps: { title?: string; announcementId?: string } = {};

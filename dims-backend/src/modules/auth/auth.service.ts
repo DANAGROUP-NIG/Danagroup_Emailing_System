@@ -11,8 +11,9 @@ import * as bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 
 import { UsersService } from "../users/users.service";
+import { TwoFactorService } from "@modules/two-factor/two-factor.service";
 import Redis from "ioredis";
-import { UserRole } from "@modules/users/entities/user.entity";
+import { User, UserRole } from "@modules/users/entities/user.entity";
 import { Department } from "@modules/departments/entities/department.entity";
 import { Subsidiary } from "@modules/departments/entities/subsidiary.entity";
 import { Request } from "express";
@@ -31,6 +32,7 @@ export interface UserShape {
   subsidiaryId?: string;
   subsidiary?: Subsidiary;
   isActive: boolean;
+  totpEnabled: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +42,20 @@ export interface UserShape {
     ip: string;
   }[];
 }
+
+export interface LoginTokens {
+  accessToken: string;
+  refreshToken: string;
+  user: Pick<UserShape, "id" | "email" | "firstName" | "lastName" | "role">;
+}
+
+export interface TotpChallenge {
+  requires2FA: true;
+  email: string;
+  challengeToken: string;
+}
+
+export type LoginResult = LoginTokens | TotpChallenge;
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -52,6 +68,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
+    private readonly twoFactorService: TwoFactorService,
   ) {
     const redisPassword = this.config.get<string>("REDIS_PASSWORD", "");
     const redisUrl =
@@ -104,6 +121,26 @@ export class AuthService {
     return result;
   }
 
+  async generateTotpChallengeToken(user: Pick<UserShape, "id" | "email">) {
+    return this.jwtService.signAsync(
+      { sub: user.id, email: user.email, type: "totp_challenge" },
+      {
+        secret: this.config.get("JWT_SECRET"),
+        expiresIn: "5m",
+      },
+    );
+  }
+
+  verifyTotpChallengeToken(token: string) {
+    try {
+      return this.jwtService.verify<{ sub: string; email: string; type: string }>(token, {
+        secret: this.config.get("JWT_SECRET"),
+      });
+    } catch {
+      return null;
+    }
+  }
+
   private async generateTokens(user: Pick<UserShape, "id" | "email" | "role">) {
     const payload = {
       sub: user.id,
@@ -124,10 +161,12 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async login(user: UserShape, userAgent?: string, ip?: string, req?: Request) {
-    //Fetch the complete user from the database to get all missing fields
-    const fullUser = await this.usersService.findById(user.id);
-
+  private async completeLogin(
+    fullUser: User,
+    userAgent?: string,
+    ip?: string,
+    req?: Request,
+  ): Promise<LoginTokens> {
     const tokens = await this.generateTokens(fullUser);
 
     const hashedRefresh = await bcrypt.hash(tokens.refreshToken, 12);
@@ -160,6 +199,39 @@ export class AuthService {
         role: fullUser.role,
       },
     };
+  }
+
+  async login(
+    user: UserShape,
+    userAgent?: string,
+    ip?: string,
+    req?: Request,
+  ): Promise<LoginResult> {
+    //Fetch the complete user from the database to get all missing fields
+    const fullUser = await this.usersService.findById(user.id);
+
+    if (fullUser.totpEnabled) {
+      const challengeToken = await this.generateTotpChallengeToken(fullUser);
+      return { requires2FA: true, email: fullUser.email, challengeToken };
+    }
+
+    return this.completeLogin(fullUser, userAgent, ip, req);
+  }
+
+  async verifyTotpAndLogin(
+    userId: string,
+    token: string,
+    userAgent?: string,
+    ip?: string,
+    req?: Request,
+  ) {
+    const valid = await this.twoFactorService.validateToken(userId, token);
+    if (!valid) {
+      throw new UnauthorizedException("Invalid or expired TOTP code");
+    }
+
+    const fullUser = await this.usersService.findById(userId);
+    return this.completeLogin(fullUser, userAgent, ip, req);
   }
 
   async signup(dto: SignupDto, userAgent?: string, ip?: string, req?: Request) {
@@ -291,6 +363,27 @@ export class AuthService {
       resetLink,
       expiryMinutes,
     );
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.usersService.findByIdWithPassword(userId);
+    if (!user) {
+      throw new BadRequestException("User not found");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new BadRequestException("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.updatePasswordHash(userId, passwordHash);
+
+    this.logger.log(`Password changed for user ${userId}`);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

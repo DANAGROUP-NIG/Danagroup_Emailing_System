@@ -111,7 +111,7 @@ jobs:
           key: ${{ secrets.PROD_AZURE_SSH_KEY }}
           port: ${{ secrets.PROD_AZURE_SSH_PORT || 22 }}
           timeout: 60s
-          command_timeout: 30m
+          command_timeout: 90m
           script_stop: false
           script: |
             set -e
@@ -193,7 +193,10 @@ jobs:
 
             echo "Pulling and restarting services..."
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+            echo "Building app services fresh..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache api frontend
+            echo "Building Dovecot with cache (reuses apt layer)..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build dovecot
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
             echo "Running database migrations..."

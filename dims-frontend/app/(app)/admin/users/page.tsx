@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { AdminGuard } from '@/components/admin/AdminGuard';
@@ -16,7 +16,7 @@ import {
   useDeactivateUser,
   useResetUserPassword,
 } from '@/hooks/useAdmin';
-import { MoreVertical, Plus, Mail } from 'lucide-react';
+import { MoreVertical, Plus, Mail, RefreshCw } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Select from '@radix-ui/react-select';
 import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
@@ -28,6 +28,15 @@ const DataTable = dynamic(
   () => import('@/components/admin/DataTable').then((m) => m.DataTable),
   { loading: () => <div className="h-64 animate-pulse rounded-lg bg-muted" /> },
 ) as typeof import('@/components/admin/DataTable').DataTable;
+
+function generateRandomPassword(length = 14) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
 
 function UserFormModal({
   isOpen,
@@ -67,12 +76,18 @@ function UserFormModal({
           departmentId: '',
         }
   );
-  const [sendWelcomeEmail, setSendWelcomeEmail] = useState(!initialUser);
-
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const [password, setPassword] = useState(() => generateRandomPassword());
+
+  useEffect(() => {
+    if (isOpen && !initialUser) {
+      setPassword(generateRandomPassword());
+    }
+  }, [isOpen, initialUser]);
+
   const { data: subsidiariesData } = useSubsidiaries();
-  useDepartments(formData.subsidiaryId);
+  const { data: departmentsData } = useDepartments(formData.subsidiaryId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,22 +98,32 @@ function UserFormModal({
       });
     } else {
       await createUser.mutateAsync({
-        ...formData,
-        sendWelcomeEmail,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: password.trim() || generateRandomPassword(),
+        role: formData.role,
+        jobTitle: formData.jobTitle || undefined,
+        subsidiaryId: formData.subsidiaryId || undefined,
+        departmentId: formData.departmentId || undefined,
       });
     }
     onClose();
   };
 
+  const selectTriggerClass = 'w-full h-10 px-3 py-2 border border-input rounded-lg bg-background text-sm text-foreground shadow-dana-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-between';
+  const selectContentClass = 'bg-background border border-border rounded-lg shadow-dana-md z-[200] overflow-hidden';
+  const selectItemClass = 'px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none';
+
   return (
     <Modal
       open={isOpen}
       onClose={onClose}
-      title={initialUser ? 'Edit User' : 'Invite User'}
+      title={initialUser ? 'Edit User' : 'Create User'}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="First Name"
             value={formData.firstName}
@@ -118,69 +143,121 @@ function UserFormModal({
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
+          disabled={!!initialUser}
         />
+        {!initialUser && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Initial password</label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="flex-1"
+                aria-label="Initial password"
+              />
+              <button
+                type="button"
+                onClick={() => setPassword(generateRandomPassword())}
+                title="Generate new password"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">Copy this password before creating the user; it won’t be shown again.</p>
+          </div>
+        )}
         <Input
           label="Job Title"
           value={formData.jobTitle || ''}
           onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
         />
 
-        <div>
-          <label htmlFor="user-subsidiary" className="block text-sm font-medium text-foreground mb-2">
-            Subsidiary
-          </label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Subsidiary</label>
           <Select.Root
             value={formData.subsidiaryId || 'placeholder'}
             onValueChange={(value) =>
               setFormData({ ...formData, subsidiaryId: value === 'placeholder' ? '' : value, departmentId: '' })
             }
           >
-            <Select.Trigger id="user-subsidiary" aria-label="Select subsidiary" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <Select.Trigger aria-label="Select subsidiary" className={selectTriggerClass}>
               <Select.Value placeholder="Select subsidiary..." />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
             </Select.Trigger>
-            <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-              {subsidiariesData?.map((sub) => (
-                <Select.Item key={sub.id} value={sub.id}>
-                  {sub.name}
-                </Select.Item>
-              ))}
-            </Select.Content>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="placeholder" className={selectItemClass}>
+                    <Select.ItemText>Select subsidiary...</Select.ItemText>
+                  </Select.Item>
+                  {subsidiariesData?.map((sub) => (
+                    <Select.Item key={sub.id} value={sub.id} className={selectItemClass}>
+                      <Select.ItemText>{sub.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
           </Select.Root>
         </div>
 
-        <div>
-          <label htmlFor="user-role" className="block text-sm font-medium text-foreground mb-2">Role</label>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Department</label>
+          <Select.Root
+            value={formData.departmentId || 'placeholder'}
+            onValueChange={(value) => setFormData({ ...formData, departmentId: value === 'placeholder' ? '' : value })}
+            disabled={!formData.subsidiaryId}
+          >
+            <Select.Trigger aria-label="Select department" className={selectTriggerClass}>
+              <Select.Value placeholder="Select department..." />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="placeholder" className={selectItemClass}>
+                    <Select.ItemText>Select department...</Select.ItemText>
+                  </Select.Item>
+                  {departmentsData?.map((dept) => (
+                    <Select.Item key={dept.id} value={dept.id} className={selectItemClass}>
+                      <Select.ItemText>{dept.name}</Select.ItemText>
+                    </Select.Item>
+                  ))}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">Role</label>
           <Select.Root
             value={formData.role}
             onValueChange={(value: string) => setFormData({ ...formData, role: value as UserRole })}
           >
-            <Select.Trigger id="user-role" aria-label="Select role" className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <Select.Trigger aria-label="Select role" className={selectTriggerClass}>
               <Select.Value />
+              <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
             </Select.Trigger>
-            <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-              <Select.Item value="employee">Employee</Select.Item>
-              <Select.Item value="manager">Manager</Select.Item>
-              <Select.Item value="subsidiary_admin">Subsidiary Admin</Select.Item>
-            </Select.Content>
+            <Select.Portal>
+              <Select.Content position="popper" className={selectContentClass} sideOffset={4}>
+                <Select.Viewport>
+                  <Select.Item value="employee" className={selectItemClass}><Select.ItemText>Employee</Select.ItemText></Select.Item>
+                  <Select.Item value="manager" className={selectItemClass}><Select.ItemText>Manager</Select.ItemText></Select.Item>
+                  <Select.Item value="subsidiary_admin" className={selectItemClass}><Select.ItemText>Subsidiary Admin</Select.ItemText></Select.Item>
+                  <Select.Item value="group_admin" className={selectItemClass}><Select.ItemText>Group Admin</Select.ItemText></Select.Item>
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
           </Select.Root>
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="sendEmail"
-            checked={sendWelcomeEmail}
-            onChange={(e) => setSendWelcomeEmail(e.target.checked)}
-            className="rounded"
-          />
-          <label htmlFor="sendEmail" className="text-sm text-foreground">
-            Send welcome email
-          </label>
-        </div>
-
-        <div className="flex gap-2 pt-4">
-          <Button type="submit" variant="primary" className="flex-1">
-            {initialUser ? 'Update User' : 'Invite User'}
+        <div className="flex gap-3 pt-4 border-t border-border">
+          <Button type="submit" variant="primary" className="flex-1" disabled={createUser.isPending || updateUser.isPending}>
+            {createUser.isPending || updateUser.isPending ? 'Saving…' : (initialUser ? 'Update User' : 'Create User')}
           </Button>
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
             Cancel
@@ -339,7 +416,7 @@ function AdminUsersPageContent() {
   ];
 
   return (
-    <div data-testid="admin-panel" className="space-y-6 max-w-7xl px-6">
+    <div data-testid="admin-panel" className="space-y-6 max-w-7xl p-4 md:p-6 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -354,12 +431,12 @@ function AdminUsersPageContent() {
           variant="primary"
         >
           <Plus size={16} className="mr-2" />
-          Invite User
+          Create User
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <Input
           placeholder="Search users..."
           aria-label="Search users"
@@ -371,22 +448,27 @@ function AdminUsersPageContent() {
           value={selectedSubsidiary || 'all'}
           onValueChange={(value) => setSelectedSubsidiary(value === 'all' ? '' : value)}
         >
-          <Select.Trigger aria-label="Filter by subsidiary" className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+          <Select.Trigger aria-label="Filter by subsidiary" className="h-10 px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm min-w-[180px] shadow-dana-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-2">
             <Select.Value />
+            <Select.Icon className="ml-auto text-muted-foreground">▾</Select.Icon>
           </Select.Trigger>
-          <Select.Content className="bg-background border border-border rounded-md shadow-dana-md z-50">
-            <Select.Item value="all">All subsidiaries</Select.Item>
-            {subsidiariesData?.map((sub) => (
-              <Select.Item key={sub.id} value={sub.id}>
-                {sub.name}
-              </Select.Item>
-            ))}
-          </Select.Content>
+          <Select.Portal>
+            <Select.Content position="popper" className="bg-background border border-border rounded-lg shadow-dana-md z-[100] overflow-hidden" sideOffset={4}>
+              <Select.Viewport>
+                <Select.Item value="all" className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none"><Select.ItemText>All subsidiaries</Select.ItemText></Select.Item>
+                {subsidiariesData?.map((sub) => (
+                  <Select.Item key={sub.id} value={sub.id} className="px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-primary/10 focus:bg-primary/10 outline-none">
+                    <Select.ItemText>{sub.name}</Select.ItemText>
+                  </Select.Item>
+                ))}
+              </Select.Viewport>
+            </Select.Content>
+          </Select.Portal>
         </Select.Root>
       </div>
 
       {/* Table */}
-      <div className='max-h-[calc(100vh-260px)] overflow-y-auto rounded-lg'>
+      <div className='overflow-x-auto rounded-lg'>
         <DataTable columns={columns} data={filteredUsers} isLoading={isLoading} pageSize={10} />
       </div>
 
@@ -397,7 +479,7 @@ function AdminUsersPageContent() {
           setIsFormOpen(false);
           setEditingUser(undefined);
         }}
-        {...(editingUser ? { initialUser: editingUser } : {})}
+        initialUser={editingUser}
       />
     </div>
   );

@@ -17,7 +17,9 @@ export interface SignupPayload {
 }
 
 export interface LoginData {
-  user: Pick<User, "id" | "email" | "firstName" | "lastName" | "role">;
+  user?: Pick<User, "id" | "email" | "firstName" | "lastName" | "role">;
+  requires2FA?: boolean;
+  email?: string;
 }
 
 export interface SignupOptionsData {
@@ -27,6 +29,9 @@ export interface SignupOptionsData {
 export const authApi = {
   login: (payload: LoginPayload) =>
     apiClient.post<ApiResponse<LoginData>>("/auth/login", payload),
+
+  verifyTotp: (token: string) =>
+    apiClient.post<ApiResponse<LoginData>>("/auth/verify-totp", { token }),
 
   signup: (payload: SignupPayload) =>
     apiClient.post<ApiResponse<LoginData>>("/auth/signup", payload),

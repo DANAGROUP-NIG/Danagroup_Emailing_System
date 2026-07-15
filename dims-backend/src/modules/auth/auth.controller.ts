@@ -26,6 +26,7 @@ import { DepartmentsService } from "../departments/departments.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { SignupDto } from "./dto/signup.dto";
+import { VerifyTotpDto } from "./dto/verify-totp.dto";
 import { ApiResponseDto } from "@common/dto/api-response.dto";
 import { AuthGuard } from "@nestjs/passport";
 import { Throttle } from "@nestjs/throttler";
@@ -41,6 +42,7 @@ import { UserShape } from "./auth.service";
 import { StorageService } from "@modules/storage/storage.service";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 type AuthenticatedRequest = Request & {
   user: UserShape;
@@ -99,6 +101,11 @@ export class AuthController {
       req,
     );
 
+    if ("requires2FA" in result) {
+      res.clearCookie("totp_challenge");
+      throw new UnauthorizedException("Unexpected 2FA challenge during signup");
+    }
+
     this.setAuthCookies(res, result);
 
     return new ApiResponseDto(true, "Signup successful", {
@@ -125,7 +132,7 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiOperation({ summary: "Login with email and password" })
   @ApiOkResponse({
-    description: "Login successful",
+    description: "Login successful or 2FA challenge required",
     type: LoginResponseDto,
   })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
@@ -134,13 +141,73 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Req() req: AuthenticatedRequest,
   ) {
+    const user = req.user;
+
     const result = await this.authService.login(
-      req.user,
+      user,
       req.headers["user-agent"],
       req.ip,
       req,
     );
 
+    // If 2FA is enabled, issue a short-lived challenge token and pause login.
+    if ("requires2FA" in result) {
+      res.cookie("totp_challenge", result.challengeToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 5 * 60 * 1000, // 5 minutes
+      });
+      return new ApiResponseDto(true, "Two-factor authentication required", {
+        requires2FA: true,
+        email: result.email,
+      });
+    }
+
+    this.setAuthCookies(res, result);
+
+    return new ApiResponseDto(true, "Login successful", {
+      user: result.user,
+    });
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post("verify-totp")
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: VerifyTotpDto })
+  @ApiOperation({ summary: "Verify TOTP code and complete login" })
+  @ApiOkResponse({ description: "Login successful", type: LoginResponseDto })
+  @ApiResponse({ status: 401, description: "Invalid or expired TOTP code" })
+  async verifyTotp(
+    @Body() dto: VerifyTotpDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ) {
+    const challengeToken = req.cookies?.totp_challenge;
+    if (!challengeToken) {
+      throw new UnauthorizedException(
+        "Login session expired. Please sign in again.",
+      );
+    }
+
+    const payload = this.authService.verifyTotpChallengeToken(challengeToken);
+    if (!payload || payload.type !== "totp_challenge" || !payload.sub) {
+      res.clearCookie("totp_challenge");
+      throw new UnauthorizedException(
+        "Invalid login session. Please sign in again.",
+      );
+    }
+
+    const result = await this.authService.verifyTotpAndLogin(
+      payload.sub,
+      dto.token,
+      req.headers["user-agent"],
+      req.ip,
+      req,
+    );
+
+    res.clearCookie("totp_challenge");
     this.setAuthCookies(res, result);
 
     return new ApiResponseDto(true, "Login successful", {
@@ -254,6 +321,25 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto.token, dto.password);
     return new ApiResponseDto(true, "Password updated successfully");
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Post("change-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Change the current user's password" })
+  @ApiOkResponse({ description: "Password changed successfully" })
+  @ApiResponse({ status: 400, description: "Current password is incorrect" })
+  async changePassword(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(
+      user.userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return new ApiResponseDto(true, "Password changed successfully");
   }
 
   @Roles("group_admin")

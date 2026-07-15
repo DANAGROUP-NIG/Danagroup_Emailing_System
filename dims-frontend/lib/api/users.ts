@@ -25,8 +25,8 @@ export interface CreateUserPayload {
   lastName: string;
   email: string;
   password?: string | undefined;
-  department?: string | undefined;
-  subsidiary?: string | undefined;
+  departmentId?: string | undefined;
+  subsidiaryId?: string | undefined;
   avatarUrl?: string | undefined;
   role?: string | undefined;
   jobTitle?: string | undefined;
@@ -40,8 +40,8 @@ export interface UpdateUserPayload {
   bio?: string | undefined;
   avatarUrl?: string | undefined;
   role?: string | undefined;
-  department?: string | undefined;
-  subsidiary?: string | undefined;
+  departmentId?: string | undefined;
+  subsidiaryId?: string | undefined;
 }
 
 export interface UsersListResponse {

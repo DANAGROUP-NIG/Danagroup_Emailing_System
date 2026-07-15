@@ -25,15 +25,13 @@ import {
   User,
   Users,
 } from "lucide-react";
-import Image from "next/image";
-
 import { useAuthStore } from "@/store/authStore";
 import { useMailStore } from "@/store/mailStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useUIStore } from "@/store/uiStore";
 import Avatar from "@/components/ui/Avatar";
 import type { UserRole } from "@/types/user.types";
-import logo from "@/assets/logo.png";
+import { useBranding } from "@/hooks/useBranding";
 import { cn } from "@/lib/utils";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { openBugReportEmail } from "@/lib/bugReport";
@@ -160,6 +158,25 @@ function SectionLabel({ children, collapsed = false }: { children: React.ReactNo
   );
 }
 
+// ─── Dynamic brand logo ───────────────────────────────────────────────────────
+
+function BrandingLogo({ collapsed }: { collapsed: boolean }) {
+  const branding = useBranding();
+  const alt = `${branding.name} logo`;
+
+  return (
+    <img
+      src={branding.logoUrl}
+      alt={alt}
+      className="object-contain"
+      style={{
+        width: collapsed ? 32 : 140,
+        height: collapsed ? 32 : "auto",
+      }}
+    />
+  );
+}
+
 // ─── Footer user card with dropdown ──────────────────────────────────────────
 
 function UserFooter() {
@@ -272,11 +289,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
           aria-label="DIMS — go to inbox"
         >
           <div className={cn("rounded-lg", collapsed ? "px-2 py-2 w-full flex justify-center" : "w-full px-4 py-2")}>
-            {collapsed ? (
-              <Image src={logo} width={32} height={6} alt="Dana Group logo" priority className="object-contain" />
-            ) : (
-              <Image src={logo} width={140} height={27} alt="Dana Group logo" priority />
-            )}
+            <BrandingLogo collapsed={collapsed} />
           </div>
         </Link>
 

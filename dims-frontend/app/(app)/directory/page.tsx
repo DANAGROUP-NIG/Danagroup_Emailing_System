@@ -71,7 +71,7 @@ export default function DirectoryPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 md:p-6 pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -103,7 +103,7 @@ export default function DirectoryPage() {
       />
 
       {/* Grid */}
-      <div className='pb-32 md:pb-44 lg:pb-32 min-h-0 max-h-[calc(100vh-220px)] overflow-y-auto scrollbar-thin'>
+      <div>
         <EmployeeGrid
           users={allUsers}
           isLoading={isLoading || isFetching}

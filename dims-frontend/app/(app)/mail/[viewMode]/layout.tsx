@@ -15,7 +15,7 @@ export default function MailSplitLayout({
   }
 
   return (
-    <main className="h-[calc(100vh-64px)] w-full overflow-hidden bg-slate-100">
+    <main className="h-[calc(100vh-73px)] w-full overflow-hidden bg-slate-100">
       {children}
     </main>
   );

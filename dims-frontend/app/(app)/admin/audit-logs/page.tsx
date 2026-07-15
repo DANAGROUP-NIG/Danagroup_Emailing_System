@@ -76,7 +76,7 @@ export default function AuditLogsPage() {
 
   return (
     <AdminGuard requiredRoles={['group_admin', 'subsidiary_admin']}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 md:p-6 pb-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default function AuditLogsPage() {
         </form>
 
         {/* Table */}
-        <div className={cn('bg-card border border-border rounded-lg overflow-hidden', isFetching && 'opacity-70')}>
+        <div className={cn('bg-card border border-border rounded-lg overflow-hidden max-h-[calc(100vh-280px)] overflow-y-auto pb-4 scrollbar-thin', isFetching && 'opacity-70')}>
           {isLoading ? (
             <div className="divide-y divide-border">
               {Array.from({ length: 10 }).map((_, i) => (

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, ShieldOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, ShieldOff, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -36,10 +36,13 @@ export default function SettingsSecurityPage() {
     queryFn: fetchTotpStatus,
   });
 
-  const { data: setup, isLoading: setupLoading } = useQuery({
+  const { data: setup, isLoading: setupLoading, isError: setupError, refetch: refetchSetup } = useQuery({
     queryKey: ['2fa-setup'],
     queryFn: fetchSetup,
     enabled: mode === 'setup',
+    retry: 1,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const confirmMutation = useMutation({
@@ -110,7 +113,13 @@ export default function SettingsSecurityPage() {
         </div>
         {mode === 'idle' && (
           <button
-            onClick={() => { setMode(status?.totpEnabled ? 'disable' : 'setup'); setError(''); setSuccess(''); }}
+            onClick={() => {
+              const next = status?.totpEnabled ? 'disable' : 'setup';
+              if (next === 'setup') qc.removeQueries({ queryKey: ['2fa-setup'] });
+              setMode(next);
+              setError('');
+              setSuccess('');
+            }}
             className={cn(
               'flex-shrink-0 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
               status?.totpEnabled
@@ -137,21 +146,48 @@ export default function SettingsSecurityPage() {
             1. Scan the QR code below with your authenticator app
           </p>
           {setupLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Generating QR code…
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="h-48 w-48 rounded-lg border border-border bg-muted animate-pulse" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Generating QR code…
+              </div>
+            </div>
+          ) : setupError ? (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <AlertCircle className="h-10 w-10 text-destructive" />
+              <p className="text-sm text-muted-foreground">Failed to generate QR code. Please try again.</p>
+              <button
+                type="button"
+                onClick={() => refetchSetup()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-muted text-foreground rounded-md hover:bg-muted/80"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Retry
+              </button>
             </div>
           ) : setup ? (
-            <>
-              <img src={setup.qrDataUrl} alt="2FA QR code" className="h-48 w-48 rounded border border-border" />
-              <details className="text-xs">
-                <summary className="text-muted-foreground cursor-pointer select-none">
-                  Can&apos;t scan? Enter the key manually
-                </summary>
-                <code className="block mt-2 p-2 bg-muted rounded font-mono break-all select-all">
-                  {setup.secret}
-                </code>
-              </details>
-            </>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start gap-6 flex-wrap">
+                <img
+                  src={setup.qrDataUrl}
+                  alt="Scan this QR code with your authenticator app"
+                  className="h-48 w-48 rounded-lg border border-border bg-white p-1"
+                />
+                <div className="flex flex-col gap-2 text-sm">
+                  <p className="text-muted-foreground">Scan with Google Authenticator, Authy, or any TOTP app.</p>
+                  <details className="text-xs">
+                    <summary className="text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors">
+                      Can&apos;t scan? Use manual key ›
+                    </summary>
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-muted-foreground">Copy this key into your app:</p>
+                      <code className="block p-2 bg-muted rounded font-mono break-all select-all text-foreground">
+                        {setup.secret}
+                      </code>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </div>
           ) : null}
           <p className="text-sm font-medium text-foreground">2. Enter the 6-digit code from your app</p>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">

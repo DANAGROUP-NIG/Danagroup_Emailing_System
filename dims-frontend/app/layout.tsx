@@ -14,7 +14,7 @@ const rubik = Rubik({
 
 export const metadata: Metadata = {
   title: {
-    default: "DIMS — Dana Internal Mail",
+    default: "Danagroup Email System",
     template: "%s | DIMS",
   },
   description: "Enterprise email and intranet platform for Dana Group",
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
   },
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    title: "DIMS — Dana Internal Mail & Intranet System",
+    title: "DIMS - Dana Internal Mail & Intranet System",
     description: "Enterprise email and intranet platform for Dana Group",
     type: "website",
     url: "https://dims.danagroup.internal",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
         url: "/og-default.png",
         width: 1200,
         height: 630,
-        alt: "DIMS — Dana Internal Mail",
+        alt: "DIMS - Dana Email System",
       },
     ],
   },

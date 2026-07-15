@@ -1,57 +1,37 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { useUpdateNotificationPreferences } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import api from '@/lib/api';
-import type { User } from '@/types/user.types';
-import { useState, useEffect } from 'react';
+import { useToast } from '@/components/ui/Toast';
+import { useState } from 'react';
+
+const getLocal = (key: string, fallback: string) => {
+  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+};
 
 export default function SettingsNotificationsPage() {
-  const [emailDigest, setEmailDigest] = useState<'daily' | 'weekly' | 'never'>('daily');
-  const [inAppSounds, setInAppSounds] = useState(true);
+  const [emailDigest, setEmailDigest] = useState<'daily' | 'weekly' | 'never'>(() =>
+    getLocal('dims:emailDigest', 'daily') as 'daily' | 'weekly' | 'never'
+  );
+  const [inAppSounds, setInAppSounds] = useState(
+    () => getLocal('dims:inAppSounds', 'true') !== 'false'
+  );
   const [isDirty, setIsDirty] = useState(false);
-
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const response = await api.get<{ data: User }>('/auth/me');
-      return response.data.data;
-    },
-  });
-
-  const updatePreferences = useUpdateNotificationPreferences();
-
-  useEffect(() => {
-    if (user) {
-      setEmailDigest('daily');
-      setInAppSounds(true);
-    }
-  }, [user]);
+  const [isSaving, setIsSaving] = useState(false);
+  const { showToast } = useToast();
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      await updatePreferences.mutateAsync({
-        emailDigest,
-        inAppSounds,
-      });
+      localStorage.setItem('dims:emailDigest', emailDigest);
+      localStorage.setItem('dims:inAppSounds', String(inAppSounds));
       setIsDirty(false);
-      alert('Notification preferences updated');
+      showToast({ title: 'Notification preferences saved', variant: 'success' });
     } catch {
-      alert('Failed to update preferences');
+      showToast({ title: 'Failed to save preferences', variant: 'error' });
+    } finally {
+      setIsSaving(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-6">
@@ -120,10 +100,10 @@ export default function SettingsNotificationsPage() {
         <div className="flex gap-2 pt-4 border-t border-border">
           <Button
             onClick={handleSave}
-            disabled={updatePreferences.isPending}
+            disabled={isSaving}
             className="flex-1"
           >
-            {updatePreferences.isPending ? 'Saving...' : 'Save Preferences'}
+            {isSaving ? 'Saving...' : 'Save Preferences'}
           </Button>
         </div>
       )}

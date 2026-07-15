@@ -35,6 +35,7 @@ import { AuditModule } from "@modules/audit/audit.module";
 import { AuditInterceptor } from "@modules/audit/audit.interceptor";
 import { CacheModule } from "@nestjs/cache-manager";
 import { StorageModule } from "@modules/storage/storage.module";
+import { BrandingModule } from "@modules/branding/branding.module";
 
 function buildRedisUrl(config: ConfigService): string {
   const url = config.get<string>("REDIS_URL");
@@ -148,6 +149,7 @@ function buildRedisUrl(config: ConfigService): string {
     DistributionListsModule,
     TwoFactorModule,
     AuditModule,
+    BrandingModule,
   ],
 
   providers: [

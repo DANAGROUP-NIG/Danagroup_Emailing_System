@@ -87,7 +87,7 @@ export default function NotificationsPage() {
   const groupedNotifications = groupNotificationsByDate(allNotifications);
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-7xl mx-auto pb-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-border">
+      <div className="flex gap-2 border-b border-border overflow-x-auto scrollbar-thin">
         {(['all', 'unread', 'mail', 'announcements', 'system'] as const).map((f) => (
           <button
             key={f}

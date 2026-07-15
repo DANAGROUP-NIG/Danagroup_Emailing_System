@@ -9,11 +9,13 @@ import { LocalStrategy } from "./strategies/local.strategy";
 import { UsersModule } from "../users/users.module";
 import { SessionSerializer } from "./session.serializer";
 import { DepartmentsModule } from "@modules/departments/departments.module";
+import { TwoFactorModule } from "@modules/two-factor/two-factor.module";
 
 @Module({
   imports: [
     UsersModule,
     DepartmentsModule,
+    TwoFactorModule,
     PassportModule.register({ session: true }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

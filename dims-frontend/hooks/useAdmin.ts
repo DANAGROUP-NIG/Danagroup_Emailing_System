@@ -1,11 +1,19 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/Toast';
-import { usersApi } from '@/lib/api/users';
+import { usersApi, type CreateUserPayload } from '@/lib/api/users';
 import { departmentsApi } from '@/lib/api/departments';
 import apiClient from '@/lib/api/client';
 import type { User, Department, Subsidiary } from '@/types/user.types';
+
+function getErrorMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  const anyErr = err as any;
+  if (anyErr?.response?.data?.message) return String(anyErr.response.data.message);
+  if (anyErr?.message) return String(anyErr.message);
+  return 'Something went wrong';
+}
 
 // ============ Users ============
 
@@ -14,16 +22,16 @@ export function useCreateUser() {
   const { showToast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Partial<User> & { sendWelcomeEmail?: boolean }) => {
-      const response = await usersApi.create(data as unknown as Parameters<typeof usersApi.create>[0]);
+    mutationFn: async (data: CreateUserPayload) => {
+      const response = await usersApi.create(data);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       showToast({ title: 'User created successfully', variant: 'success' });
     },
-    onError: () => {
-      showToast({ title: 'Failed to create user', variant: 'error' });
+    onError: (err) => {
+      showToast({ title: 'Failed to create user', description: getErrorMessage(err), variant: 'error' });
     },
   });
 }
@@ -42,8 +50,8 @@ export function useUpdateUser() {
       queryClient.invalidateQueries({ queryKey: ['user', id] });
       showToast({ title: 'User updated successfully', variant: 'success' });
     },
-    onError: () => {
-      showToast({ title: 'Failed to update user', variant: 'error' });
+    onError: (err) => {
+      showToast({ title: 'Failed to update user', description: getErrorMessage(err), variant: 'error' });
     },
   });
 }
@@ -176,10 +184,30 @@ export function useUpdateSubsidiary() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subsidiaries'] });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       showToast({ title: 'Subsidiary updated', variant: 'success' });
     },
     onError: () => {
       showToast({ title: 'Failed to update subsidiary', variant: 'error' });
+    },
+  });
+}
+
+export function useDeleteSubsidiary() {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await departmentsApi.deleteSubsidiary(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subsidiaries'] });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      showToast({ title: 'Subsidiary deleted', variant: 'success' });
+    },
+    onError: (err) => {
+      showToast({ title: 'Failed to delete subsidiary', description: getErrorMessage(err), variant: 'error' });
     },
   });
 }

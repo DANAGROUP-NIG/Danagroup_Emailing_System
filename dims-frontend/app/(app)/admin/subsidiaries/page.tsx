@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
-import { useCreateSubsidiary, useUpdateSubsidiary } from '@/hooks/useAdmin';
-import { Plus, Building2 } from 'lucide-react';
+import {
+  useCreateSubsidiary,
+  useUpdateSubsidiary,
+  useDeleteSubsidiary,
+} from '@/hooks/useAdmin';
+import { Plus, Building2, ImageIcon, MoreVertical } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Card } from '@/components/ui/Card';
 import type { Subsidiary } from '@/types/user.types';
 import { departmentsApi } from '@/lib/api/departments';
@@ -24,6 +29,14 @@ function SubsidiaryFormModal({
   const [formData, setFormData] = useState(
     initialSub || { name: '', domain: '', description: '' }
   );
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    setLogoFile(null);
+    setFaviconFile(null);
+  }, [initialSub?.id]);
 
   const createSub = useCreateSubsidiary();
   const updateSub = useUpdateSubsidiary();
@@ -32,6 +45,15 @@ function SubsidiaryFormModal({
     e.preventDefault();
     if (initialSub) {
       await updateSub.mutateAsync({ id: initialSub.id, data: formData });
+      if (logoFile || faviconFile) {
+        setIsUploading(true);
+        try {
+          if (logoFile) await departmentsApi.uploadSubsidiaryLogo(initialSub.id, logoFile);
+          if (faviconFile) await departmentsApi.uploadSubsidiaryFavicon(initialSub.id, faviconFile);
+        } finally {
+          setIsUploading(false);
+        }
+      }
     } else {
       await createSub.mutateAsync(formData);
     }
@@ -66,8 +88,57 @@ function SubsidiaryFormModal({
           as="textarea"
           rows={3}
         />
+
+        {initialSub && (
+          <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+              <ImageIcon size={14} aria-hidden="true" />
+              Branding
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Logo</label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:text-primary-foreground hover:file:bg-primary-hover"
+                />
+                {initialSub.logoUrl && (
+                  <img
+                    src={initialSub.logoUrl}
+                    alt="Current logo"
+                    className="mt-2 h-8 w-auto object-contain"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-muted-foreground mb-1">Favicon</label>
+                <input
+                  type="file"
+                  accept="image/x-icon,image/png,image/svg+xml,image/webp"
+                  onChange={(e) => setFaviconFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-2 file:py-1 file:text-xs file:text-primary-foreground hover:file:bg-primary-hover"
+                />
+                {initialSub.faviconUrl && (
+                  <img
+                    src={initialSub.faviconUrl}
+                    alt="Current favicon"
+                    className="mt-2 h-6 w-auto object-contain"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-4">
-          <Button type="submit" variant="primary" className="flex-1">
+          <Button
+            type="submit"
+            variant="primary"
+            className="flex-1"
+            isLoading={createSub.isPending || updateSub.isPending || isUploading}
+          >
             {initialSub ? 'Update' : 'Create'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
@@ -92,6 +163,7 @@ function AdminSubsidiariesPageContent() {
       return result as Subsidiary[];
     },
   });
+  const deleteSub = useDeleteSubsidiary();
 
   const filteredSubs = useMemo(() => {
     const subs = subsData || [];
@@ -104,7 +176,7 @@ function AdminSubsidiariesPageContent() {
   }, [subsData, searchQuery]);
 
   return (
-    <div className="space-y-6 max-w-7xl overflow-y-auto px-6">
+    <div className="space-y-6 max-w-7xl p-4 md:p-6 pb-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Subsidiaries</h1>
@@ -144,23 +216,71 @@ function AdminSubsidiariesPageContent() {
           {filteredSubs.map((sub) => (
             <Card key={sub.id} className="p-6 hover:shadow-dana-md transition-shadow cursor-pointer">
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">{sub.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{sub.domain}</p>
+                <div className="flex items-center gap-3">
+                  {sub.logoUrl ? (
+                    <img
+                      src={sub.logoUrl}
+                      alt={`${sub.name} logo`}
+                      className="h-10 w-auto max-w-[120px] object-contain rounded border border-border bg-white p-1"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                      <Building2 size={20} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">{sub.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{sub.domain}</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setEditingSub(sub);
-                    setIsFormOpen(true);
-                  }}
-                  className="text-primary hover:text-primary-hover transition-colors"
-                >
-                  Edit
-                </button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button className="text-primary hover:text-primary-hover transition-colors p-1">
+                      <MoreVertical size={18} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content align="end" className="w-40 bg-card border border-border rounded-md shadow-dana-md p-1 z-50">
+                    <DropdownMenu.Item asChild>
+                      <button
+                        onClick={() => {
+                          setEditingSub(sub);
+                          setIsFormOpen(true);
+                        }}
+                        className="w-full px-3 py-2 text-sm text-foreground hover:bg-primary/10 rounded transition-colors text-left"
+                      >
+                        Edit
+                      </button>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item asChild>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Delete this subsidiary?')) {
+                            deleteSub.mutate(sub.id);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm text-danger hover:bg-danger-light rounded transition-colors text-left"
+                      >
+                        Delete
+                      </button>
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
               </div>
               {sub.description && (
                 <p className="text-sm text-foreground mb-4">{sub.description}</p>
               )}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                {sub.faviconUrl && (
+                  <div className="flex items-center gap-1.5">
+                    <img
+                      src={sub.faviconUrl}
+                      alt="favicon"
+                      className="h-4 w-4 object-contain"
+                    />
+                    <span>Favicon set</span>
+                  </div>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
                 Created {new Date(sub.createdAt).toLocaleDateString()}
               </div>
