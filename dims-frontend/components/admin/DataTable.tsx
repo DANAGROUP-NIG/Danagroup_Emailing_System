@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   flexRender,
@@ -8,11 +8,12 @@ import {
   useReactTable,
   ColumnDef,
   SortingState,
-} from '@tanstack/react-table';
-import { useState } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
-import { Button } from '@/components/ui/Button';
+} from "@tanstack/react-table";
+import { useState } from "react";
+import type { ReactNode } from "react";
+import { ChevronUp, ChevronDown } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
 
 interface DataTableProps<T> {
   columns: ColumnDef<T>[];
@@ -20,6 +21,7 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   pageSize?: number;
   onRowSelect?: (rows: T[]) => void;
+  renderMobileCard?: (row: T) => ReactNode;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -28,6 +30,7 @@ export function DataTable<T extends { id: string }>({
   isLoading = false,
   pageSize = 10,
   onRowSelect,
+  renderMobileCard,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
@@ -52,7 +55,9 @@ export function DataTable<T extends { id: string }>({
   });
 
   // Get selected rows
-  const selectedRows = table.getFilteredSelectedRowModel().rows.map((row) => row.original);
+  const selectedRows = table
+    .getFilteredSelectedRowModel()
+    .rows.map((row) => row.original);
 
   // Notify parent of selection
   if (onRowSelect) {
@@ -75,7 +80,10 @@ export function DataTable<T extends { id: string }>({
             </thead>
             <tbody>
               {Array.from({ length: pageSize }).map((_, i) => (
-                <tr key={i} className="border-b border-border hover:bg-muted/50">
+                <tr
+                  key={i}
+                  className="border-b border-border hover:bg-muted/50"
+                >
                   {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
@@ -116,10 +124,13 @@ export function DataTable<T extends { id: string }>({
                         onClick={() => header.column.toggleSorting()}
                         className="flex items-center gap-2 hover:text-primary transition-colors"
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                         {header.column.getIsSorted() && (
                           <>
-                            {header.column.getIsSorted() === 'desc' ? (
+                            {header.column.getIsSorted() === "desc" ? (
                               <ChevronDown size={14} />
                             ) : (
                               <ChevronUp size={14} />
@@ -135,9 +146,15 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+              <tr
+                key={row.id}
+                className="border-b border-border hover:bg-muted/50 transition-colors"
+              >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-3 text-sm text-foreground">
+                  <td
+                    key={cell.id}
+                    className="px-4 py-3 text-sm text-foreground"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -150,19 +167,28 @@ export function DataTable<T extends { id: string }>({
       {/* Mobile View - Stacked Cards */}
       <div className="md:hidden space-y-2 p-4">
         {table.getRowModel().rows.map((row) => (
-          <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-2">
-            {row.getVisibleCells().map((cell) => (
-              <div key={cell.id} className="text-xs">
-                <div className="text-muted-foreground font-medium">
-                  {typeof cell.column.columnDef.header === 'string'
-                    ? cell.column.columnDef.header
-                    : cell.column.id}
-                </div>
-                <div className="text-foreground">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </div>
+          <div key={row.id}>
+            {renderMobileCard ? (
+              renderMobileCard(row.original)
+            ) : (
+              <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+                {row.getVisibleCells().map((cell) => (
+                  <div key={cell.id} className="text-xs">
+                    <div className="text-muted-foreground font-medium">
+                      {typeof cell.column.columnDef.header === "string"
+                        ? cell.column.columnDef.header
+                        : cell.column.id}
+                    </div>
+                    <div className="text-foreground">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         ))}
       </div>
@@ -170,11 +196,11 @@ export function DataTable<T extends { id: string }>({
       {/* Pagination */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/50 text-sm">
         <div className="text-muted-foreground">
-          {table.getState().pagination.pageIndex * pageSize + 1} –{' '}
+          {table.getState().pagination.pageIndex * pageSize + 1} –{" "}
           {Math.min(
             (table.getState().pagination.pageIndex + 1) * pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{' '}
+            table.getFilteredRowModel().rows.length,
+          )}{" "}
           of {table.getFilteredRowModel().rows.length}
         </div>
         <div className="flex gap-2">
