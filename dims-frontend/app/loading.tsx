@@ -10,7 +10,7 @@ export default function GlobalLoading() {
         <Image src={logo} width={160} height={31} alt="Dana Group" priority />
       </div>
       <Spinner size="lg" className="text-white" />
-      <p className="text-sm font-medium text-blue-100/70">Loading DIMS&hellip;</p>
+      <p className="text-sm font-medium text-blue-100/70">Loading &hellip;</p>
     </div>
   );
 }
