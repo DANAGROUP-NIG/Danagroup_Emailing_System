@@ -27,10 +27,7 @@ export class TwoFactorController {
   @Post("confirm")
   @HttpCode(200)
   @ApiOperation({ summary: "Confirm a TOTP code to activate 2FA" })
-  confirm(
-    @Body() dto: TotpTokenDto,
-    @CurrentUser() user: { userId: string },
-  ) {
+  confirm(@Body() dto: TotpTokenDto, @CurrentUser() user: { userId: string }) {
     return this.tfService.confirmEnable(user.userId, dto.token);
   }
 
@@ -39,10 +36,7 @@ export class TwoFactorController {
   @ApiOperation({
     summary: "Disable 2FA after confirming with a valid TOTP code",
   })
-  disable(
-    @Body() dto: TotpTokenDto,
-    @CurrentUser() user: { userId: string },
-  ) {
+  disable(@Body() dto: TotpTokenDto, @CurrentUser() user: { userId: string }) {
     return this.tfService.disable(user.userId, dto.token);
   }
 

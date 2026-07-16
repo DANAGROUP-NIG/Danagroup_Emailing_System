@@ -13,7 +13,6 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
 import { ChannelsService } from "./channels.service";
 import { CreateChannelDto } from "./dto/create-channel.dto";
-import { SendChannelMessageDto } from "./dto/send-channel-message.dto";
 import { QueryChatDto } from "@modules/chat/dto/query-chat.dto";
 
 @ApiTags("channels")

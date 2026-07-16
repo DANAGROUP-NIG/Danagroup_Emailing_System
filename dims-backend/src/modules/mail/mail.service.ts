@@ -96,11 +96,7 @@ export class MailService {
   }
 
   toggleThreadStar(threadId: string, userId: string, isStarred?: boolean) {
-    return this.mailActionService.toggleThreadStar(
-      threadId,
-      userId,
-      isStarred,
-    );
+    return this.mailActionService.toggleThreadStar(threadId, userId, isStarred);
   }
 
   moveToTrash(messageId: string, userId: string) {

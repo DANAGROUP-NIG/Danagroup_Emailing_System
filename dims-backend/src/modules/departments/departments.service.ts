@@ -185,12 +185,18 @@ export class DepartmentsService {
     const publicUrl = this.storageService.getPublicUrl(result.storageKey);
 
     if (type === "logo") {
-      if (subsidiary.logoUrl && this.storageService.isStorageKey(subsidiary.logoUrl)) {
+      if (
+        subsidiary.logoUrl &&
+        this.storageService.isStorageKey(subsidiary.logoUrl)
+      ) {
         await this.storageService.delete(subsidiary.logoUrl);
       }
       subsidiary.logoUrl = publicUrl;
     } else {
-      if (subsidiary.faviconUrl && this.storageService.isStorageKey(subsidiary.faviconUrl)) {
+      if (
+        subsidiary.faviconUrl &&
+        this.storageService.isStorageKey(subsidiary.faviconUrl)
+      ) {
         await this.storageService.delete(subsidiary.faviconUrl);
       }
       subsidiary.faviconUrl = publicUrl;
@@ -215,9 +221,7 @@ export class DepartmentsService {
       );
     }
     if (subsidiary.users?.length) {
-      throw new ConflictException(
-        "Cannot delete subsidiary that has users",
-      );
+      throw new ConflictException("Cannot delete subsidiary that has users");
     }
 
     await this.subsidiaryRepo.remove(subsidiary);

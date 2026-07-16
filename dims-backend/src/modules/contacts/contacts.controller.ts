@@ -8,7 +8,12 @@ import {
   UploadedFile,
   BadRequestException,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from "@nestjs/swagger";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+} from "@nestjs/swagger";
 import { ContactsService } from "./contacts.service";
 import { JwtAuthGuard } from "@common/guards/jwt-auth.guard";
 import { CurrentUser } from "@common/decorators/current-user.decorator";
@@ -29,7 +34,11 @@ export class ContactsController {
     @Query("q") query: string,
     @Query("limit") limit?: number,
   ) {
-    const contacts = await this.contactsService.search(user.userId, query, limit);
+    const contacts = await this.contactsService.search(
+      user.userId,
+      query,
+      limit,
+    );
     return { data: contacts };
   }
 
@@ -44,7 +53,10 @@ export class ContactsController {
     if (!file) {
       throw new BadRequestException("No file provided");
     }
-    if (file.mimetype !== "text/csv" && file.mimetype !== "application/vnd.ms-excel") {
+    if (
+      file.mimetype !== "text/csv" &&
+      file.mimetype !== "application/vnd.ms-excel"
+    ) {
       throw new BadRequestException("Only CSV files are allowed");
     }
 

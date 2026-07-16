@@ -133,7 +133,11 @@ export class AuthService {
 
   verifyTotpChallengeToken(token: string) {
     try {
-      return this.jwtService.verify<{ sub: string; email: string; type: string }>(token, {
+      return this.jwtService.verify<{
+        sub: string;
+        email: string;
+        type: string;
+      }>(token, {
         secret: this.config.get("JWT_SECRET"),
       });
     } catch {

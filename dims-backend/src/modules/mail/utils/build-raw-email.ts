@@ -20,9 +20,7 @@ export interface RawEmailOptions {
  * internal message builder (without actually sending). Used to populate
  * messages.raw_email for IMAP/POP3 serving via Dovecot.
  */
-export async function buildRawEmail(
-  options: RawEmailOptions,
-): Promise<string> {
+export async function buildRawEmail(options: RawEmailOptions): Promise<string> {
   return new Promise((resolve, reject) => {
     const mail = nodemailer.createTransport({ streamTransport: true });
 
@@ -41,13 +39,16 @@ export async function buildRawEmail(
     if (options.inReplyTo) message.inReplyTo = options.inReplyTo;
     if (options.references) message.references = options.references;
 
-    mail.sendMail(message as Parameters<typeof mail.sendMail>[0], (err, info) => {
-      if (err) return reject(err);
-      const stream = info.message as Readable;
-      const chunks: Buffer[] = [];
-      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
-      stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-      stream.on("error", reject);
-    });
+    mail.sendMail(
+      message as Parameters<typeof mail.sendMail>[0],
+      (err, info) => {
+        if (err) return reject(err);
+        const stream = info.message as Readable;
+        const chunks: Buffer[] = [];
+        stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+        stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+        stream.on("error", reject);
+      },
+    );
   });
 }

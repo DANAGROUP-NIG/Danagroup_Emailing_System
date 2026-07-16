@@ -1,10 +1,8 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
   OnModuleInit,
 } from "@nestjs/common";
 import * as Minio from "minio";
@@ -66,7 +64,9 @@ export class StorageService implements OnModuleInit {
       await this.ensurePublicReadPolicy();
       this.logger.log(`Bucket policy applied for bucket: ${this.bucket}`);
     } catch (err) {
-      this.logger.warn(`Could not apply bucket policy on init: ${(err as Error).message}`);
+      this.logger.warn(
+        `Could not apply bucket policy on init: ${(err as Error).message}`,
+      );
     }
   }
 
