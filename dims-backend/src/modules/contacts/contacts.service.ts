@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, ILike } from "typeorm";
 import { Contact } from "./entities/contact.entity";
-import * as csvParser from "csv-parser";
+import csvParser from "csv-parser";
 import { Readable } from "stream";
 
 @Injectable()
