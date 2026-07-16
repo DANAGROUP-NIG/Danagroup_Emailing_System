@@ -687,7 +687,7 @@ export function RichTextEditor({
       <EditorContent
         editor={editor}
         style={{ minHeight }}
-        className="prose prose-sm dark:prose-invert max-w-none flex-1 px-3 py-2 text-sm outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[inherit]"
+        className="prose prose-sm dark:prose-invert max-w-none flex-1 px-3 py-2 text-sm outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[inherit] [&_.tiptap_a]:underline [&_.tiptap_a]:cursor-pointer [&_.tiptap_a]:text-blue-600"
       />
 
       {/* Attachment chips */}

@@ -62,8 +62,12 @@ export default function MailMessage({
     console.warn("[Security] Potentially dangerous HTML detected in email body and sanitized");
   }
   
-  const fullName = message.sender?.name || message.sender?.email || "Unknown sender";
-  const senderEmail = message.sender?.email || "unknown@danagroup.internal";
+  const fullName = message.sender?.name || message.externalSenderName || message.sender?.email || message.externalSenderEmail || "Unknown sender";
+  const senderEmail = message.sender?.email || message.externalSenderEmail || "unknown@danagroup.internal";
+  const isNdr = senderEmail.toLowerCase().includes("mailer-daemon");
+  
+  // Extract error message from NDR body if it exists
+  const ndrReason = isNdr ? htmlToText(rawBody).match(/reason:\s*(.+?)(?=\n|$)/i)?.[1] || "The email address you entered couldn't be found. Please check the recipient's email address for typos or unnecessary spaces and try again." : "";
   const toLine = formatRecipients(message.recipients, "to");
   const replyTo = buildReplyRecipients(message, user?.email);
   const replySubject = withSubjectPrefix(message.subject, "Re:");
@@ -104,7 +108,7 @@ export default function MailMessage({
   const initials = fullName
     .split(" ")
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
+    .map((w: string) => w[0]?.toUpperCase() ?? "")
     .join("");
 
   const avatarColor = stringToColor(senderEmail);
@@ -198,6 +202,22 @@ export default function MailMessage({
       <div className="flex-1 overflow-y-auto bg-white">
         {/* Body Container */}
         <div className="px-[70px] py-3">
+          {isNdr && (
+            <div className="mb-6 flex gap-4 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-900">
+              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <span className="text-xl font-bold">?</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold mb-1">Address not found</h3>
+                <p className="text-sm opacity-90 leading-relaxed mb-3">
+                  Your message wasn't delivered because the address couldn't be found, or is unable to receive mail.
+                </p>
+                <div className="text-sm font-mono bg-amber-100/50 p-2 rounded border border-amber-200/50">
+                  {ndrReason}
+                </div>
+              </div>
+            </div>
+          )}
           <div
             className="prose prose-sm max-w-none text-slate-700
               prose-p:leading-relaxed prose-p:my-2

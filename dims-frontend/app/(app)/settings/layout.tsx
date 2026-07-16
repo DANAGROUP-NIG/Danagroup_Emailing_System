@@ -12,6 +12,7 @@ const settingsTabs = [
   { href: '/settings/signature', label: 'Signature', icon: PenLine },
   { href: '/settings/mail-rules', label: 'Mail Rules', icon: Filter },
   { href: '/settings/distribution-lists', label: 'Dist. Lists', icon: Users },
+  { href: '/settings/contacts', label: 'Contacts', icon: Users },
 ];
 
 export default function SettingsLayout({

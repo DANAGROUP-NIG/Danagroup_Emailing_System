@@ -86,8 +86,16 @@ export class SmtpService implements OnModuleInit {
       return false;
     }
 
+    const mailOptions = {
+      ...(options as SendMailOptions),
+      headers: {
+        ...(options.headers || {}),
+        "X-SMTPAPI": '{"filters": {"clicktrack": {"settings": {"enable": 0}}}}',
+      },
+    };
+
     try {
-      const info = await this.transporter.sendMail(options as SendMailOptions);
+      const info = await this.transporter.sendMail(mailOptions);
       this.logger.log(
         `Email sent to ${Array.isArray(options.to) ? options.to.join(", ") : options.to} — messageId: ${info.messageId}`,
       );

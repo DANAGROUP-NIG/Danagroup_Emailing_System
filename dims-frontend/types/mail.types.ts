@@ -85,6 +85,7 @@ export interface ThreadMessage {
   preview: string;
   isInbound?: boolean;
   externalSenderEmail?: string | null;
+  externalSenderName?: string | null;
 }
 
 export interface MailThreadSummary {
