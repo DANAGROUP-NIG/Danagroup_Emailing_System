@@ -53,7 +53,9 @@ export class MailController {
   }
 
   @Get("counts")
-  @ApiOperation({ summary: "Get mail counts (e.g. drafts) for the current user" })
+  @ApiOperation({
+    summary: "Get mail counts (e.g. drafts) for the current user",
+  })
   async getCounts(@CurrentUser() user: { userId: string }) {
     return this.mailService.getCounts(user.userId);
   }

@@ -5,9 +5,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Brackets, In } from "typeorm";
-import { Message } from "./entities/message.entity";
-import { MessageRecipient } from "./entities/message-recipient.entity";
-import { MailQueryDto } from "./dto/mail-query.dto";
 import { MailMapper } from "./mappers/mail.mapper";
 import { MailCoreService } from "./mail-core.service";
 import { MailboxService } from "./mailbox.service";
@@ -288,7 +285,9 @@ export class MailActionService {
         throw new NotFoundException("Thread not found in recipient mailbox");
       }
 
-      const currentlyStarred = recipients.some((recipient) => recipient.isStarred);
+      const currentlyStarred = recipients.some(
+        (recipient) => recipient.isStarred,
+      );
       const nextStarred = isStarred ?? !currentlyStarred;
 
       if (nextStarred) {

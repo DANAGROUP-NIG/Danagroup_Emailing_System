@@ -15,7 +15,6 @@ import { StorageService } from "../modules/storage/storage.service";
 import { Message } from "../modules/mail/entities/message.entity";
 import { buildRawEmail } from "../modules/mail/utils/build-raw-email";
 import { MaildirSyncService } from "../modules/mail/maildir-sync.service";
-import { Attachment } from "../modules/files/entities/attachment.entity";
 import {
   MailDeliveryJobData,
   NotificationDispatchJobData,
@@ -230,7 +229,9 @@ Date: ${message.sentAt || message.createdAt}
           backoff: { type: "exponential", delay: 5000 },
         });
       } catch (err) {
-        this.logger.error(`Failed to generate NDR for ${toEmail}: ${(err as Error).message}`);
+        this.logger.error(
+          `Failed to generate NDR for ${toEmail}: ${(err as Error).message}`,
+        );
       }
     }
 
@@ -351,4 +352,3 @@ Date: ${message.sentAt || message.createdAt}
     }
   }
 }
-

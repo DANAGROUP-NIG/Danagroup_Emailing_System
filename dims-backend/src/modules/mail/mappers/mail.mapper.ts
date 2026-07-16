@@ -66,7 +66,8 @@ export class MailMapper {
       const email = message.externalSenderEmail;
       // Use the display name from the From header if available,
       // otherwise fall back to the email local part
-      const displayName = message.externalSenderName || email.split("@")[0] || email;
+      const displayName =
+        message.externalSenderName || email.split("@")[0] || email;
       return {
         id: "external",
         email,

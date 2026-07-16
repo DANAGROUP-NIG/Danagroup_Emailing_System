@@ -38,7 +38,17 @@ const ALLOWED_SEND_TAGS = [
   "div",
   "img",
 ] as const;
-const ALLOWED_SEND_ATTR = ["href", "target", "style", "src", "alt", "title", "width", "height", "data-attachment-id"] as const;
+const ALLOWED_SEND_ATTR = [
+  "href",
+  "target",
+  "style",
+  "src",
+  "alt",
+  "title",
+  "width",
+  "height",
+  "data-attachment-id",
+] as const;
 
 @Injectable()
 export class ComposeService {

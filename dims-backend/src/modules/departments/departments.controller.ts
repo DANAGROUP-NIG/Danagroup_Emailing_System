@@ -79,7 +79,10 @@ export class DepartmentsController {
   @ApiResponse({ status: 204, description: "Subsidiary deleted" })
   @ApiResponse({ status: 403, description: "Forbidden" })
   @ApiResponse({ status: 404, description: "Subsidiary not found" })
-  @ApiResponse({ status: 409, description: "Subsidiary has departments or users" })
+  @ApiResponse({
+    status: 409,
+    description: "Subsidiary has departments or users",
+  })
   async deleteSubsidiary(@Param("id") id: string) {
     return this.departmentsService.deleteSubsidiary(id);
   }
@@ -105,7 +108,11 @@ export class DepartmentsController {
     @Param("id") id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.departmentsService.uploadSubsidiaryBranding(id, "favicon", file);
+    return this.departmentsService.uploadSubsidiaryBranding(
+      id,
+      "favicon",
+      file,
+    );
   }
 
   // ── Department routes ──

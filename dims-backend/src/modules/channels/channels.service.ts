@@ -1,10 +1,10 @@
 import {
-  ForbiddenException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { Channel } from "./entities/channel.entity";
 import { ChannelMember } from "./entities/channel-member.entity";
 import { ChannelMessage } from "./entities/channel-message.entity";

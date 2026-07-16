@@ -36,7 +36,7 @@ import { AuditInterceptor } from "@modules/audit/audit.interceptor";
 import { CacheModule } from "@nestjs/cache-manager";
 import { StorageModule } from "@modules/storage/storage.module";
 import { BrandingModule } from "@modules/branding/branding.module";
-import { ContactsModule } from './modules/contacts/contacts.module';
+import { ContactsModule } from "./modules/contacts/contacts.module";
 
 function buildRedisUrl(config: ConfigService): string {
   const url = config.get<string>("REDIS_URL");

@@ -298,8 +298,12 @@ export class UsersService {
 
   async create(dto: CreateUserDto) {
     const [department, subsidiary] = await Promise.all([
-      dto.departmentId ? this.departRepo.findOneBy({ id: dto.departmentId }) : undefined,
-      dto.subsidiaryId ? this.subsidiaryRepo.findOneBy({ id: dto.subsidiaryId }) : undefined,
+      dto.departmentId
+        ? this.departRepo.findOneBy({ id: dto.departmentId })
+        : undefined,
+      dto.subsidiaryId
+        ? this.subsidiaryRepo.findOneBy({ id: dto.subsidiaryId })
+        : undefined,
     ]);
 
     if (dto.departmentId && !department) {
@@ -353,7 +357,8 @@ export class UsersService {
   }
 
   private generateRandomPassword(length = 16): string {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
     let password = "";
     for (let i = 0; i < length; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -439,7 +444,17 @@ export class UsersService {
             "hr",
             "img",
           ],
-          ALLOWED_ATTR: ["href", "target", "style", "class", "src", "alt", "title", "width", "height"],
+          ALLOWED_ATTR: [
+            "href",
+            "target",
+            "style",
+            "class",
+            "src",
+            "alt",
+            "title",
+            "width",
+            "height",
+          ],
         })
       : null;
 
