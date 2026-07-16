@@ -210,7 +210,7 @@ export default function MailMessage({
               <div className="flex-1">
                 <h3 className="text-lg font-semibold mb-1">Address not found</h3>
                 <p className="text-sm opacity-90 leading-relaxed mb-3">
-                  Your message wasn't delivered because the address couldn't be found, or is unable to receive mail.
+                  Your message wasn&apos;t delivered because the address couldn&apos;t be found, or is unable to receive mail.
                 </p>
                 <div className="text-sm font-mono bg-amber-100/50 p-2 rounded border border-amber-200/50">
                   {ndrReason}

@@ -26,8 +26,9 @@ export default function ContactsSettingsPage() {
       const res = await contactsApi.importCsv(file);
       setImportResult({ success: res.data.imported });
       setFile(null);
-    } catch (err: any) {
-      setImportResult({ error: err.response?.data?.message || err.message || 'Failed to import contacts' });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setImportResult({ error: e.response?.data?.message || e.message || 'Failed to import contacts' });
     } finally {
       setIsImporting(false);
     }
