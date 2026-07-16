@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PenLine, Trash2, Wand2, Pencil } from "lucide-react";
+import { PenLine, Trash2, Pencil } from "lucide-react";
 import { useSignature } from "@/hooks/useSignature";
 import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
 import { RichTextEditor } from "@/components/mail/RichTextEditor";
+import { useUpdateProfile } from "@/hooks/useProfile";
 
 export default function SignatureSettingsPage() {
   const { signature, isLoading, saveSignature, isSaving } = useSignature();
   const { showToast } = useToast();
   const user = useAuthStore((s) => s.user);
+  const updateProfile = useUpdateProfile();
 
   const [value, setValue] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [signatureBeforeQuote, setSignatureBeforeQuote] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setSignatureBeforeQuote(user.signatureBeforeQuote ?? false);
+    }
+  }, [user, user?.signatureBeforeQuote]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -129,6 +138,23 @@ export default function SignatureSettingsPage() {
           >
             {isSaving ? "Saving…" : "Save signature"}
           </button>
+
+          <div className="flex items-center gap-2 ml-4">
+            <input
+              type="checkbox"
+              id="sig-position"
+              checked={signatureBeforeQuote}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setSignatureBeforeQuote(checked);
+                updateProfile.mutate({ signatureBeforeQuote: checked, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "" });
+              }}
+              className="h-4 w-4 rounded border-border"
+            />
+            <label htmlFor="sig-position" className="text-sm text-foreground cursor-pointer">
+              Insert signature before quoted text in replies
+            </label>
+          </div>
 
           {(value || signature) && (
             <>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Users, Globe, Lock, Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { Plus, Users, Globe, Lock, Trash2, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 

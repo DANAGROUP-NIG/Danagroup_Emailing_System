@@ -215,7 +215,7 @@ export default function MailMessage({
       </div>
 
       {/* Sticky Action bar — Locks to the very bottom */}
-      <div className="shrink-0 flex items-center gap-1.5 px-[70px] border-t border-slate-100 py-8">
+      <div className="shrink-0 flex items-center gap-1.5 px-[70px] border-t border-slate-100 py-3">
         <button
           type="button"
           title="Reply"

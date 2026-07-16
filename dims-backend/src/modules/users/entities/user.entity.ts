@@ -76,7 +76,10 @@ export class User {
   @UpdateDateColumn({ type: "timestamptz", default: () => "CURRENT_TIMESTAMP" })
   updatedAt: Date;
 
-  //Expose the ID directly as a string for easier filtering/saving
+  // Expose the ID directly as a string for easier filtering/saving
+  @Column({ name: "signature_before_quote", default: false })
+  signatureBeforeQuote: boolean;
+
   @Column()
   departmentId: string;
 

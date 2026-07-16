@@ -119,7 +119,7 @@ export default function MailThread({
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col">
-        <div className="mx-auto min-w-full flex flex-1 flex-col space-y-4 pb-4">
+        <div className="mx-auto min-w-full flex flex-1 flex-col space-y-1 pb-4">
           {messages.map((message) => (
             <MailMessage
               key={message.id}

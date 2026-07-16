@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Hash, Lock, Plus, Search } from "lucide-react";
-import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import type { Channel } from "@/types/channel.types";

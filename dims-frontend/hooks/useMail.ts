@@ -17,6 +17,7 @@ import type {
   Message,
   ThreadDetail,
 } from "@/types/mail.types";
+import { useNotificationStore } from "@/store/notificationStore";
 
 // ─── Types & Constants ───────────────────────────────────────────────────────
 
@@ -123,6 +124,21 @@ export function useStarred() {
 
 export function useTrash() {
   return useMailFolderInfinite("trash");
+}
+
+export function useMailCounts() {
+  const setDraftCount = useNotificationStore((s) => s.setDraftCount);
+
+  return useQuery({
+    queryKey: ["mail", "counts"],
+    queryFn: async () => {
+      const response = await mailApi.getCounts();
+      const drafts = response.data.drafts ?? 0;
+      setDraftCount(drafts);
+      return { drafts };
+    },
+    refetchInterval: 30000,
+  });
 }
 
 // ─── Thread & Message Hooks ────────────────────────────────────────────────────

@@ -35,6 +35,7 @@ export interface User {
   subsidiary?: Subsidiary;
   isActive: boolean;
   lastLoginAt?: string;
+  signatureBeforeQuote?: boolean;
   createdAt: string;
   updatedAt: string;
 }

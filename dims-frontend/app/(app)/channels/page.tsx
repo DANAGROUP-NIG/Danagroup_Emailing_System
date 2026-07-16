@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ArrowLeft, Hash, Lock, Users, Globe, LogOut } from "lucide-react";
+import { ArrowLeft, Hash, Lock, Globe, LogOut } from "lucide-react";
 import {
   useMyChannels,
   usePublicChannels,
@@ -17,7 +17,6 @@ import ChannelList from "@/components/channels/ChannelList";
 import CreateChannelModal from "@/components/channels/CreateChannelModal";
 import MessageThread from "@/components/chat/MessageThread";
 import MessageInput from "@/components/chat/MessageInput";
-import { Avatar } from "@/components/ui/Avatar";
 import type { Channel, ChannelMessage } from "@/types/channel.types";
 import type { ChatParticipant, ChatMessage } from "@/types/chat.types";
 

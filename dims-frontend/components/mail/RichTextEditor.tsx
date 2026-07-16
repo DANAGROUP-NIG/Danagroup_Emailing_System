@@ -1,17 +1,26 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
-import { Node, mergeAttributes } from '@tiptap/core';
+import { BubbleMenu } from '@tiptap/react/menus';
+import { Extension, Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { Highlight } from '@tiptap/extension-highlight';
+import { TextAlign } from '@tiptap/extension-text-align';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, Quote, Code, Link2,
   Undo2, Redo2, RemoveFormatting, Heading2, Heading3,
   Image as ImageIcon, Paperclip, X,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Type, Highlighter,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -149,13 +158,45 @@ const ResizableImage = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     const { width, ...rest } = HTMLAttributes as { width?: number; src?: string; alt?: string };
+    const w = width ?? 300;
     return ['img', mergeAttributes(rest, {
-      style: `width:${width ?? 300}px;max-width:100%;height:auto`,
+      width: w,
+      style: `width:${w}px;max-width:100%;height:auto`,
     })];
   },
 
   addNodeView() {
     return ReactNodeViewRenderer(ResizableImageView);
+  },
+});
+
+const FontSize = Extension.create({
+  name: 'fontSize',
+  addOptions() {
+    return {
+      types: ['textStyle'],
+    };
+  },
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: element => element.style.fontSize?.replace(/['"]+/g, ''),
+            renderHTML: attributes => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+              return {
+                style: `font-size: ${attributes.fontSize}`,
+              };
+            },
+          },
+        },
+      },
+    ];
   },
 });
 
@@ -189,6 +230,12 @@ export function RichTextEditor({
       CustomLink.configure({ openOnClick: false, autolink: true }),
       ResizableImage,
       Placeholder.configure({ placeholder }),
+      TextStyle,
+      FontFamily,
+      Color,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      FontSize,
     ],
     content: value,
     editable: !readOnly,
@@ -273,10 +320,13 @@ export function RichTextEditor({
     }
     const href = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:')
       ? url : `https://${url}`;
-    editor.chain().focus().setLink({ href }).run();
-    if (linkDialog.text && !editor.state.selection.empty) {
-      // text already selected — link is applied
+    
+    if (editor.state.selection.empty) {
+      editor.chain().focus().insertContent(`<a href="${href}">${linkDialog.text || url}</a>`).run();
+    } else {
+      editor.chain().focus().setLink({ href }).run();
     }
+    
     setLinkDialog({ open: false, text: '', url: '' });
   };
 
@@ -337,6 +387,78 @@ export function RichTextEditor({
             title="Heading 3"
           />
           <Divider />
+          {/* Font Family */}
+          <select
+            className="h-7 rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-ring outline-none"
+            onChange={(e) => {
+              if (e.target.value) {
+                editor.chain().focus().setFontFamily(e.target.value).run();
+              } else {
+                editor.chain().focus().unsetFontFamily().run();
+              }
+            }}
+            value={editor.getAttributes('textStyle').fontFamily || ''}
+            title="Font Family"
+          >
+            <option value="">Default Font</option>
+            <option value="Arial">Arial</option>
+            <option value="Courier New">Courier</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Times New Roman">Times</option>
+            <option value="Trebuchet MS">Trebuchet</option>
+            <option value="Verdana">Verdana</option>
+          </select>
+          {/* Font Size */}
+          <select
+            className="h-7 rounded border border-input bg-background px-2 py-1 text-xs text-foreground focus:ring-1 focus:ring-ring outline-none"
+            onChange={(e) => {
+              if (e.target.value) {
+                editor.chain().focus().setMark('textStyle', { fontSize: e.target.value }).run();
+              } else {
+                editor.chain().focus().setMark('textStyle', { fontSize: null }).run();
+              }
+            }}
+            value={editor.getAttributes('textStyle').fontSize || ''}
+            title="Font Size"
+          >
+            <option value="">Size</option>
+            <option value="12px">12px</option>
+            <option value="14px">14px</option>
+            <option value="16px">16px</option>
+            <option value="18px">18px</option>
+            <option value="24px">24px</option>
+            <option value="32px">32px</option>
+          </select>
+
+          {/* Color Picker */}
+          <label className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted cursor-pointer transition-colors relative" title="Text Color">
+            <input
+              type="color"
+              className="absolute opacity-0 w-0 h-0"
+              onInput={(e) => editor.chain().focus().setColor((e.target as HTMLInputElement).value).run()}
+              value={editor.getAttributes('textStyle').color || '#000000'}
+            />
+            <div className="flex flex-col items-center">
+              <Type size={14} className="text-muted-foreground" />
+              <div className="w-3 h-1 mt-0.5 rounded-sm" style={{ backgroundColor: editor.getAttributes('textStyle').color || 'currentColor' }} />
+            </div>
+          </label>
+
+          {/* Highlight Picker */}
+          <label className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted cursor-pointer transition-colors relative" title="Highlight Color">
+            <input
+              type="color"
+              className="absolute opacity-0 w-0 h-0"
+              onInput={(e) => editor.chain().focus().toggleHighlight({ color: (e.target as HTMLInputElement).value }).run()}
+              value={editor.getAttributes('highlight').color || '#ffff00'}
+            />
+            <div className="flex flex-col items-center">
+              <Highlighter size={14} className="text-muted-foreground" />
+              <div className="w-3 h-1 mt-0.5 rounded-sm" style={{ backgroundColor: editor.getAttributes('highlight').color || 'transparent' }} />
+            </div>
+          </label>
+
+          <Divider />
           {/* Inline formatting */}
           <Btn
             icon={Bold}
@@ -367,6 +489,32 @@ export function RichTextEditor({
             isActive={editor.isActive('code')}
             onClick={() => editor.chain().focus().toggleCode().run()}
             title="Inline code"
+          />
+          <Divider />
+          {/* Alignment */}
+          <Btn
+            icon={AlignLeft}
+            isActive={editor.isActive({ textAlign: 'left' })}
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            title="Align left"
+          />
+          <Btn
+            icon={AlignCenter}
+            isActive={editor.isActive({ textAlign: 'center' })}
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            title="Align center"
+          />
+          <Btn
+            icon={AlignRight}
+            isActive={editor.isActive({ textAlign: 'right' })}
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            title="Align right"
+          />
+          <Btn
+            icon={AlignJustify}
+            isActive={editor.isActive({ textAlign: 'justify' })}
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            title="Justify"
           />
           <Divider />
           {/* Block formatting */}
@@ -497,6 +645,44 @@ export function RichTextEditor({
           </div>
         </div>
       )}
+
+      {/* Image Sizing Bubble Menu */}
+      <BubbleMenu
+        editor={editor}
+        shouldShow={({ editor: e }: { editor: typeof editor }) => e.isActive('resizableImage')}
+      >
+        <div className="flex items-center gap-1 p-1 bg-white border border-slate-200 rounded shadow-md">
+          <button
+            type="button"
+            className="px-2 py-1 text-xs font-medium rounded hover:bg-slate-100 text-slate-700"
+            onClick={() => editor.chain().focus().updateAttributes('resizableImage', { width: 300 }).run()}
+          >
+            Small
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 text-xs font-medium rounded hover:bg-slate-100 text-slate-700"
+            onClick={() => editor.chain().focus().updateAttributes('resizableImage', { width: 600 }).run()}
+          >
+            Best Fit
+          </button>
+          <button
+            type="button"
+            className="px-2 py-1 text-xs font-medium rounded hover:bg-slate-100 text-slate-700"
+            onClick={() => editor.chain().focus().updateAttributes('resizableImage', { width: 1000 }).run()}
+          >
+            Original
+          </button>
+          <div className="w-px h-4 bg-slate-300 mx-1" />
+          <button
+            type="button"
+            className="px-2 py-1 text-xs font-medium rounded hover:bg-red-50 text-red-600"
+            onClick={() => editor.chain().focus().deleteSelection().run()}
+          >
+            Remove
+          </button>
+        </div>
+      </BubbleMenu>
 
       <EditorContent
         editor={editor}

@@ -48,11 +48,11 @@ type NavItem = {
 
 // ─── Nav definitions ──────────────────────────────────────────────────────────
 
-const primaryNav = (unreadCount: number): NavItem[] => [
+const primaryNav = (unreadCount: number, draftCount: number): NavItem[] => [
   { href: "/mail/inbox", label: "Inbox", icon: Inbox, badge: unreadCount },
   { href: "/mail/starred", label: "Starred", icon: Star },
   { href: "/mail/sent", label: "Sent", icon: Send },
-  { href: "/mail/drafts", label: "Drafts", icon: FolderOpen },
+  { href: "/mail/drafts", label: "Drafts", icon: FolderOpen, badge: draftCount },
   { href: "/mail/trash", label: "Trash", icon: Trash2 },
 ];
 
@@ -273,6 +273,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
   const user = useAuthStore((s) => s.user);
   const openCompose = useMailStore((s) => s.openCompose);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const draftCount = useNotificationStore((s) => s.draftCount);
 
   const visibleAdminItems = adminNav.filter(
     (item) => !item.roles || (user?.role && item.roles.includes(user.role)),
@@ -319,7 +320,7 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
       {/* Scrollable nav */}
       <div className={cn("flex-1 space-y-5 overflow-y-auto bg-white py-4 text-slate-700 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200", collapsed ? "px-2" : "px-4")}>
         <NavSection
-          items={primaryNav(unreadCount)}
+          items={primaryNav(unreadCount, draftCount)}
           pathname={pathname}
           onNavigate={onNavigate}
           collapsed={collapsed}
@@ -363,9 +364,13 @@ function SidebarContent({ onNavigate, collapsed = false }: { onNavigate?: () => 
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
+import { useMailCounts } from "@/hooks/useMail";
+
 export default function Sidebar() {
   const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  useMailCounts(); // keeps store in sync via REST polling
 
   // Close drawer on ESC
   useEffect(() => {
