@@ -10,8 +10,13 @@ import {
   Star,
   Trash2,
   Users,
+  PanelRight,
+  PanelBottom,
+  Square
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
+
+import { useUIStore } from "@/store/uiStore";
 
 import {
   supportedMailFolders,
@@ -79,6 +84,10 @@ const inboxCategories: Array<{
 export default function MailList({ viewMode }: MailListProps) {
   const router = useRouter();
   const params = useParams();
+
+  const splitPaneMode = useUIStore((s) => s.splitPaneMode);
+  const setSplitPaneMode = useUIStore((s) => s.setSplitPaneMode);
+
   const currentThreadId = params.threadId as string;
   const { openCompose } = useMailStore();
   const { selectedMessageIds, toggleMessageSelection, resetSelection } =
@@ -240,6 +249,30 @@ export default function MailList({ viewMode }: MailListProps) {
                 </p>
               </div>
             )}
+          </div>
+          
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+            <button
+              title="No split"
+              onClick={() => setSplitPaneMode("none")}
+              className={`p-1.5 rounded-md ${splitPaneMode === "none" ? "bg-white shadow-sm text-dana-blue-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <Square className="h-4 w-4" />
+            </button>
+            <button
+              title="Vertical split"
+              onClick={() => setSplitPaneMode("vertical")}
+              className={`p-1.5 rounded-md ${splitPaneMode === "vertical" ? "bg-white shadow-sm text-dana-blue-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <PanelRight className="h-4 w-4" />
+            </button>
+            <button
+              title="Horizontal split"
+              onClick={() => setSplitPaneMode("horizontal")}
+              className={`p-1.5 rounded-md ${splitPaneMode === "horizontal" ? "bg-white shadow-sm text-dana-blue-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <PanelBottom className="h-4 w-4" />
+            </button>
           </div>
         </div>
         </div>

@@ -221,6 +221,19 @@ export class MailboxService {
     }
   }
 
+  async getCounts(userId: string) {
+    try {
+      const drafts = await this.core.messageRepo.count({
+        where: { senderId: userId, isDraft: true, senderDeletedAt: null },
+      });
+
+      // Return unified counts
+      return { drafts };
+    } catch (error) {
+      this.core.handleError("MailboxService.getCounts", error);
+    }
+  }
+
   async getThread(threadId: string, userId: string) {
     try {
       const visibleMessages = await this.getVisibleThreadMessages(

@@ -35,6 +35,10 @@ export class MailService {
     return this.mailboxService.getDrafts(userId, query);
   }
 
+  getCounts(userId: string) {
+    return this.mailboxService.getCounts(userId);
+  }
+
   getThread(threadId: string, userId: string) {
     return this.mailboxService.getThread(threadId, userId);
   }

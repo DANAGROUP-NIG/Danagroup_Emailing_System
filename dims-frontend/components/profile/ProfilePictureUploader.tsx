@@ -110,13 +110,7 @@ export function ProfilePictureUploader({ user }: ProfilePictureUploaderProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith('image/')) {
-      handleFileSelect(file);
-    }
-  };
+
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();

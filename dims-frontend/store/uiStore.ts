@@ -7,9 +7,11 @@ interface UIState {
   sidebarOpen: boolean;
   /** Desktop rail-collapsed mode — persisted */
   sidebarCollapsed: boolean;
+  splitPaneMode: "none" | "vertical" | "horizontal";
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   toggleSidebarCollapsed: () => void;
+  setSplitPaneMode: (mode: "none" | "vertical" | "horizontal") => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -17,6 +19,7 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       sidebarOpen: false,
       sidebarCollapsed: false,
+      splitPaneMode: "none",
 
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
@@ -25,11 +28,16 @@ export const useUIStore = create<UIState>()(
 
       toggleSidebarCollapsed: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      setSplitPaneMode: (mode) => set({ splitPaneMode: mode }),
     }),
     {
       name: "dims-ui",
-      // Only persist the desktop collapsed preference; drawer state resets on refresh
-      partialize: (state) => ({ sidebarCollapsed: state.sidebarCollapsed }),
+      // Only persist the desktop collapsed preference and split pane mode
+      partialize: (state) => ({ 
+        sidebarCollapsed: state.sidebarCollapsed,
+        splitPaneMode: state.splitPaneMode,
+      }),
     },
   ),
 );

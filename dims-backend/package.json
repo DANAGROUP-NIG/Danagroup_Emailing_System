@@ -55,6 +55,7 @@
     "class-validator": "^0.14.1",
     "connect-redis": "^9.0.0",
     "cookie-parser": "^1.4.7",
+    "csv-parser": "^3.2.1",
     "express-session": "^1.19.0",
     "ioredis": "^5.10.1",
     "isomorphic-dompurify": "^3.12.0",

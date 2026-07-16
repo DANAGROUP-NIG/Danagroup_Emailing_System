@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, Filter } from "lucide-react";
 import { useMailRules, useCreateMailRule, useUpdateMailRule, useDeleteMailRule } from "@/hooks/useMailRules";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";

@@ -7,4 +7,5 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiHideProperty()
   sessions?: { refreshToken: string; userAgent: string; ip: string }[];
   @IsOptional() isActive?: boolean;
+  @IsOptional() signatureBeforeQuote?: boolean;
 }

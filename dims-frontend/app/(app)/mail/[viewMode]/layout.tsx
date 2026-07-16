@@ -1,5 +1,6 @@
 import { MailFolder } from "@/types/mail.types";
 import { notFound } from "next/navigation";
+import MailSplitLayoutClient from "./MailSplitLayoutClient";
 
 const supportedMailFolders: MailFolder[] = ["inbox", "sent", "drafts", "starred", "trash"];
 
@@ -16,7 +17,9 @@ export default function MailSplitLayout({
 
   return (
     <main className="h-[calc(100vh-73px)] w-full overflow-hidden bg-slate-100">
-      {children}
+      <MailSplitLayoutClient viewMode={params.viewMode}>
+        {children}
+      </MailSplitLayoutClient>
     </main>
   );
 }

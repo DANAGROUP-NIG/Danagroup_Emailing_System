@@ -158,6 +158,80 @@ export class MailDeliveryProcessor extends WorkerHost {
       this.logger.warn(
         `External delivery to ${toEmail} skipped (SMTP not configured or failed)`,
       );
+
+      // Generate NDR
+      try {
+        const ndrSubject = `Undelivered Mail Returned to Sender`;
+        const ndrBodyText = `This is the mail system at danagroup.net.
+
+I'm sorry to have to inform you that your message could not be delivered to one or more recipients.
+
+<${toEmail}>: Delivery failed or recipient rejected.
+
+--- Original Message ---
+Subject: ${message.subject}
+Date: ${message.sentAt || message.createdAt}
+`;
+
+        const ndrMessage = this.messageRepo.create({
+          threadId: message.threadId,
+          senderId: message.senderId,
+          subject: ndrSubject,
+          body: ndrBodyText,
+          bodyHtml: `<p>This is the mail system at danagroup.net.</p><p>I'm sorry to have to inform you that your message could not be delivered to one or more recipients.</p><p><strong>&lt;${toEmail}&gt;</strong>: Delivery failed or recipient rejected.</p><hr><p>Original Subject: ${message.subject}</p>`,
+          isDraft: false,
+          sentAt: new Date(),
+          isInbound: true,
+          externalSenderEmail: "mailer-daemon@danagroup.net",
+          externalSenderName: "Mail Delivery Subsystem",
+        });
+
+        const savedNdr = await this.messageRepo.save(ndrMessage);
+
+        const ndrRecipient = this.recipientRepo.create({
+          messageId: savedNdr.id,
+          recipientId: message.senderId,
+          type: "to",
+          externalEmail: null,
+        });
+        await this.recipientRepo.save(ndrRecipient);
+
+        const payload: NotificationDispatchJobData = {
+          userId: message.senderId,
+          type: "new_mail",
+          title: `Delivery Failed: ${toEmail}`,
+          body: ndrSubject,
+          referenceId: message.threadId,
+          eventPayload: {
+            event: "new_mail",
+            data: {
+              action: "message_received",
+              messageId: savedNdr.id,
+              threadId: message.threadId,
+              folders: ["inbox"],
+              subject: ndrSubject,
+              sender: {
+                id: "external",
+                email: "mailer-daemon@danagroup.net",
+                firstName: "Mail Delivery Subsystem",
+                lastName: "",
+              },
+              recipient: {
+                id: message.senderId,
+                email: message.sender?.email,
+              },
+              sentAt: savedNdr.sentAt,
+            },
+          },
+        };
+
+        await this.notificationsQueue.add(NOTIFICATION_JOBS.DISPATCH, payload, {
+          attempts: 5,
+          backoff: { type: "exponential", delay: 5000 },
+        });
+      } catch (err) {
+        this.logger.error(`Failed to generate NDR for ${toEmail}: ${(err as Error).message}`);
+      }
     }
 
     // Build and persist raw RFC 2822 for IMAP serving (if not already stored)

@@ -37,21 +37,33 @@ export default function RecipientInput({
       const controller = new AbortController();
       abortRef.current = controller;
 
-      usersApi
-        .search({ search: debouncedQuery, limit: 10 }, controller.signal)
-        .then((res) => {
+      Promise.all([
+        usersApi.search({ search: debouncedQuery, limit: 10 }, controller.signal),
+        import('@/lib/api/contacts').then(m => m.contactsApi.search(debouncedQuery, 5, controller.signal).catch(() => ({ data: { data: [] } })))
+      ])
+        .then(([usersRes, contactsRes]) => {
           if (controller.signal.aborted) return;
-          const esResult = res.data as unknown;
+          
+          const esResult = usersRes.data as unknown;
           const hitsArray = (esResult as { hits?: ParticipantSummary[] })?.hits;
           const dataArray = (esResult as { data?: ParticipantSummary[] })?.data;
-          const data: ParticipantSummary[] = Array.isArray(hitsArray)
+          const usersData: ParticipantSummary[] = Array.isArray(hitsArray)
             ? hitsArray
             : Array.isArray(dataArray)
               ? dataArray
               : Array.isArray(esResult)
                 ? (esResult as ParticipantSummary[])
                 : [];
-          setSuggestions(data.slice(0, 10));
+                
+          // @ts-ignore
+          const contactsData = contactsRes?.data?.data || [];
+          
+          const combined = [
+            ...usersData.map(u => ({ ...u, type: 'user' as const })),
+            ...contactsData.map((c: ParticipantSummary) => ({ ...c, type: 'contact' as const }))
+          ].slice(0, 10);
+          
+          setSuggestions(combined);
           setOpen(true);
           setSelectedIndex(0);
         })

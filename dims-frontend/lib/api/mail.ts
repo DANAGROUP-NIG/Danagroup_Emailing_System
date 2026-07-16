@@ -17,6 +17,9 @@ export const mailApi = {
   getInbox: (params?: MailPageParams) =>
     apiClient.get<BackendPageResponse<MailThreadSummary>>("/mail/inbox", { params }),
 
+  getCounts: () =>
+    apiClient.get<{ drafts: number }>("/mail/counts"),
+
   getSent: (params?: MailPageParams) =>
     apiClient.get<BackendPageResponse<MailThreadSummary>>("/mail/sent", { params }),
 

@@ -42,6 +42,7 @@ export interface UpdateUserPayload {
   role?: string | undefined;
   departmentId?: string | undefined;
   subsidiaryId?: string | undefined;
+  signatureBeforeQuote?: boolean;
 }
 
 export interface UsersListResponse {

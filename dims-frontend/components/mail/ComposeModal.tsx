@@ -24,6 +24,7 @@ import { useMailStore } from "@/store/mailStore";
 import type { ComposeData, Message } from "@/types/mail.types";
 import { useToast } from "@/components/ui/Toast";
 import { useSignature } from "@/hooks/useSignature";
+import { useAuthStore } from "@/store/authStore";
 
 const parseEmailList = (value?: string) =>
   (value ?? "")
@@ -400,8 +401,22 @@ export default function ComposeModal() {
       subject: composeDefaults?.subject || "",
       body: composeDefaults?.body || "",
     });
+    const user = useAuthStore.getState().user;
     const baseHtml = composeDefaults?.bodyHtml || buildBodyHtml(composeDefaults?.body || "");
-    const htmlWithSig = `${baseHtml}${buildSignatureBlock(signature)}`;
+    const sigBlock = buildSignatureBlock(signature);
+    
+    const injectSignatureBeforeQuote = (html: string, signatureBlock: string) => {
+      const quoteIndex = html.indexOf('<div class="dims-quoted-message');
+      if (quoteIndex !== -1) {
+        return html.slice(0, quoteIndex) + signatureBlock + html.slice(quoteIndex);
+      }
+      return `${html}${signatureBlock}`;
+    };
+
+    const htmlWithSig = user?.signatureBeforeQuote
+      ? injectSignatureBeforeQuote(baseHtml, sigBlock)
+      : `${baseHtml}${sigBlock}`;
+
     const defaultText = composeDefaults?.body || "";
     setEditorValue(htmlWithSig);
     setBodyHtml(normalizeEditorHtml(htmlWithSig));

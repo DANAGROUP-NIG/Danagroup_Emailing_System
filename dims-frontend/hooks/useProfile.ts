@@ -10,6 +10,7 @@ interface UpdateProfileData {
   jobTitle?: string | undefined;
   phone?: string | undefined;
   bio?: string | undefined;
+  signatureBeforeQuote?: boolean;
 }
 
 interface ChangePasswordData {
@@ -24,6 +25,7 @@ interface ChangePasswordData {
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.user?.id);
+  const setUser = useAuthStore((s) => s.setUser);
   return useMutation({
     mutationFn: async (data: UpdateProfileData) => {
       if (!userId) throw new Error('Not authenticated');
@@ -31,6 +33,7 @@ export function useUpdateProfile() {
       return response.data as User;
     },
     onSuccess: (data) => {
+      setUser(data);
       queryClient.setQueryData(['auth', 'me'], data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
