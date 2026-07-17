@@ -76,7 +76,9 @@ export const usersApi = {
   changeAvatar: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return apiClient.post<{ data: { avatarUrl: string } }>("/files/avatar", formData);
+    return apiClient.post<{ data: { avatarUrl: string } }>("/files/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
   },
 
   getSignature: () =>

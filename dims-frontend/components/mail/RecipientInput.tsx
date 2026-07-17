@@ -59,8 +59,20 @@ export default function RecipientInput({
           const contactsData = contactsRes?.data?.data || [];
           
           const combined = [
-            ...usersData.map(u => ({ ...u, type: 'user' as const })),
-            ...contactsData.map((c: ParticipantSummary) => ({ ...c, type: 'contact' as const }))
+            ...usersData.map((u: any) => ({
+              id: u.id,
+              email: u.email,
+              name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+              avatarUrl: u.avatarUrl,
+              type: 'user' as const
+            })),
+            ...contactsData.map((c: any) => ({ 
+              id: c.id,
+              email: c.email,
+              name: c.name || c.email,
+              avatarUrl: c.avatarUrl,
+              type: 'contact' as const 
+            }))
           ].slice(0, 10);
           
           setSuggestions(combined);
@@ -160,7 +172,12 @@ export default function RecipientInput({
         </Popover.Trigger>
 
         {/* Suggestions Dropdown */}
-        <Popover.Content side="bottom" align="start" className="w-full p-0 rounded-md border border-input shadow-md z-50">
+        <Popover.Content 
+          side="bottom" 
+          align="start" 
+          className="w-full p-0 rounded-md border border-input shadow-md z-50 bg-white"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           {suggestions.length > 0 && (
             <div className="max-h-60 overflow-y-auto bg-white">
               {suggestions.map((recipient, index) => (

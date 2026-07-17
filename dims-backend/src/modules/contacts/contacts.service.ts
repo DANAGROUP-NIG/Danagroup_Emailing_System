@@ -59,10 +59,11 @@ export class ContactsService {
               .filter(Boolean);
 
             if (contacts.length > 0) {
-              await this.contactRepo.save(contacts);
+              await this.contactRepo.save(contacts, { chunk: 1000 });
             }
             resolve({ imported: contacts.length });
           } catch (error) {
+            console.error("CSV Import Error:", error);
             reject(new BadRequestException("Error saving contacts"));
           }
         })
