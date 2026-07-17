@@ -52,8 +52,8 @@ export class ContactsService {
 
                 return this.contactRepo.create({
                   ownerId,
-                  name,
-                  email,
+                  name: name.substring(0, 255),
+                  email: email.substring(0, 255),
                 });
               })
               .filter(Boolean);
