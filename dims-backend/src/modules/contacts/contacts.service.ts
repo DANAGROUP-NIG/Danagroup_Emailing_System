@@ -1,12 +1,17 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, ILike } from "typeorm";
 import { Contact } from "./entities/contact.entity";
 import csvParser from "csv-parser";
 import { Readable } from "stream";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BATCH_SIZE = 500;
+
 @Injectable()
 export class ContactsService {
+  private readonly logger = new Logger(ContactsService.name);
+
   constructor(
     @InjectRepository(Contact)
     private readonly contactRepo: Repository<Contact>,
@@ -24,52 +29,124 @@ export class ContactsService {
     });
   }
 
-  async importCsv(ownerId: string, fileBuffer: Buffer) {
-    const results: any[] = [];
+  async importCsv(ownerId: string, fileBuffer: Buffer): Promise<{ imported: number; skipped: number }> {
     return new Promise((resolve, reject) => {
+      const results: any[] = [];
+
       Readable.from(fileBuffer)
-        .pipe(csvParser())
-        .on("data", (data: any) => results.push(data))
+        .pipe(
+          csvParser({
+            // csv-parser is strict about headers; relax it
+            strict: false,
+            skipLines: 0,
+          }),
+        )
+        .on("data", (row: any) => results.push(row))
         .on("end", async () => {
           try {
-            const contacts = results
-              .map((row) => {
-                // extract name and email using common column headers
-                let name =
-                  row.name || row.Name || row.NAME || row.fullname || row["First Name"] || row["First Name "] || "";
-                if (row["Last Name"]) {
-                  name = name ? name + " " + row["Last Name"] : row["Last Name"];
-                }
-                const email =
-                  row.email ||
-                  row.Email ||
-                  row.EMAIL ||
-                  row.email_address ||
-                  row["E-mail 1 - Value"] ||
-                  "";
-                
-                if (!email) return null;
+            let imported = 0;
+            let skipped = 0;
 
-                return this.contactRepo.create({
-                  ownerId,
-                  name: name.substring(0, 255),
-                  email: email.substring(0, 255),
-                });
-              })
-              .filter(Boolean);
+            // Collect valid contacts from all rows
+            const validContacts: Array<{ name: string; email: string }> = [];
 
-            if (contacts.length > 0) {
-              await this.contactRepo.save(contacts, { chunk: 1000 });
+            for (const row of results) {
+              // ── Extract email using all known column names ──
+              const rawEmail =
+                row["E-mail 1 - Value"] ||
+                row["E-mail 2 - Value"] ||
+                row.email ||
+                row.Email ||
+                row.EMAIL ||
+                row.email_address ||
+                row["Email Address"] ||
+                "";
+
+              const email = String(rawEmail).trim().substring(0, 254);
+
+              // Skip rows with no valid email
+              if (!email || !EMAIL_REGEX.test(email)) {
+                skipped++;
+                continue;
+              }
+
+              // ── Extract name using all known column names ──
+              let firstName =
+                row["First Name"] ||
+                row["first_name"] ||
+                row["firstname"] ||
+                row.name ||
+                row.Name ||
+                "";
+
+              let lastName =
+                row["Last Name"] ||
+                row["last_name"] ||
+                row["lastname"] ||
+                "";
+
+              firstName = String(firstName).trim().replace(/^'+|'+$/g, ""); // strip surrounding quotes
+              lastName = String(lastName).trim().replace(/^'+|'+$/g, "");
+
+              let name = firstName;
+              if (lastName) {
+                name = name ? `${name} ${lastName}` : lastName;
+              }
+              name = name.trim().substring(0, 255) || email;
+
+              validContacts.push({ name, email });
             }
-            resolve({ imported: contacts.length });
-          } catch (error) {
-            console.error("CSV Import Error:", error);
-            reject(new BadRequestException("Error saving contacts"));
+
+            // ── Batch save in chunks to avoid DB parameter limits ──
+            for (let i = 0; i < validContacts.length; i += BATCH_SIZE) {
+              const chunk = validContacts.slice(i, i + BATCH_SIZE);
+              try {
+                // Use upsert to skip duplicates (same owner + email)
+                await this.contactRepo
+                  .createQueryBuilder()
+                  .insert()
+                  .into(Contact)
+                  .values(
+                    chunk.map((c) => ({
+                      ownerId,
+                      name: c.name,
+                      email: c.email,
+                    })),
+                  )
+                  .orIgnore() // skip on duplicate key violation
+                  .execute();
+
+                imported += chunk.length;
+              } catch (chunkError: any) {
+                // If orIgnore fails (e.g., non-unique constraint), fall back to individual saves
+                this.logger.warn(`Chunk insert failed, falling back to individual inserts: ${chunkError.message}`);
+                for (const contact of chunk) {
+                  try {
+                    const entity = this.contactRepo.create({
+                      ownerId,
+                      name: contact.name,
+                      email: contact.email,
+                    });
+                    await this.contactRepo.save(entity);
+                    imported++;
+                  } catch {
+                    skipped++;
+                  }
+                }
+              }
+            }
+
+            this.logger.log(`CSV import complete: ${imported} imported, ${skipped} skipped`);
+            resolve({ imported, skipped });
+          } catch (error: any) {
+            this.logger.error("CSV Import Error:", error?.message, error?.stack);
+            reject(new BadRequestException("Error processing contacts file"));
           }
         })
-        .on("error", () =>
-          reject(new BadRequestException("Invalid CSV format")),
-        );
+        .on("error", (err: Error) => {
+          this.logger.error("CSV parse error:", err.message);
+          reject(new BadRequestException("Invalid CSV format"));
+        });
     });
   }
 }

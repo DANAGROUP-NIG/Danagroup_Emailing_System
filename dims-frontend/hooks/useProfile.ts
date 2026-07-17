@@ -52,15 +52,16 @@ export function useUpdateAvatar() {
       const response = await usersApi.changeAvatar(file);
       return response.data.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      // Immediately update local Zustand store so header avatar updates instantly
       if (currentUser) {
         const updated = { ...currentUser, avatarUrl: data.avatarUrl };
         setUser(updated);
-        queryClient.setQueryData<User>(['auth', 'me'], (old) =>
-          old ? { ...old, avatarUrl: data.avatarUrl } : old,
-        );
       }
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      // Invalidate and force-refetch auth/me so profile page re-renders with new URL
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      await queryClient.refetchQueries({ queryKey: ['auth', 'me'] });
+      // Also invalidate the user list cache (e.g., directory pages)
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });

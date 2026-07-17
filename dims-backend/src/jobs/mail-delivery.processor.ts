@@ -142,7 +142,7 @@ export class MailDeliveryProcessor extends WorkerHost {
       }
     }
 
-    const sent = await this.smtpService.sendMail({
+    const { sent, error: smtpError } = await this.smtpService.sendMail({
       from: fromAddress,
       to: toEmail,
       subject: message.subject ?? "(no subject)",
@@ -155,29 +155,66 @@ export class MailDeliveryProcessor extends WorkerHost {
 
     if (!sent) {
       this.logger.warn(
-        `External delivery to ${toEmail} skipped (SMTP not configured or failed)`,
+        `External delivery to ${toEmail} failed — generating NDR. Reason: ${smtpError ?? "unknown"}`,
       );
 
-      // Generate NDR
+      // ── Generate NDR (Non-Delivery Report) ──────────────────────────────
       try {
         const ndrSubject = `Undelivered Mail Returned to Sender`;
+        const reason = smtpError ?? "Delivery failed or recipient address rejected.";
+
         const ndrBodyText = `This is the mail system at danagroup.net.
 
-I'm sorry to have to inform you that your message could not be delivered to one or more recipients.
+I'm sorry to have to inform you that your message could not be delivered to one or more recipients. This is a permanent error; I've given up. Sorry it didn't work out.
 
-<${toEmail}>: Delivery failed or recipient rejected.
+   <${toEmail}>: ${reason}
 
 --- Original Message ---
 Subject: ${message.subject}
-Date: ${message.sentAt || message.createdAt}
+Date:    ${(message.sentAt ?? message.createdAt).toISOString()}
 `;
 
+        const ndrBodyHtml = `
+<div style="font-family:monospace;font-size:14px;color:#333;max-width:600px">
+  <p><strong>This is the mail system at danagroup.net.</strong></p>
+  <p>
+    I'm sorry to have to inform you that your message could not be
+    delivered to one or more recipients. This is a permanent error;
+    I've given up. Sorry it didn't work out.
+  </p>
+  <blockquote style="border-left:3px solid #d00;padding-left:12px;color:#c00;margin:16px 0">
+    <strong>&lt;${toEmail}&gt;</strong>: ${reason}
+  </blockquote>
+  <hr style="border:none;border-top:1px solid #ddd;margin:16px 0" />
+  <p style="color:#555;font-size:12px">
+    <strong>Original Subject:</strong> ${message.subject}<br/>
+    <strong>Original Date:</strong> ${(message.sentAt ?? message.createdAt).toISOString()}
+  </p>
+</div>`;
+
+        // Use the repository's query runner to insert a new thread
+        const ndrThreadEntity = await this.messageRepo.query(
+          `INSERT INTO threads (subject, last_activity_at, last_message_at, snippet)
+           VALUES ($1, NOW(), NOW(), $2)
+           RETURNING id`,
+          [
+            ndrSubject.toLowerCase(),
+            `Delivery failed: <${toEmail}>`,
+          ],
+        );
+        const ndrThreadId: string = ndrThreadEntity[0]?.id;
+
+        if (!ndrThreadId) {
+          throw new Error("Failed to create NDR thread");
+        }
+
         const ndrMessage = this.messageRepo.create({
-          threadId: message.threadId,
-          senderId: null,
+          threadId: ndrThreadId,
+          // Use the original sender as the senderId — NDR belongs to them
+          senderId: message.senderId,
           subject: ndrSubject,
           body: ndrBodyText,
-          bodyHtml: `<p>This is the mail system at danagroup.net.</p><p>I'm sorry to have to inform you that your message could not be delivered to one or more recipients.</p><p><strong>&lt;${toEmail}&gt;</strong>: Delivery failed or recipient rejected.</p><hr><p>Original Subject: ${message.subject}</p>`,
+          bodyHtml: ndrBodyHtml,
           isDraft: false,
           sentAt: new Date(),
           isInbound: true,
@@ -187,6 +224,7 @@ Date: ${message.sentAt || message.createdAt}
 
         const savedNdr = await this.messageRepo.save(ndrMessage);
 
+        // NDR is delivered to the original sender's inbox
         const ndrRecipient = this.recipientRepo.create({
           messageId: savedNdr.id,
           recipientId: message.senderId,
@@ -195,20 +233,24 @@ Date: ${message.sentAt || message.createdAt}
         });
         await this.recipientRepo.save(ndrRecipient);
 
+        // Emit real-time mailbox_changed so the sender's inbox refreshes immediately
         const payload: NotificationDispatchJobData = {
           userId: message.senderId,
           type: "new_mail",
-          title: `Delivery Failed: ${toEmail}`,
-          body: ndrSubject,
-          referenceId: message.threadId,
+          title: `⚠️ Delivery Failed: ${toEmail}`,
+          body: `Your message "${message.subject}" could not be delivered. Reason: ${reason}`,
+          referenceId: ndrThreadId,
           eventPayload: {
             event: "new_mail",
             data: {
               action: "message_received",
               messageId: savedNdr.id,
-              threadId: message.threadId,
+              threadId: ndrThreadId,
               folders: ["inbox"],
               subject: ndrSubject,
+              isNdr: true,
+              failedRecipient: toEmail,
+              bounceReason: reason,
               sender: {
                 id: "external",
                 email: "mailer-daemon@danagroup.net",
@@ -228,6 +270,10 @@ Date: ${message.sentAt || message.createdAt}
           attempts: 5,
           backoff: { type: "exponential", delay: 5000 },
         });
+
+        this.logger.log(
+          `NDR created for sender ${message.senderId} — failed delivery to ${toEmail}`,
+        );
       } catch (err) {
         this.logger.error(
           `Failed to generate NDR for ${toEmail}: ${(err as Error).message}`,

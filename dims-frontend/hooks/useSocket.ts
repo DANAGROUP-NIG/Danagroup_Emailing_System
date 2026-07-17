@@ -183,7 +183,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       playPing();
     });
 
-    socket.on("new_mail", (payload?: MailboxChangedPayload) => {
+    socket.on("new_mail", (payload?: MailboxChangedPayload & { isNdr?: boolean; failedRecipient?: string; bounceReason?: string }) => {
       // Invalidate inbox and notifications
       invalidateMailbox({
         ...payload,
@@ -194,6 +194,16 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
       void queryClient.invalidateQueries({
         queryKey: ["notifications", "unread-count"],
       });
+
+      // NDR (Non-Delivery Report) — show a distinct red error toast
+      if (payload?.isNdr || (payload as Record<string, unknown>)?.isNdr) {
+        const failedTo = (payload as Record<string, unknown>)?.failedRecipient as string | undefined;
+        toast.error(
+          `⚠️ Delivery Failed${failedTo ? `: ${failedTo}` : ""}\nYour message could not be delivered.`,
+          { duration: 8000, id: `ndr-${failedTo ?? "bounce"}` },
+        );
+        return;
+      }
 
       // Show desktop notification if tab is hidden
       if (payload?.threadId) {
@@ -208,6 +218,7 @@ export function useSocket(user: User | null | undefined): UseSocketReturn {
         console.debug("[Socket] new_mail received", payload);
       }
     });
+
 
     socket.on("mailbox_changed", (payload?: MailboxChangedPayload) => {
       invalidateMailbox(payload);

@@ -2,13 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck, Info, Mail, Megaphone, X, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCheck, Info, Mail, Megaphone, X, ChevronRight } from 'lucide-react';
 import { useNotifications, useMarkNotificationRead, useMarkAllRead, useUnreadCount, useDeleteAllNotifications } from '@/hooks/useNotifications';
 import { useNotificationStore } from '@/store/notificationStore';
 import { timeAgo } from '@/lib/utils';
 import type { AppNotification } from '@/types/api.types';
 
-function NotificationIcon({ type }: { type: AppNotification['type'] }) {
+function NotificationIcon({ type, title }: { type: AppNotification['type']; title?: string }) {
+  // NDR / bounce notification — distinct red icon
+  if (type === 'new_mail' && title && title.includes('Delivery Failed')) {
+    return (
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
+        <AlertTriangle className="h-4 w-4 text-red-600" />
+      </span>
+    );
+  }
   if (type === 'new_mail') {
     return (
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light">
@@ -45,7 +53,7 @@ function NotificationRow({
         !notification.isRead ? 'bg-primary-light/30' : ''
       }`}
     >
-      <NotificationIcon type={notification.type} />
+      <NotificationIcon type={notification.type} title={notification.title} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

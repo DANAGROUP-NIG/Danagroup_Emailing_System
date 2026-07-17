@@ -51,6 +51,26 @@ export class InboundMailService {
       return;
     }
 
+    // ── Detect DSN / bounce notifications from Postfix ─────────────────────
+    // DSN emails have Content-Type: multipart/report; report-type=delivery-status
+    // and come From: MAILER-DAEMON or postmaster
+    const isDsn =
+      (parsed.headers?.get("content-type") as string ?? "")
+        .includes("report-type=delivery-status") ||
+      (fromAddress.includes("mailer-daemon") ||
+        fromAddress.includes("postmaster")) &&
+        parsed.attachments?.some(
+          (a) => a.contentType === "message/delivery-status",
+        );
+
+    if (isDsn) {
+      this.logger.log(
+        `Detected DSN/bounce notification from ${fromAddress} — routing to NDR processor`,
+      );
+      await this.processDsn(parsed, rawEmailStr);
+      return;
+    }
+
     // Collect all recipient emails
     const toAddresses = this.extractAddresses(parsed.to);
     const ccAddresses = this.extractAddresses(parsed.cc);
@@ -281,6 +301,188 @@ export class InboundMailService {
           `Failed to enqueue notification for user ${user.id}: ${(err as Error).message}`,
         );
       }
+    }
+  }
+
+  // ─── DSN / Bounce handler ─────────────────────────────────────────────────
+
+  private async processDsn(parsed: Awaited<ReturnType<typeof simpleParser>>, _rawEmailStr: string): Promise<void> {
+    try {
+      // Extract the delivery-status attachment to get failure details
+      const dsAttachment = parsed.attachments?.find(
+        (a) => a.contentType === "message/delivery-status",
+      );
+
+      let failedRecipient: string | null = null;
+      let bounceReason = "Delivery failed — no specific reason provided";
+      let originalMessageId: string | null = null;
+
+      if (dsAttachment?.content) {
+        const dsText = dsAttachment.content.toString("utf8");
+        // Parse Final-Recipient header
+        const finalRecipientMatch = dsText.match(/Final-Recipient:\s*rfc822;\s*([^\r\n]+)/i);
+        if (finalRecipientMatch) {
+          failedRecipient = finalRecipientMatch[1].trim().toLowerCase();
+        }
+        // Parse Diagnostic-Code (the actual SMTP error)
+        const diagnosticMatch = dsText.match(/Diagnostic-Code:[^:]+:\s*(.+)/i);
+        if (diagnosticMatch) {
+          bounceReason = diagnosticMatch[1].trim();
+        }
+        // Parse Status code
+        const statusMatch = dsText.match(/Status:\s*(\d\.\d\.\d)/i);
+        if (statusMatch && !diagnosticMatch) {
+          bounceReason = `SMTP Status ${statusMatch[1]}`;
+        }
+      }
+
+      // Try to find original Message-ID from the headers or original-message part
+      const origMsgAttachment = parsed.attachments?.find(
+        (a) => a.contentType === "message/rfc822",
+      );
+      if (origMsgAttachment?.content) {
+        const origText = origMsgAttachment.content.toString("utf8");
+        const msgIdMatch = origText.match(/Message-ID:\s*<([^>]+)>/i);
+        if (msgIdMatch) {
+          originalMessageId = msgIdMatch[1];
+        }
+      }
+
+      // Also try to find the original-recipient from the DSN envelope
+      if (!failedRecipient) {
+        // Fall back to parsing the subject line
+        const subjMatch = parsed.subject?.match(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i);
+        if (subjMatch) failedRecipient = subjMatch[1].toLowerCase();
+      }
+
+      if (!failedRecipient) {
+        this.logger.warn("DSN received but could not determine failed recipient — skipping NDR");
+        return;
+      }
+
+      // The DSN is delivered to the original sender — find who that is
+      // The DSN To: header should contain the original sender's address
+      const toAddresses = this.extractAddresses(parsed.to);
+      const originalSenderEmail = toAddresses[0];
+
+      if (!originalSenderEmail) {
+        this.logger.warn("DSN has no To: address — cannot find original sender");
+        return;
+      }
+
+      const originalSender = await this.userRepo.findOne({
+        where: { email: originalSenderEmail, isActive: true },
+        select: ["id", "email", "firstName", "lastName"],
+      });
+
+      if (!originalSender) {
+        this.logger.warn(
+          `DSN To: ${originalSenderEmail} is not an internal user — skipping NDR`,
+        );
+        return;
+      }
+
+      this.logger.log(
+        `Processing bounce for ${originalSenderEmail} → failed delivery to ${failedRecipient}: ${bounceReason}`,
+      );
+
+      const ndrSubject = "Undelivered Mail Returned to Sender";
+      const ndrBodyText = `This is the mail system at danagroup.net.
+
+I'm sorry to have to inform you that your message could not be delivered to one or more recipients. This is a permanent error; I've given up. Sorry it didn't work out.
+
+   <${failedRecipient}>: ${bounceReason}
+`;
+      const ndrBodyHtml = `
+<div style="font-family:monospace;font-size:14px;color:#333;max-width:600px">
+  <p><strong>This is the mail system at danagroup.net.</strong></p>
+  <p>I'm sorry to have to inform you that your message could not be delivered to one or more recipients. This is a permanent error; I've given up. Sorry it didn't work out.</p>
+  <blockquote style="border-left:3px solid #d00;padding-left:12px;color:#c00;margin:16px 0">
+    <strong>&lt;${failedRecipient}&gt;</strong>: ${bounceReason}
+  </blockquote>
+</div>`;
+
+      // Create a new thread for this NDR
+      const ndrThreadResult = await this.threadRepo.query(
+        `INSERT INTO threads (subject, last_activity_at, last_message_at, snippet)
+         VALUES ($1, NOW(), NOW(), $2)
+         RETURNING id`,
+        [ndrSubject.toLowerCase(), `Delivery failed: <${failedRecipient}>`],
+      );
+      const ndrThreadId: string = ndrThreadResult[0]?.id;
+      if (!ndrThreadId) throw new Error("Failed to create NDR thread");
+
+      const ndrMessage = this.messageRepo.create({
+        threadId: ndrThreadId,
+        senderId: originalSender.id,
+        subject: ndrSubject,
+        body: ndrBodyText,
+        bodyHtml: ndrBodyHtml,
+        isDraft: false,
+        sentAt: new Date(),
+        isInbound: true,
+        externalSenderEmail: "mailer-daemon@danagroup.net",
+        externalSenderName: "Mail Delivery Subsystem",
+      });
+      const savedNdr = await this.messageRepo.save(ndrMessage);
+
+      const ndrRecipient = this.recipientRepo.create({
+        messageId: savedNdr.id,
+        recipientId: originalSender.id,
+        type: "to",
+        externalEmail: null,
+      });
+      await this.recipientRepo.save(ndrRecipient);
+
+      // Emit real-time event so the sender's inbox updates immediately
+      this.mailCoreService.emitMailboxChanged(originalSender.id, {
+        action: "message_received",
+        messageId: savedNdr.id,
+        threadId: ndrThreadId,
+        folders: ["inbox"],
+      });
+
+      // Enqueue notification
+      await this.jobsService.enqueueNotification({
+        userId: originalSender.id,
+        type: "new_mail",
+        title: `⚠️ Delivery Failed: ${failedRecipient}`,
+        body: `Your message could not be delivered. Reason: ${bounceReason}`,
+        referenceId: ndrThreadId,
+        eventPayload: {
+          event: "new_mail",
+          data: {
+            action: "message_received",
+            messageId: savedNdr.id,
+            threadId: ndrThreadId,
+            folders: ["inbox"],
+            subject: ndrSubject,
+            isNdr: true,
+            failedRecipient,
+            bounceReason,
+            sender: {
+              id: "external",
+              email: "mailer-daemon@danagroup.net",
+              firstName: "Mail Delivery Subsystem",
+              lastName: "",
+            },
+            recipient: {
+              id: originalSender.id,
+              email: originalSender.email,
+            },
+            sentAt: savedNdr.sentAt,
+          },
+        },
+      });
+
+      this.logger.log(
+        `DSN NDR created — thread ${ndrThreadId}, notified user ${originalSender.id}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to process DSN bounce: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
     }
   }
 

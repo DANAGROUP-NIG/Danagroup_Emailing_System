@@ -34,3 +34,23 @@ postalias lmdb:/etc/aliases
 echo "Clearing local_recipient_maps (accept all recipients across all Dana Group domains)..."
 postconf -e "local_recipient_maps="
 
+# ── NDR / Bounce routing ───────────────────────────────────────────────────
+# Route Postfix's own bounce/DSN notifications through the dims pipe so that
+# async delivery failures (e.g. 550 User Unknown from remote MTA) are piped
+# into the DIMS inbound webhook and converted to NDR messages in the inbox.
+#
+# When Postfix cannot deliver a message it generates a DSN email and attempts
+# to deliver it to the original sender (return-path). Since all @danagroup.net
+# addresses use the dims transport, the DSN will automatically route through
+# the pipe-to-dims.sh script and reach InboundMailService.processRaw(), which
+# now has a DSN detector that calls processDsn() to create the NDR.
+#
+# No additional config is needed — the transport_maps entry for danagroup.net
+# already catches the bounce because the DSN is addressed to the original sender
+# (an @danagroup.net user). Setting notify_classes ensures Postfix notifies on
+# all bounce types.
+echo "Configuring Postfix bounce/DSN notification classes..."
+postconf -e "notify_classes=bounce, 2bounce, delay, policy, protocol, resource, software"
+postconf -e "bounce_notice_recipient=postmaster@danagroup.net"
+postconf -e "2bounce_notice_recipient=postmaster@danagroup.net"
+

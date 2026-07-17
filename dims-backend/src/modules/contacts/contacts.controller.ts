@@ -53,13 +53,24 @@ export class ContactsController {
     if (!file) {
       throw new BadRequestException("No file provided");
     }
-    if (
-      file.mimetype !== "text/csv" &&
-      file.mimetype !== "application/vnd.ms-excel"
-    ) {
+
+    // Accept any CSV-like MIME type — browsers report different types for the same file
+    const allowedMimes = [
+      "text/csv",
+      "text/plain",
+      "application/csv",
+      "application/vnd.ms-excel",
+      "application/octet-stream",
+    ];
+    const originalName = file.originalname?.toLowerCase() ?? "";
+    const hasValidExt = originalName.endsWith(".csv");
+    const hasValidMime = allowedMimes.includes(file.mimetype);
+
+    if (!hasValidExt && !hasValidMime) {
       throw new BadRequestException("Only CSV files are allowed");
     }
 
     return this.contactsService.importCsv(user.userId, file.buffer);
+
   }
 }

@@ -20,6 +20,11 @@ export interface SmtpSendOptions {
   headers?: Record<string, string>;
 }
 
+export interface SmtpSendResult {
+  sent: boolean;
+  error?: string;
+}
+
 @Injectable()
 export class SmtpService implements OnModuleInit {
   private readonly logger = new Logger(SmtpService.name);
@@ -78,12 +83,11 @@ export class SmtpService implements OnModuleInit {
     );
   }
 
-  async sendMail(options: SmtpSendOptions): Promise<boolean> {
+  async sendMail(options: SmtpSendOptions): Promise<SmtpSendResult> {
     if (!this.enabled || !this.transporter) {
-      this.logger.debug(
-        `SMTP disabled — skipping external delivery to ${Array.isArray(options.to) ? options.to.join(", ") : options.to}`,
-      );
-      return false;
+      const to = Array.isArray(options.to) ? options.to.join(", ") : options.to;
+      this.logger.debug(`SMTP disabled — skipping external delivery to ${to}`);
+      return { sent: false, error: "SMTP not configured on this server" };
     }
 
     const mailOptions = {
@@ -96,15 +100,16 @@ export class SmtpService implements OnModuleInit {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
+      const to = Array.isArray(options.to) ? options.to.join(", ") : options.to;
       this.logger.log(
-        `Email sent to ${Array.isArray(options.to) ? options.to.join(", ") : options.to} — messageId: ${info.messageId}`,
+        `Email sent to ${to} — messageId: ${info.messageId}`,
       );
-      return true;
+      return { sent: true };
     } catch (err) {
-      this.logger.error(
-        `Failed to send email to ${Array.isArray(options.to) ? options.to.join(", ") : options.to}: ${(err as Error).message}`,
-      );
-      return false;
+      const to = Array.isArray(options.to) ? options.to.join(", ") : options.to;
+      const errorMessage = (err as Error).message;
+      this.logger.error(`Failed to send email to ${to}: ${errorMessage}`);
+      return { sent: false, error: errorMessage };
     }
   }
 
@@ -121,3 +126,4 @@ export class SmtpService implements OnModuleInit {
     }
   }
 }
+
