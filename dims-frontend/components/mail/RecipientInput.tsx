@@ -106,9 +106,14 @@ export default function RecipientInput({
       setSelectedIndex((prev) => (prev + 1) % suggestions.length);
     } else if (e.key === 'ArrowUp' && open && suggestions.length > 0) {
       setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
-    } else if (e.key === 'Enter' && open && suggestions[selectedIndex]) {
+    } else if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
-      addRecipient(suggestions[selectedIndex]);
+      if (open && suggestions.length > 0 && suggestions[selectedIndex]) {
+        addRecipient(suggestions[selectedIndex]);
+      } else if (query.trim()) {
+        const email = query.trim();
+        addRecipient({ id: email, email, name: email });
+      }
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -142,6 +147,12 @@ export default function RecipientInput({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
+              onBlur={() => {
+                if (query.trim() && !open) {
+                  const email = query.trim();
+                  addRecipient({ id: email, email, name: email });
+                }
+              }}
               placeholder={value.length === 0 ? placeholder : ''}
               className="flex-1 min-w-[120px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
             />
@@ -150,7 +161,7 @@ export default function RecipientInput({
 
         {/* Suggestions Dropdown */}
         <Popover.Content side="bottom" align="start" className="w-full p-0 rounded-md border border-input shadow-md z-50">
-          {suggestions.length > 0 ? (
+          {suggestions.length > 0 && (
             <div className="max-h-60 overflow-y-auto bg-white">
               {suggestions.map((recipient, index) => (
                 <button
@@ -177,11 +188,7 @@ export default function RecipientInput({
                 </button>
               ))}
             </div>
-          ) : query.length >= 2 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No recipients found
-            </div>
-          ) : null}
+          )}
         </Popover.Content>
       </div>
     </Popover.Root>

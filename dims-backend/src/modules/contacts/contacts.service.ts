@@ -35,14 +35,19 @@ export class ContactsService {
             const contacts = results
               .map((row) => {
                 // extract name and email using common column headers
-                const name =
-                  row.name || row.Name || row.NAME || row.fullname || "";
+                let name =
+                  row.name || row.Name || row.NAME || row.fullname || row["First Name"] || row["First Name "] || "";
+                if (row["Last Name"]) {
+                  name = name ? name + " " + row["Last Name"] : row["Last Name"];
+                }
                 const email =
                   row.email ||
                   row.Email ||
                   row.EMAIL ||
                   row.email_address ||
+                  row["E-mail 1 - Value"] ||
                   "";
+                
                 if (!email) return null;
 
                 return this.contactRepo.create({
