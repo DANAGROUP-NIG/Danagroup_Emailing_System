@@ -266,7 +266,7 @@ export function RichTextEditor({
       const attachment = res.data.data;
       editor.chain().focus().insertContent({
         type: 'resizableImage',
-        attrs: { src: attachment.url, alt: file.name, width: 300 },
+        attrs: { src: filesApi.getStreamUrl(attachment.id), alt: file.name, width: 300 },
       }).run();
     } catch {
       showToast({ title: 'Image upload failed', variant: 'error' });

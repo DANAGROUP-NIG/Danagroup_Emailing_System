@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Info, Mail, Megaphone, X, ChevronRight } from 'lucide-react';
-import { useNotifications, useMarkNotificationRead, useMarkAllRead, useUnreadCount } from '@/hooks/useNotifications';
+import { useNotifications, useMarkNotificationRead, useMarkAllRead, useUnreadCount, useDeleteAllNotifications } from '@/hooks/useNotifications';
 import { useNotificationStore } from '@/store/notificationStore';
 import { timeAgo } from '@/lib/utils';
 import type { AppNotification } from '@/types/api.types';
@@ -105,6 +105,7 @@ export default function NotificationPanel({ userId: _userId }: NotificationPanel
   const { data, isLoading } = useNotifications({ filter: 'all' });
   const markAsRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
+  const deleteAll = useDeleteAllNotifications();
   const allNotifications = data?.pages.flatMap((page) => page.data).slice(0, 10) || [];
 
   useEffect(() => {
@@ -200,8 +201,8 @@ export default function NotificationPanel({ userId: _userId }: NotificationPanel
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm('Clear all notifications? This will mark all as read.')) {
-                      markAllRead.mutate();
+                    if (confirm('Clear all notifications? This will delete all your notifications permanently.')) {
+                      deleteAll.mutate();
                     }
                   }}
                   className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"

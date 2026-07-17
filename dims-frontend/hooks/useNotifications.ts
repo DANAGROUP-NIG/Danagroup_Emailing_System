@@ -80,3 +80,19 @@ export function useMarkAllRead() {
     },
   });
 }
+
+/**
+ * Delete all notifications
+ */
+export function useDeleteAllNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await notificationsApi.deleteAll();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    },
+  });
+}

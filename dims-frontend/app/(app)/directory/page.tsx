@@ -6,8 +6,10 @@ import { useDirectoryUsers } from '@/hooks/useDirectory';
 import EmployeeFilters from '@/components/directory/EmployeeFilters';
 import EmployeeGrid from '@/components/directory/EmployeeGrid';
 import { Button } from '@/components/ui/Button';
-import { Download } from 'lucide-react';
+import { Download, Upload, Loader2 } from 'lucide-react';
 import type { DirectoryFilters } from '@/hooks/useDirectory';
+import { contactsApi } from '@/lib/api/contacts';
+import { useToast } from '@/components/ui/Toast';
 
 export default function DirectoryPage() {
   const searchParams = useSearchParams();
@@ -18,6 +20,9 @@ export default function DirectoryPage() {
     department: searchParams.get('department') || undefined,
     role: searchParams.get('role') || undefined,
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const { showToast } = useToast();
 
   const {
     data,
@@ -67,7 +72,42 @@ export default function DirectoryPage() {
   }, [filters]);
 
   const handleExportCSV = () => {
-    // CSV export functionality would go here
+    const headers = ['Name', 'Email', 'Role', 'Department', 'Subsidiary'];
+    const rows = allUsers.map(u => [
+      `"${u.firstName} ${u.lastName}"`,
+      `"${u.email}"`,
+      `"${u.role || ''}"`,
+      `"${u.department?.name || ''}"`,
+      `"${u.subsidiary?.name || ''}"`
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'directory.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        setIsImporting(true);
+        const res = await contactsApi.importCsv(file);
+        showToast({ title: `Successfully imported ${res.data.imported} contact(s).`, variant: 'success' });
+      } catch (err: unknown) {
+        const errObj = err as { response?: { data?: { message?: string } }; message?: string };
+        showToast({ title: errObj.response?.data?.message || errObj.message || 'Failed to import contacts', variant: 'error' });
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    }
   };
 
   return (
@@ -84,15 +124,34 @@ export default function DirectoryPage() {
               : 'Loading employees...'}
           </p>
         </div>
-        <Button
-          onClick={handleExportCSV}
-          variant="outline"
-          size="sm"
-          className="sm:w-auto"
-        >
-          <Download size={16} className="mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept=".csv"
+            ref={fileInputRef}
+            onChange={(e) => void handleFileChange(e)}
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            size="sm"
+            className="sm:w-auto"
+            disabled={isImporting}
+          >
+            {isImporting ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Upload size={16} className="mr-2" />}
+            Import Contacts
+          </Button>
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            size="sm"
+            className="sm:w-auto"
+          >
+            <Download size={16} className="mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

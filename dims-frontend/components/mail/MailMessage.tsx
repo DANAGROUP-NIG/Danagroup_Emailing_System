@@ -114,7 +114,7 @@ export default function MailMessage({
   const avatarColor = stringToColor(senderEmail);
 
   return (
-    <div className={`group relative overflow-hidden rounded-b-xl border shadow-sm transition-all min-h-full flex flex-col ${isUnread ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
+    <div className={`group relative overflow-hidden rounded-b-xl border shadow-sm transition-all flex flex-col ${isUnread ? "border-l-4 border-l-blue-500" : "border-slate-200"}`}>
       {/* Message Header — Static Row Layout */}
       <div className="w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset flex justify-between items-center bg-white">
         <div className="flex items-center gap-3 px-5 py-3.5 transition-colors flex-1 min-w-0">

@@ -78,4 +78,25 @@ export class NotificationsService {
     notification.isRead = true;
     await this.notificationRepo.save(notification);
   }
+
+  async markReadByReference(referenceId: string, userId: string): Promise<void> {
+    await this.notificationRepo
+      .createQueryBuilder()
+      .update()
+      .set({ isRead: true })
+      .where("userId = :userId", { userId })
+      .andWhere("referenceId = :referenceId", { referenceId })
+      .andWhere("isRead = false")
+      .execute();
+  }
+
+  async deleteAll(userId: string) {
+    const result = await this.notificationRepo
+      .createQueryBuilder()
+      .delete()
+      .where("userId = :userId", { userId })
+      .execute();
+
+    return { deleted: result.affected ?? 0 };
+  }
 }

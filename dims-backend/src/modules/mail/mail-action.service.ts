@@ -9,6 +9,7 @@ import { MailMapper } from "./mappers/mail.mapper";
 import { MailCoreService } from "./mail-core.service";
 import { MailboxService } from "./mailbox.service";
 import { JobsService } from "@jobs/jobs.service";
+import { NotificationsService } from "@modules/notifications/notifications.service";
 
 @Injectable()
 export class MailActionService {
@@ -16,6 +17,7 @@ export class MailActionService {
     private readonly core: MailCoreService,
     private readonly mailboxService: MailboxService,
     private readonly jobsService: JobsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ─── Read message ─────────────────────────────────────────────────────────
@@ -97,6 +99,9 @@ export class MailActionService {
         message.threadId,
         userId,
       );
+      if (isRead) {
+        await this.notificationsService.markReadByReference(message.threadId, userId);
+      }
       this.core.emitMailReadEvent(
         userId,
         messageId,
@@ -144,6 +149,10 @@ export class MailActionService {
           ),
         ),
       );
+
+      for (const threadId of [...new Set(messages.map((m) => m.threadId))]) {
+        await this.notificationsService.markReadByReference(threadId, userId);
+      }
 
       for (const message of messages) {
         this.core.emitMailReadEvent(
@@ -193,6 +202,7 @@ export class MailActionService {
           threadId,
           userId,
         );
+        await this.notificationsService.markReadByReference(threadId, userId);
         this.core.mailGateway.emitMailRead(userId, {
           threadId,
           isRead: true,

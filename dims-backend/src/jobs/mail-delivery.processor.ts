@@ -174,7 +174,7 @@ Date: ${message.sentAt || message.createdAt}
 
         const ndrMessage = this.messageRepo.create({
           threadId: message.threadId,
-          senderId: message.senderId,
+          senderId: null,
           subject: ndrSubject,
           body: ndrBodyText,
           bodyHtml: `<p>This is the mail system at danagroup.net.</p><p>I'm sorry to have to inform you that your message could not be delivered to one or more recipients.</p><p><strong>&lt;${toEmail}&gt;</strong>: Delivery failed or recipient rejected.</p><hr><p>Original Subject: ${message.subject}</p>`,

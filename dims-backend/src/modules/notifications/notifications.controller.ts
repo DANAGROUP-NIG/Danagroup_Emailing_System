@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Query } from "@nestjs/common";
+import { Controller, Get, Param, Patch, Query, Delete } from "@nestjs/common";
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -54,5 +54,14 @@ export class NotificationsController {
   @ApiResponse({ status: 200, description: "All notifications marked as read" })
   async markAllRead(@CurrentUser() user: { userId: string }) {
     return this.notificationsService.markAllRead(user.userId);
+  }
+
+  @Delete("all")
+  @ApiOperation({
+    summary: "Delete all notifications for the current user",
+  })
+  @ApiResponse({ status: 200, description: "All notifications deleted" })
+  async deleteAll(@CurrentUser() user: { userId: string }) {
+    return this.notificationsService.deleteAll(user.userId);
   }
 }

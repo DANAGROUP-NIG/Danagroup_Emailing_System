@@ -18,6 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { RichTextEditor, type EditorAttachment } from "@/components/mail/RichTextEditor";
+import RecipientInput from "@/components/mail/RecipientInput";
 import { useMail } from "@/hooks/useMail";
 import { cn } from "@/lib/utils";
 import { useMailStore } from "@/store/mailStore";
@@ -26,16 +27,20 @@ import { useToast } from "@/components/ui/Toast";
 import { useSignature } from "@/hooks/useSignature";
 import { useAuthStore } from "@/store/authStore";
 
-const parseEmailList = (value?: string) =>
-  (value ?? "")
+const parseEmailList = (value: string | any[] | undefined) => {
+  if (Array.isArray(value)) {
+    return value.map((v) => (v.email || "").trim().toLowerCase()).filter(Boolean);
+  }
+  return (value ?? "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
+};
 
 const emailListField = (required = false) =>
   z
-    .string()
-    .default("")
+    .any()
+    .default([])
     .superRefine((value, ctx) => {
       const emails = parseEmailList(value);
 
@@ -100,7 +105,7 @@ const resolveSignatureAssets = (signature: string) => {
 
 const buildSignatureBlock = (signature: string | null) => {
   if (!signature) return "";
-  return `<br><hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">${resolveSignatureAssets(signature)}`;
+  return `<br><br>${resolveSignatureAssets(signature)}`;
 };
 
 const mapComposeValuesToPayload = (
@@ -166,7 +171,7 @@ export default function ComposeModal() {
     formState: { errors },
   } = useForm<ComposeFormInput>({
     resolver: zodResolver(sendSchema),
-    defaultValues: { to: "", cc: "", bcc: "", subject: "", body: "" },
+    defaultValues: { to: [], cc: [], bcc: [], subject: "", body: "" },
   });
 
   const draftData = data as Message | undefined;
@@ -343,24 +348,15 @@ export default function ComposeModal() {
     setIsMinimized(false);
 
     if (composeDraftId && draftData) {
-      const toField =
-        draftData.recipients
-          ?.filter((recipient) => recipient.type === "to")
-          .map(getRecipientAddress)
-          .filter(Boolean)
-          .join(", ") || "";
-      const ccField =
-        draftData.recipients
-          ?.filter((recipient) => recipient.type === "cc")
-          .map(getRecipientAddress)
-          .filter(Boolean)
-          .join(", ") || "";
-      const bccField =
-        draftData.recipients
-          ?.filter((recipient) => recipient.type === "bcc")
-          .map(getRecipientAddress)
-          .filter(Boolean)
-          .join(", ") || "";
+      const toField = draftData.recipients
+        ?.filter((recipient) => recipient.type === "to")
+        .map((r) => ({ id: r.recipientId || r.externalEmail || "", email: getRecipientAddress(r), name: r.recipient?.name || "" })) || [];
+      const ccField = draftData.recipients
+        ?.filter((recipient) => recipient.type === "cc")
+        .map((r) => ({ id: r.recipientId || r.externalEmail || "", email: getRecipientAddress(r), name: r.recipient?.name || "" })) || [];
+      const bccField = draftData.recipients
+        ?.filter((recipient) => recipient.type === "bcc")
+        .map((r) => ({ id: r.recipientId || r.externalEmail || "", email: getRecipientAddress(r), name: r.recipient?.name || "" })) || [];
 
       reset({
         to: toField,
@@ -390,14 +386,14 @@ export default function ComposeModal() {
 
     const toValue = composeDefaults?.to
       ? Array.isArray(composeDefaults.to)
-        ? composeDefaults.to.map((recipient) => recipient.email).join(", ")
-        : composeDefaults.to
-      : "";
+        ? composeDefaults.to.map((recipient) => ({ id: recipient.id || recipient.email, email: recipient.email, name: recipient.name || "" }))
+        : []
+      : [];
 
     reset({
       to: toValue,
-      cc: composeDefaults?.cc || "",
-      bcc: composeDefaults?.bcc || "",
+      cc: [],
+      bcc: [],
       subject: composeDefaults?.subject || "",
       body: composeDefaults?.body || "",
     });
@@ -528,7 +524,7 @@ export default function ComposeModal() {
                 <FieldShell
                   icon={<Users className="h-5 w-5" aria-hidden="true" />}
                   label="To"
-                  error={errors.to?.message}
+                  error={errors.to?.message as string | undefined}
                   actions={
                     <div className="flex items-center gap-4 text-sm font-medium text-dana-blue-700">
                       <button type="button" onClick={() => setShowCc((value) => !value)} className="hover:text-dana-blue-900">
@@ -541,32 +537,29 @@ export default function ComposeModal() {
                     </div>
                   }
                 >
-                  <input
-                    {...register("to")}
-                    type="text"
+                  <RecipientInput
+                    value={watchedValues.to || []}
+                    onChange={(val) => setValue("to", val, { shouldDirty: true, shouldValidate: true })}
                     placeholder="Add recipients..."
-                    className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
                   />
                 </FieldShell>
 
                 {(showCc || errors.cc) && (
-                  <FieldShell label="Cc" error={errors.cc?.message}>
-                    <input
-                      {...register("cc")}
-                      type="text"
+                  <FieldShell label="Cc" error={errors.cc?.message as string | undefined}>
+                    <RecipientInput
+                      value={watchedValues.cc || []}
+                      onChange={(val) => setValue("cc", val, { shouldDirty: true, shouldValidate: true })}
                       placeholder="Add carbon copy recipients..."
-                      className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
                     />
                   </FieldShell>
                 )}
 
                 {(showBcc || errors.bcc) && (
-                  <FieldShell label="Bcc" error={errors.bcc?.message}>
-                    <input
-                      {...register("bcc")}
-                      type="text"
+                  <FieldShell label="Bcc" error={errors.bcc?.message as string | undefined}>
+                    <RecipientInput
+                      value={watchedValues.bcc || []}
+                      onChange={(val) => setValue("bcc", val, { shouldDirty: true, shouldValidate: true })}
                       placeholder="Add blind copy recipients..."
-                      className="min-w-0 flex-1 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400"
                     />
                   </FieldShell>
                 )}

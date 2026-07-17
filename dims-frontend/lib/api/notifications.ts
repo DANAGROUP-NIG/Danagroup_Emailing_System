@@ -25,4 +25,7 @@ export const notificationsApi = {
 
   markAllRead: () =>
     apiClient.patch("/notifications/read-all"),
+
+  deleteAll: () =>
+    apiClient.delete("/notifications/all"),
 };
