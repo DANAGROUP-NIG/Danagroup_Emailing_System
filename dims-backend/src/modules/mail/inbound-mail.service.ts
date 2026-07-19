@@ -475,6 +475,14 @@ I'm sorry to have to inform you that your message could not be delivered to one 
         },
       });
 
+      // Mark original recipient row(s) as bounced in the database
+      await this.recipientRepo
+        .createQueryBuilder()
+        .update()
+        .set({ ndrStatus: "bounced" as const })
+        .where("externalEmail = :failedRecipient", { failedRecipient })
+        .execute();
+
       this.logger.log(
         `DSN NDR created — thread ${ndrThreadId}, notified user ${originalSender.id}`,
       );

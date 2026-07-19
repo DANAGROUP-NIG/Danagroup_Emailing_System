@@ -271,6 +271,15 @@ Date:    ${(message.sentAt ?? message.createdAt).toISOString()}
           backoff: { type: "exponential", delay: 5000 },
         });
 
+        // Mark the original external recipient row as bounced
+        await this.recipientRepo
+          .createQueryBuilder()
+          .update()
+          .set({ ndrStatus: "bounced" as const })
+          .where("messageId = :messageId", { messageId: message.id })
+          .andWhere("externalEmail = :externalEmail", { externalEmail: toEmail })
+          .execute();
+
         this.logger.log(
           `NDR created for sender ${message.senderId} — failed delivery to ${toEmail}`,
         );

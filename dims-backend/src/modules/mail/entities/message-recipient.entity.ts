@@ -11,6 +11,7 @@ import { Message } from "./message.entity";
 import { User } from "@modules/users/entities/user.entity";
 
 export type RecipientType = "to" | "cc" | "bcc";
+export type NdrStatus = "delivered" | "bounced";
 
 @Index(["recipientId", "isDeleted"])
 @Index(["recipientId", "isRead"])
@@ -22,6 +23,14 @@ export class MessageRecipient {
 
   @Column({ type: "enum", enum: ["to", "cc", "bcc"], default: "to" })
   type: RecipientType;
+
+  @Column({
+    type: "enum",
+    enum: ["delivered", "bounced"],
+    nullable: true,
+    default: null,
+  })
+  ndrStatus: NdrStatus | null;
 
   @Column({ default: false })
   isRead: boolean;
