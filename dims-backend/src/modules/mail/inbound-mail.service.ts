@@ -62,6 +62,13 @@ export class InboundMailService {
       fromAddress.includes("mailer-daemon") ||
       fromAddress.includes("postmaster");
 
+    // Debug: log DSN detection inputs
+    this.logger.debug(
+      `DSN check — from: ${fromAddress}, contentType: ${rawContentType}, ` +
+      `isFromMailerDaemon: ${isFromMailerDaemon}, hasDeliveryStatusAttachment: ${hasDeliveryStatusAttachment}, ` +
+      `attachmentTypes: [${(parsed.attachments ?? []).map(a => a.contentType).join(', ')}]`,
+    );
+
     const isDsn =
       rawContentType.includes("report-type=delivery-status") ||
       (isFromMailerDaemon && hasDeliveryStatusAttachment);
