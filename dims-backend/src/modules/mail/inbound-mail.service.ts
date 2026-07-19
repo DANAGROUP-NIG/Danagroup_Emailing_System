@@ -54,7 +54,11 @@ export class InboundMailService {
     // ── Detect DSN / bounce notifications from Postfix ─────────────────────
     // DSN emails have Content-Type: multipart/report; report-type=delivery-status
     // and come From: MAILER-DAEMON or postmaster
-    const rawContentType = String(parsed.headers?.get("content-type") ?? "");
+    const contentTypeHeader = parsed.headers?.get("content-type") as any;
+    const rawContentType = typeof contentTypeHeader === "string" 
+      ? contentTypeHeader 
+      : (contentTypeHeader?.value || "");
+    
     const hasDeliveryStatusAttachment = parsed.attachments?.some(
       (a) => a.contentType === "message/delivery-status",
     );
@@ -62,16 +66,9 @@ export class InboundMailService {
       fromAddress.includes("mailer-daemon") ||
       fromAddress.includes("postmaster");
 
-    // Debug: log DSN detection inputs
-    this.logger.debug(
-      `DSN check — from: ${fromAddress}, contentType: ${rawContentType}, ` +
-      `isFromMailerDaemon: ${isFromMailerDaemon}, hasDeliveryStatusAttachment: ${hasDeliveryStatusAttachment}, ` +
-      `attachmentTypes: [${(parsed.attachments ?? []).map(a => a.contentType).join(', ')}]`,
-    );
-
     const isDsn =
       rawContentType.includes("report-type=delivery-status") ||
-      (isFromMailerDaemon && hasDeliveryStatusAttachment);
+      (isFromMailerDaemon && (hasDeliveryStatusAttachment || rawContentType.includes("multipart/report")));
 
     if (isDsn) {
       this.logger.log(
