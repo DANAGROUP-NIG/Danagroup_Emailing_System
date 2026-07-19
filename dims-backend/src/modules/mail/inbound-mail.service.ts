@@ -313,34 +313,36 @@ export class InboundMailService {
 
   // ─── DSN / Bounce handler ─────────────────────────────────────────────────
 
-  private async processDsn(parsed: Awaited<ReturnType<typeof simpleParser>>, _rawEmailStr: string): Promise<void> {
+  private async processDsn(parsed: Awaited<ReturnType<typeof simpleParser>>, rawEmailStr: string): Promise<void> {
     try {
       // Extract the delivery-status attachment to get failure details
       const dsAttachment = parsed.attachments?.find(
         (a) => a.contentType === "message/delivery-status",
       );
 
+      // Extract DSN details from either the parsed attachment (if mailparser exposed it) or the raw email body
       let failedRecipient: string | null = null;
       let bounceReason = "Delivery failed — no specific reason provided";
       let originalMessageId: string | null = null;
 
-      if (dsAttachment?.content) {
-        const dsText = dsAttachment.content.toString("utf8");
-        // Parse Final-Recipient header
-        const finalRecipientMatch = dsText.match(/Final-Recipient:\s*rfc822;\s*([^\r\n]+)/i);
-        if (finalRecipientMatch) {
-          failedRecipient = finalRecipientMatch[1].trim().toLowerCase();
-        }
-        // Parse Diagnostic-Code (the actual SMTP error)
-        const diagnosticMatch = dsText.match(/Diagnostic-Code:[^:]+:\s*(.+)/i);
-        if (diagnosticMatch) {
-          bounceReason = diagnosticMatch[1].trim();
-        }
-        // Parse Status code
-        const statusMatch = dsText.match(/Status:\s*(\d\.\d\.\d)/i);
-        if (statusMatch && !diagnosticMatch) {
-          bounceReason = `SMTP Status ${statusMatch[1]}`;
-        }
+      const dsText = dsAttachment?.content?.toString("utf8") ?? rawEmailStr;
+      
+      // Parse Final-Recipient header
+      const finalRecipientMatch = dsText.match(/Final-Recipient:\s*rfc822;\s*([^\r\n]+)/i);
+      if (finalRecipientMatch) {
+        failedRecipient = finalRecipientMatch[1].trim().toLowerCase();
+      }
+      
+      // Parse Diagnostic-Code (the actual SMTP error)
+      const diagnosticMatch = dsText.match(/Diagnostic-Code:[^:]+:\s*([^\r\n]+)/i);
+      if (diagnosticMatch) {
+        bounceReason = diagnosticMatch[1].trim();
+      }
+      
+      // Parse Status code
+      const statusMatch = dsText.match(/Status:\s*(\d\.\d\.\d)/i);
+      if (statusMatch && !diagnosticMatch) {
+        bounceReason = `SMTP Status ${statusMatch[1]}`;
       }
 
       // Try to find original Message-ID from the headers or original-message part
