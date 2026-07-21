@@ -59,7 +59,7 @@ const primaryNav = (unreadCount: number): NavItem[] => [
 const secondaryNav: NavItem[] = [
   { href: "/directory", label: "Directory", icon: Users },
   { href: "/chat", label: "Messages", icon: MessageSquare },
-  { href: "/channels", label: "Channels", icon: Hash },
+  // { href: "/channels", label: "Channels", icon: Hash },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
